@@ -1,162 +1,133 @@
 <!DOCTYPE html>
-<html lang="id" class="scroll-smooth">
+<html lang="en" class="no-js">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tentang Kami - Menuju Sukses</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        brand: {
-                            dark: '#0f172a',    /* Slate 900 */
-                            primary: '#2563eb', /* Blue 600 */
-                            light: '#f8fafc'    /* Slate 50 */
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    @include('partials.head')
 </head>
-<body class="text-slate-600 bg-white antialiased">
+<body data-scroll-container>
 
+    @include('partials.ui')
     @include('partials.navbar')
 
-    <header class="pt-32 pb-20 bg-brand-dark text-white text-center px-6">
-        <div class="max-w-3xl mx-auto">
-            <h1 class="text-3xl md:text-5xl font-bold tracking-tight mb-6">Tentang Kami</h1>
-            <p class="text-slate-400 text-lg leading-relaxed">
-                Membantu Anda mencapai potensi penuh melalui teknologi dan bimbingan profesional sejak 2019.
+    <main class="pt-32 px-4 md:px-6 relative z-10 w-full max-w-7xl mx-auto" data-scroll-section>
+        
+        <header class="mb-24 text-center">
+            <h1 class="text-6xl md:text-9xl font-display font-bold uppercase tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-600">
+                ABOUT<br><span class="text-stroke-white text-transparent">US</span>
+            </h1>
+            <p class="max-w-2xl mx-auto font-mono text-xs md:text-sm text-gray-400 uppercase tracking-widest leading-loose border-l-2 border-white pl-6 text-left md:text-center md:border-l-0 md:border-t-2 md:pt-6">
+                Redefining the digital landscape since 2019. We are the glitch in the system.
             </p>
-        </div>
-    </header>
+        </header>
 
-    <main>
-        <section class="py-20 px-6">
-            <div class="max-w-4xl mx-auto text-center">
-                <span class="text-brand-primary font-semibold tracking-wider uppercase text-sm">Siapa Kami?</span>
-                <h2 class="text-3xl font-bold text-slate-900 mt-2 mb-8">Platform Terdepan untuk Kesuksesan</h2>
-                <div class="text-lg text-slate-600 space-y-6 leading-relaxed text-justify md:text-center">
+        <section class="grid md:grid-cols-2 gap-16 mb-32 items-center">
+            <div>
+                <span class="font-graffiti text-3xl text-gray-600 block mb-4">WHO WE ARE</span>
+                <h2 class="text-3xl font-bold text-white mb-8 border-l-4 border-white pl-6">
+                     PLATFORM VOID
+                </h2>
+                <div class="text-gray-400 space-y-6 leading-relaxed text-justify font-mono text-xs md:text-sm">
                     <p>
-                        Menuju Sukses adalah platform inovatif yang dirancang khusus untuk memberdayakan individu dan organisasi. Dengan pengalaman lebih dari 5 tahun, kami telah membantu lebih dari 10,000 pengguna mencapai tujuan mereka.
+                        "Menuju Sukses" is an anomaly. A platform designed to empower individuals by breaking the status quo. With over 5 years of chaotic innovation, we've helped 10,000+ units achieve their prime directive.
                     </p>
                     <p>
-                        Kami bukan sekadar platform, tetapi mitra perjalanan Anda. Dengan kombinasi teknologi canggih, komunitas supportif, dan bimbingan ahli, kami memastikan Anda tidak pernah merasa sendirian dalam perjalanan menuju sukses.
+                        We are not just a platform; we are your co-pilots in this digital wasteland. Through code, community, and relentless drive, we ensure you never walk the path alone.
+                    </p>
+                </div>
+            </div>
+            <div class="relative group">
+                <div class="absolute inset-0 bg-white opacity-5 group-hover:opacity-10 transition duration-500 transform translate-x-4 translate-y-4"></div>
+                <div class="border border-white/20 p-10 bg-[#050505] relative z-10">
+                    <div class="w-16 h-1 bg-white mb-8"></div>
+                    <p class="font-display text-4xl uppercase leading-none">
+                        "Design is anarchy <br> controlled by logic."
                     </p>
                 </div>
             </div>
         </section>
 
-        <section class="py-20 bg-brand-light px-6">
-            <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-12">
-                <div class="bg-white p-10 rounded-2xl border border-slate-200 hover:border-brand-primary transition shadow-sm">
-                    <div class="w-12 h-12 bg-blue-50 text-brand-primary rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
-                    </div>
-                    <h3 class="text-2xl font-bold text-slate-900 mb-4">Misi Kami</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        Menyediakan platform komprehensif yang memberdayakan setiap individu untuk mencapai tujuan mereka melalui teknologi inovatif dan komunitas supportif.
+        <section class="mb-32">
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="group bg-[#080808] border border-gray-800 p-10 hover:border-white transition duration-300">
+                    <div class="mb-6 text-white text-4xl font-graffiti group-hover:scale-110 transition duration-300 origin-left">01</div>
+                    <h3 class="text-2xl font-display font-bold text-white mb-4 uppercase">Mission Protocol</h3>
+                    <p class="text-gray-500 font-mono text-xs uppercase tracking-widest leading-relaxed">
+                        To provide a comprehensive platform that empowers every individual to breach their limits through innovative tech and resistance networks.
                     </p>
                 </div>
 
-                <div class="bg-white p-10 rounded-2xl border border-slate-200 hover:border-brand-primary transition shadow-sm">
-                    <div class="w-12 h-12 bg-blue-50 text-brand-primary rounded-lg flex items-center justify-center mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
-                    </div>
-                    <h3 class="text-2xl font-bold text-slate-900 mb-4">Visi Kami</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        Menjadi katalis transformasi positif di Asia Tenggara, menciptakan ekosistem di mana setiap orang memiliki kesempatan yang sama untuk sukses.
+                <div class="group bg-[#080808] border border-gray-800 p-10 hover:border-white transition duration-300">
+                    <div class="mb-6 text-white text-4xl font-graffiti group-hover:scale-110 transition duration-300 origin-left">02</div>
+                    <h3 class="text-2xl font-display font-bold text-white mb-4 uppercase">Vision Check</h3>
+                    <p class="text-gray-500 font-mono text-xs uppercase tracking-widest leading-relaxed">
+                        To become the catalyst of positive chaos in SEA, creating an ecosystem where everyone has equal opportunity to dominate.
                     </p>
                 </div>
             </div>
         </section>
 
-        <section class="py-20 px-6 max-w-6xl mx-auto">
-            <h2 class="text-3xl font-bold text-center text-slate-900 mb-12">Nilai Inti</h2>
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="p-6 border border-slate-100 rounded-xl hover:shadow-lg transition">
-                    <h4 class="font-bold text-brand-primary text-lg mb-2">Pemberdayaan</h4>
-                    <p class="text-sm text-slate-500">Setiap orang berhak mendapatkan alat untuk mencapai potensi penuh.</p>
+        <section class="mb-32">
+            <h2 class="text-4xl md:text-6xl font-display font-bold text-center text-white mb-16 uppercase">Core Values</h2>
+            <div class="grid md:grid-cols-3 gap-1">
+                <div class="p-8 border border-white/10 hover:bg-white hover:text-black transition duration-300 group">
+                    <h4 class="font-graffiti text-2xl mb-4 group-hover:text-black">Power</h4>
+                    <p class="font-mono text-xs uppercase tracking-widest opacity-60">Tools to reach full potential.</p>
                 </div>
-                <div class="p-6 border border-slate-100 rounded-xl hover:shadow-lg transition">
-                    <h4 class="font-bold text-brand-primary text-lg mb-2">Kolaborasi</h4>
-                    <p class="text-sm text-slate-500">Bersama kita lebih kuat melalui komunitas yang saling mendukung.</p>
+                <div class="p-8 border border-white/10 hover:bg-white hover:text-black transition duration-300 group">
+                    <h4 class="font-graffiti text-2xl mb-4 group-hover:text-black">Collab</h4>
+                    <p class="font-mono text-xs uppercase tracking-widest opacity-60">Stronger together.</p>
                 </div>
-                <div class="p-6 border border-slate-100 rounded-xl hover:shadow-lg transition">
-                    <h4 class="font-bold text-brand-primary text-lg mb-2">Integritas</h4>
-                    <p class="text-sm text-slate-500">Transparansi dan kejujuran dalam setiap interaksi.</p>
+                <div class="p-8 border border-white/10 hover:bg-white hover:text-black transition duration-300 group">
+                    <h4 class="font-graffiti text-2xl mb-4 group-hover:text-black">Truth</h4>
+                    <p class="font-mono text-xs uppercase tracking-widest opacity-60">Transparency in every byte.</p>
                 </div>
-                <div class="p-6 border border-slate-100 rounded-xl hover:shadow-lg transition">
-                    <h4 class="font-bold text-brand-primary text-lg mb-2">Keunggulan</h4>
-                    <p class="text-sm text-slate-500">Terus berinovasi untuk memberikan nilai terbaik.</p>
+                <div class="p-8 border border-white/10 hover:bg-white hover:text-black transition duration-300 group">
+                    <h4 class="font-graffiti text-2xl mb-4 group-hover:text-black">Elite</h4>
+                    <p class="font-mono text-xs uppercase tracking-widest opacity-60">Constant innovation.</p>
                 </div>
-                <div class="p-6 border border-slate-100 rounded-xl hover:shadow-lg transition">
-                    <h4 class="font-bold text-brand-primary text-lg mb-2">Inovasi</h4>
-                    <p class="text-sm text-slate-500">Mencari cara baru agar pengalaman pengguna makin baik.</p>
+                <div class="p-8 border border-white/10 hover:bg-white hover:text-black transition duration-300 group">
+                    <h4 class="font-graffiti text-2xl mb-4 group-hover:text-black">Novelty</h4>
+                    <p class="font-mono text-xs uppercase tracking-widest opacity-60">Finding new ways.</p>
                 </div>
-                <div class="p-6 border border-slate-100 rounded-xl hover:shadow-lg transition">
-                    <h4 class="font-bold text-brand-primary text-lg mb-2">Keberlanjutan</h4>
-                    <p class="text-sm text-slate-500">Membangun solusi jangka panjang yang berdampak positif.</p>
+                <div class="p-8 border border-white/10 hover:bg-white hover:text-black transition duration-300 group">
+                    <h4 class="font-graffiti text-2xl mb-4 group-hover:text-black">Sustain</h4>
+                    <p class="font-mono text-xs uppercase tracking-widest opacity-60">Long term impact.</p>
                 </div>
             </div>
         </section>
 
-        <section class="py-16 bg-brand-primary text-white">
-            <div class="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-blue-500/30">
+        <section class="py-16 border-y border-white/20 mb-20">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-white/20">
                 <div>
-                    <h3 class="text-4xl font-extrabold mb-1">10K+</h3>
-                    <p class="text-blue-100 text-sm">Pengguna</p>
+                    <h3 class="text-4xl font-display font-bold text-white mb-1">10K+</h3>
+                    <p class="font-mono text-xs text-gray-500 uppercase">Users</p>
                 </div>
                 <div>
-                    <h3 class="text-4xl font-extrabold mb-1">95%</h3>
-                    <p class="text-blue-100 text-sm">Kepuasan</p>
+                    <h3 class="text-4xl font-display font-bold text-white mb-1">95%</h3>
+                    <p class="font-mono text-xs text-gray-500 uppercase">Satisfaction</p>
                 </div>
                 <div>
-                    <h3 class="text-4xl font-extrabold mb-1">120+</h3>
-                    <p class="text-blue-100 text-sm">Mentor</p>
+                    <h3 class="text-4xl font-display font-bold text-white mb-1">120+</h3>
+                    <p class="font-mono text-xs text-gray-500 uppercase">Agents</p>
                 </div>
                 <div>
-                    <h3 class="text-4xl font-extrabold mb-1">5</h3>
-                    <p class="text-blue-100 text-sm">Negara</p>
+                    <h3 class="text-4xl font-display font-bold text-white mb-1">5</h3>
+                    <p class="font-mono text-xs text-gray-500 uppercase">Regions</p>
                 </div>
             </div>
         </section>
 
     </main>
 
-    <footer class="bg-white pt-16 pb-8 border-t border-slate-200">
-        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-4 gap-12 mb-12">
-            <div class="col-span-1 md:col-span-2">
-                <span class="font-bold text-slate-900 text-lg">🚀 Menuju Sukses</span>
-                <p class="mt-4 text-sm text-slate-500 max-w-xs">Membantu Anda mencapai tujuan hidup.</p>
+    <footer class="py-8 text-center text-xs font-mono text-gray-600 uppercase tracking-widest border-t border-white/10">
+        <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <span>© 2026 PANZEKK SYSTEM</span>
+            <div class="flex gap-4">
+                <a href="#" class="hover:text-white transition">Team</a>
+                <a href="#" class="hover:text-white transition">Privacy</a>
             </div>
-            <div>
-                <h4 class="font-bold text-slate-900 mb-4">Perusahaan</h4>
-                <ul class="space-y-2 text-sm">
-                    <li><a href="#" class="hover:text-brand-primary">Tim Kami</a></li>
-                    <li><a href="#" class="hover:text-brand-primary">Karir</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="font-bold text-slate-900 mb-4">Legal</h4>
-                <ul class="space-y-2 text-sm">
-                    <li><a href="#" class="hover:text-brand-primary">Privasi</a></li>
-                    <li><a href="#" class="hover:text-brand-primary">Syarat</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="text-center text-sm text-slate-400 pt-8 border-t border-slate-200">
-            &copy; 2026 Menuju Sukses. All rights reserved. | Designed with ❤️ by Kevin
         </div>
     </footer>
 
+    @include('partials.scripts')
 </body>
 </html>

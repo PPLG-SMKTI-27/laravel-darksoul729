@@ -1,65 +1,47 @@
 <!DOCTYPE html>
-<html lang="id" class="scroll-smooth">
+<html lang="en" class="no-js">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Image - Menuju Sukses</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        brand: {
-                            dark: '#0f172a',    /* Slate 900 */
-                            primary: '#2563eb', /* Blue 600 */
-                            light: '#f8fafc'    /* Slate 50 */
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    @include('partials.head')
 </head>
-<body class="text-slate-600 bg-brand-light antialiased flex flex-col min-h-screen">
-
+<body data-scroll-container>
+    @include('partials.ui')
     @include('partials.navbar')
 
-    <main class="flex-grow pt-32 pb-20 px-6">
+    <main class="pt-32 pb-20 px-6 max-w-7xl mx-auto flex-grow w-full relative z-10">
         <div class="max-w-3xl mx-auto">
             
             <div class="text-center mb-10">
-                <h1 class="text-3xl font-bold text-slate-900 mb-2">Tampilan Gambar</h1>
-                <p class="text-slate-500">Halaman pengujian aset gambar statis.</p>
+                <h1 class="text-4xl font-display font-bold text-white mb-2 uppercase">IMAGE PROTOCOL</h1>
+                <p class="font-mono text-xs text-gray-500 uppercase tracking-widest">Static asset verification module.</p>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50">
-                <div class="relative rounded-xl overflow-hidden bg-slate-100 aspect-video flex items-center justify-center group">
+            <div class="bg-[#080808] p-4 border border-gray-800 hover:border-white transition group">
+                <div class="relative overflow-hidden bg-[#111] aspect-video flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition duration-500">
                     
-                    <img src="{{ asset('img/cat.jpg') }}" alt="Test Image" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
+                    <img src="{{ asset('img/cat.jpg') }}" alt="Test Image" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-500 scale-100 group-hover:scale-110">
                     
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
-                        <span class="text-white font-medium">img/cat.jpg</span>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
+                        <span class="font-mono text-xs text-white bg-black px-2 py-1">ASSET: img/cat.jpg</span>
                     </div>
+
+                    <!-- Scanline overlay -->
+                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 mix-blend-overlay pointer-events-none"></div>
 
                 </div>
                 <div class="mt-4 flex justify-between items-center px-2">
-                    <span class="text-sm font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded">Asset Path: img/cat.jpg</span>
-                    <a href="/" class="text-sm font-semibold text-brand-primary hover:underline">Kembali ke Beranda &rarr;</a>
+                    <span class="font-mono text-[10px] text-gray-500 uppercase tracking-widest border border-gray-800 px-2 py-1 rounded">Path: img/cat.jpg</span>
+                    <a href="/" class="font-mono text-[10px] font-bold text-white hover:underline uppercase tracking-widest">Return to Base -></a>
                 </div>
             </div>
 
         </div>
     </main>
 
-    <footer class="bg-white py-8 border-t border-slate-200 text-center text-sm text-slate-400">
-        &copy; 2026 Menuju Sukses. All rights reserved.
+    <footer class="py-8 text-center text-xs font-mono text-gray-600 uppercase tracking-widest border-t border-white/10 mt-auto">
+        © 2026 PANZEKK SYSTEM
     </footer>
+
+    @include('partials.scripts')
 
 </body>
 </html>
