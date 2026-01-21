@@ -1,16 +1,6 @@
-<!DOCTYPE html>
-<html lang="en" class="no-js">
-<head>
-    @include('partials.head')
-</head>
+@extends('layouts.app')
 
-<body data-scroll-container>
-
-    @include('partials.ui')
-
-
-
-    @include('partials.navbar')
+@section('content')
 
     <main>
         
@@ -373,8 +363,9 @@
 
     </main>
 
-    @include('partials.scripts')
+@endsection
 
+@push('scripts')
     <script>
         /**
          * =============================================================================
@@ -581,5 +572,4 @@
         });
 
     </script>
-</body>
-</html>
+@endpush

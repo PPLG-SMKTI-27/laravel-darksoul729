@@ -8,20 +8,20 @@ Route::get('/', function () {
 });
 
 Route::get('/about', function () {
-    return view('about');
+    return view('pages.about');
 });
 
 Route::get('/contact', function () {
-    return view('contact');
+    return view('pages.contact');
 });
 
 Route::get('/feature', function () {
-    return view('feature');
+    return view('pages.feature');
 });
 
 
 Route::get('/test-image', function () {
-    return view('test-image');
+    return view('test.test-image');
 });
 
 Route::get('/login', function () {

@@ -1,12 +1,6 @@
-<!DOCTYPE html>
-<html lang="en" class="no-js">
-<head>
-    @include('partials.head')
-</head>
-<body data-scroll-container>
+@extends('layouts.app')
 
-    @include('partials.ui')
-    @include('partials.navbar')
+@section('content')
 
     <main class="pt-32 px-4 md:px-6 relative z-10 w-full max-w-7xl mx-auto" data-scroll-section>
 
@@ -127,6 +121,4 @@
         </div>
     </footer>
 
-    @include('partials.scripts')
-</body>
-</html>
+@endsection

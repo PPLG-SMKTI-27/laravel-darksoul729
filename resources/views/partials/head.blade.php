@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PANZEKK - Digital Vandal Portfolio V2 Ultimate">
 <meta name="author" content="Kevin Hermansyah">
-<title>PANZEKK | V2 ULTIMATE</title>
+<title>PANZEKK</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

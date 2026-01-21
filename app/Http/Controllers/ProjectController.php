@@ -8,7 +8,7 @@ class ProjectController extends Controller
 {
     public function index()
     {
-        return view('project', [
+        return view('pages.project', [
             'name' => 'Kevin Hermansyah',
         ]);
     }
