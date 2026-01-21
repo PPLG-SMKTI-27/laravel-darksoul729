@@ -93,7 +93,7 @@
                     <div class="w-16 md:w-24 h-2 bg-white mb-8"></div>
                     <div class="font-mono text-[10px] md:text-xs uppercase tracking-widest text-gray-500 border-l-2 border-gray-800 pl-4">
                         <p class="mb-2">// Identity: Kevin Hermansyah</p>
-                        <p class="mb-2">// Alias: Panzekk</p>
+                        <p class="mb-2">// Alias: Panzek</p>
                         <p class="mb-2">// Loc: Banjarmasin, ID</p>
                         <p>// Status: <span class="text-green-500 animate-pulse">Connected</span></p>
                     </div>
