@@ -1,0 +1,58 @@
+<?php
+
+return [
+    [
+        'name' => 'PANZEK-PORTFOLIO-V2',
+        'html_url' => '#',
+        'description' => 'The current portfolio implementation using Laravel & GSAP.',
+        'language' => 'Blade',
+        'updated_at' => '2026-01-22 00:00:00', 
+        'stargazers_count' => 120,
+        'forks_count' => 15,
+    ],
+    [
+        'name' => 'laravel-darksoul729',
+        'html_url' => 'https://github.com/darksoul729/laravel-darksoul729',
+        'description' => 'A dark-themed Laravel starter kit with custom auth.',
+        'language' => 'PHP',
+        'updated_at' => '2026-01-20 00:00:00',
+        'stargazers_count' => 45,
+        'forks_count' => 8,
+    ],
+    [
+        'name' => 'GSAP-SCROLL-TRIGGER',
+        'html_url' => '#',
+        'description' => 'Experimental scroll animations using GreenSock.',
+        'language' => 'JavaScript',
+        'updated_at' => '2026-01-17 00:00:00',
+        'stargazers_count' => 89,
+        'forks_count' => 12,
+    ],
+    [
+        'name' => 'THREEJS-WEBGL-LAB',
+        'html_url' => '#',
+        'description' => '3D experiments and shaders playground.',
+        'language' => 'HTML',
+        'updated_at' => '2026-01-10 00:00:00',
+        'stargazers_count' => 230,
+        'forks_count' => 45,
+    ],
+    [
+        'name' => 'UNKNOWN-PROJECT-X',
+        'html_url' => '#',
+        'description' => 'Top secret project. Access denied.',
+        'language' => 'Shell',
+        'updated_at' => '2026-01-01 00:00:00',
+        'stargazers_count' => 666,
+        'forks_count' => 0,
+    ],
+    [
+        'name' => 'VANDAL-UI-KIT',
+        'html_url' => '#',
+        'description' => 'A custom CSS framework for chaos-driven design.',
+        'language' => 'CSS',
+        'updated_at' => '2025-12-22 00:00:00',
+        'stargazers_count' => 77,
+        'forks_count' => 5,
+    ],
+];

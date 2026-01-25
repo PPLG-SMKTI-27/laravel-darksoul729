@@ -3,7 +3,7 @@
 <head>
     @include('partials.head')
 </head>
-<body data-scroll-container>
+<body data-scroll-container hx-boost="true" hx-indicator="#loader-indicator">
 
     @include('partials.ui')
     @include('partials.navbar')

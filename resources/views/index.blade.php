@@ -303,14 +303,49 @@
                         </h2>
                     </div>
                     <div class="text-left md:text-right mt-8 md:mt-0">
-                        <p class="font-mono text-sm text-gray-400">Fetching live repository data<br>from user: <span class="text-white border-b border-white">darksoul729</span></p>
+                        <p class="font-mono text-sm text-gray-400">Selected works and experiments<br>from user: <span class="text-white border-b border-white">darksoul729</span></p>
                     </div>
                 </div>
 
                 <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 perspective-1000">
-                    <div class="col-span-full h-64 flex items-center justify-center border border-dashed border-gray-700">
-                        <span class="font-graffiti text-2xl animate-pulse">SEARCHING DATABASE...</span>
-                    </div>
+                    @forelse($repos as $index => $repo)
+                        <div class="repo-card group hoverable relative bg-black border border-gray-800 p-6 flex flex-col h-full transform transition-all duration-500 hover:-translate-y-2 hover:border-white shadow-lg">
+                            
+                            <div class="absolute -top-4 -right-4 w-12 h-12 bg-white text-black font-graffiti flex items-center justify-center text-xl rounded-full border-2 border-black z-10 transform group-hover:scale-110 transition shadow-[4px_4px_0_rgba(0,0,0,1)]">
+                                {{ $index + 1 }}
+                            </div>
+
+                            <div class="flex items-center gap-3 mb-6 border-b border-gray-800 pb-4">
+                                <span class="w-3 h-3 rounded-full" style="background-color: box-shadow: 0 0 10px"></span>
+                                <span class="font-mono text-xs text-gray-400 uppercase tracking-widest">{{ $repo['language'] ?? 'UNDEFINED' }}</span>
+                                <span class="ml-auto font-mono text-[10px] text-gray-600">{{ \Carbon\Carbon::parse($repo['updated_at'])->format('m/d/Y') }}</span>
+                            </div>
+
+                            <h3 class="text-2xl md:text-3xl font-display font-bold mb-3 uppercase leading-none group-hover:text-stroke-white transition break-words">
+                                <a href="{{ $repo['html_url'] }}" target="_blank" class="hover:underline decoration-2 underline-offset-4">{{ $repo['name'] }}</a>
+                            </h3>
+
+                            <p class="font-mono text-xs text-gray-500 mb-6 h-16 overflow-hidden leading-relaxed">
+                                {{ $repo['description'] ?? 'No description provided. Contains raw experimental code.' }}
+                            </p>
+
+                            <div class="flex justify-between items-center mt-auto">
+                                <span class="font-mono text-xs text-white bg-gray-900 px-2 py-1 rounded">★ {{ $repo['stargazers_count'] }}</span>
+                                <span class="font-mono text-xs text-white bg-gray-900 px-2 py-1 rounded">⑂ {{ $repo['forks_count'] }}</span>
+                                <a href="{{ $repo['html_url'] }}" target="_blank" class="w-10 h-10 border border-white flex items-center justify-center rounded-full hover:bg-white hover:text-black transition">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="col-span-full text-center border border-red-900 p-10 bg-red-900/10">
+                            <p class="font-mono text-red-500 text-lg mb-4">CONNECTION FAILURE</p>
+                            <p class="text-gray-400 text-sm mb-6">Unable to retrieve classified data from GitHub API.</p>
+                            <a href="https://github.com/darksoul729" target="_blank" class="inline-block border border-red-500 text-red-500 px-6 py-2 hover:bg-red-500 hover:text-white transition font-mono uppercase text-xs">Manual Override</a>
+                        </div>
+                    @endforelse
                 </div>
 
                 <div class="mt-24 text-center">
@@ -453,91 +488,8 @@
          * DATA FETCHING (GITHUB)
          * =============================================================================
          */
-        async function fetchGitHub() {
-            const username = 'darksoul729';
-            const grid = document.getElementById('projects-grid');
-            if(!grid) return;
-            
-            try {
-                // Fetching user repositories
-                const res = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=6`);
-                
-                if (!res.ok) throw new Error("API Limit or Network Error");
-                
-                const data = await res.json();
-                
-                // Clear loader
-                grid.innerHTML = '';
-                
-                // Staggered animation index
-                let delay = 0;
+        // GitHub Fetching moved to Server Side Controller
 
-                data.forEach((repo, i) => {
-                    const card = document.createElement('div');
-                    card.className = "repo-card group hoverable opacity-0 translate-y-10"; // Init hidden for anim
-                    
-                    // Random rotation for "sticker" effect
-                    const rotate = (Math.random() * 4) - 2;
-                    card.style.transform = `rotate(${rotate}deg)`;
-                    
-                    // Determine language color
-                    let langColor = '#fff';
-                    if (repo.language === 'JavaScript') langColor = '#f7df1e';
-                    if (repo.language === 'TypeScript') langColor = '#3178c6';
-                    if (repo.language === 'HTML') langColor = '#e34c26';
-                    if (repo.language === 'CSS') langColor = '#563d7c';
-
-                    card.innerHTML = `
-                        <div class="absolute -top-4 -right-4 w-12 h-12 bg-white text-black font-graffiti flex items-center justify-center text-xl rounded-full border-2 border-black z-10 transform group-hover:scale-110 transition shadow-[4px_4px_0_rgba(0,0,0,1)]">
-                            ${i + 1}
-                        </div>
-                        <div class="flex items-center gap-3 mb-6 border-b border-gray-800 pb-4">
-                            <span class="w-3 h-3 rounded-full" style="background-color: ${langColor}; box-shadow: 0 0 10px ${langColor}"></span>
-                            <span class="font-mono text-xs text-gray-400 uppercase tracking-widest">${repo.language || 'UNDEFINED'}</span>
-                            <span class="ml-auto font-mono text-[10px] text-gray-600">${new Date(repo.updated_at).toLocaleDateString()}</span>
-                        </div>
-                        <h3 class="text-2xl md:text-3xl font-display font-bold mb-3 uppercase leading-none group-hover:text-stroke-white transition break-words">
-                            <a href="${repo.html_url}" target="_blank" class="hover:underline decoration-2 underline-offset-4">${repo.name}</a>
-                        </h3>
-                        <p class="font-mono text-xs text-gray-500 mb-6 h-16 overflow-hidden leading-relaxed">
-                            ${repo.description || 'No description provided. Contains raw experimental code.'}
-                        </p>
-                        <div class="flex justify-between items-center mt-auto">
-                            <span class="font-mono text-xs text-white bg-gray-900 px-2 py-1 rounded">★ ${repo.stargazers_count}</span>
-                            <span class="font-mono text-xs text-white bg-gray-900 px-2 py-1 rounded">⑂ ${repo.forks_count}</span>
-                            <a href="${repo.html_url}" target="_blank" class="w-10 h-10 border border-white flex items-center justify-center rounded-full hover:bg-white hover:text-black transition">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M7 17L17 7M17 7H7M17 7V17"/>
-                                </svg>
-                            </a>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                    
-                    // Animate entry
-                    gsap.to(card, {
-                        opacity: 1,
-                        y: 0,
-                        duration: 0.5,
-                        delay: i * 0.1,
-                        ease: "power2.out"
-                    });
-                });
-                
-                // Refresh ScrollTrigger to account for new height
-                ScrollTrigger.refresh();
-                
-            } catch (err) {
-                console.error(err);
-                grid.innerHTML = `
-                    <div class="col-span-full text-center border border-red-900 p-10 bg-red-900/10">
-                        <p class="font-mono text-red-500 text-lg mb-4">CONNECTION FAILURE</p>
-                        <p class="text-gray-400 text-sm mb-6">Unable to retrieve classified data from GitHub API.</p>
-                        <a href="https://github.com/${username}" target="_blank" class="inline-block border border-red-500 text-red-500 px-6 py-2 hover:bg-red-500 hover:text-white transition font-mono uppercase text-xs">Manual Override</a>
-                    </div>
-                `;
-            }
-        }
 
         /**
          * =============================================================================
@@ -558,18 +510,41 @@
          * MASTER INITIALIZATION
          * =============================================================================
          */
-        window.addEventListener('load', () => {
+        /**
+         * =============================================================================
+         * MASTER INITIALIZATION
+         * =============================================================================
+         */
+        function initHome() {
             // initWebGL is handled in partial
             initHeroAnimations();
-            fetchGitHub();
+            // fetchGitHub(); // Now handled server-side
             initScrollAnimations();
+            
+            // Re-trigger animations for server-rendered grid
+            gsap.from(".repo-card", {
+                y: 50,
+                duration: 0.5,
+                stagger: 0.1,
+                scrollTrigger: {
+                    trigger: "#projects-grid",
+                    start: "top 90%", // Trigger earlier
+                }
+            });
             
             // Log for Vandal Identity
             console.log(
                 "%c PANZEKK V2 INITIALIZED ", 
                 "background: #000; color: #fff; font-size: 20px; padding: 10px; border: 2px solid white;"
             );
-        });
+        }
+
+        // Run immediately (HTMX will execute this when swapped in)
+        initHome();
+        
+        // Also listen for HTMX swap just in case (though script re-exec usually covers it)
+        // Actually, script execution is enough.
+
 
     </script>
 @endpush

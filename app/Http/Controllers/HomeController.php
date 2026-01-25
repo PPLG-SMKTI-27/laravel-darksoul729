@@ -4,16 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-class ProjectController extends Controller
+class HomeController extends Controller
 {
+
     public function index()
     {
+
         $repos = require app_path('Data/projects.php');
         
-
-        return view('pages.project', [
-            'name' => 'Kevin Hermansyah',
-            'repos' => $repos,
-        ]);
+        
+        return view('index', compact('repos'));
     }
 }

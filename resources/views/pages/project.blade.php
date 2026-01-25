@@ -81,23 +81,45 @@
         </section>
 
         <section class="py-16 border-y border-white/20 mb-20">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-white/20">
-                <div>
-                    <h3 class="text-4xl font-display font-bold text-white mb-1">12</h3>
-                    <p class="font-mono text-xs text-gray-500 uppercase">Sprints</p>
-                </div>
-                <div>
-                    <h3 class="text-4xl font-display font-bold text-white mb-1">4</h3>
-                    <p class="font-mono text-xs text-gray-500 uppercase">Core Unit</p>
-                </div>
-                <div>
-                    <h3 class="text-4xl font-display font-bold text-white mb-1">18</h3>
-                    <p class="font-mono text-xs text-gray-500 uppercase">Features</p>
-                </div>
-                <div>
-                    <h3 class="text-4xl font-display font-bold text-white mb-1">98%</h3>
-                    <p class="font-mono text-xs text-gray-500 uppercase">Efficiency</p>
-                </div>
+            <h2 class="text-3xl font-display font-bold text-white mb-12 text-center uppercase">Project Archive</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                @foreach($repos as $index => $repo)
+                    @php
+                       // Simple inline logic for colors since we didn't duplicate the full logic from HomeController
+                       $langColors = [
+                           'JavaScript' => '#f7df1e',
+                           'TypeScript' => '#3178c6',
+                           'HTML' => '#e34c26',
+                           'CSS' => '#563d7c',
+                           'PHP' => '#777bb4',
+                           'Blade' => '#f05340',
+                       ];
+                       $color = $langColors[$repo['language'] ?? ''] ?? '#ffffff';
+                    @endphp
+                    <div class="group relative bg-[#0a0a0a] border border-gray-800 p-6 flex flex-col h-full hover:border-white transition-colors duration-300">
+                        <div class="flex items-center gap-3 mb-6 border-b border-gray-800 pb-4">
+                            <span class="w-2 h-2 rounded-full" style="background-color: {{ $color }}"></span>
+                            <span class="font-mono text-[10px] text-gray-500 uppercase tracking-widest">{{ $repo['language'] ?? 'N/A' }}</span>
+                            <span class="ml-auto font-mono text-[10px] text-gray-600">
+                                {{ \Carbon\Carbon::parse($repo['updated_at'])->format('M Y') }}
+                            </span>
+                        </div>
+
+                        <h3 class="text-xl font-display font-bold mb-3 uppercase leading-none text-gray-300 group-hover:text-white transition">
+                            <a href="{{ $repo['html_url'] }}" class="hover:underline decoration-1 underline-offset-4">{{ $repo['name'] }}</a>
+                        </h3>
+
+                        <p class="font-mono text-[10px] text-gray-500 mb-6 leading-relaxed line-clamp-3">
+                            {{ $repo['description'] }}
+                        </p>
+
+                        <div class="mt-auto flex justify-between items-center border-t border-gray-800 pt-4">
+                            <span class="font-mono text-[10px] text-gray-600">★ {{ $repo['stargazers_count'] }}</span>
+                            <a href="{{ $repo['html_url'] }}" class="text-xs font-mono uppercase text-white hover:text-gray-400 transition">View -></a>
+                        </div>
+                    </div>
+                @endforeach
             </div>
         </section>
 
