@@ -154,7 +154,7 @@
                             FRONTEND
                         </h4>
                         <div class="space-y-4">
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-white hover:bg-white hover:text-black transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-white hover:bg-white hover:text-black transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8 group-hover/item:animate-[spin_4s_linear_infinite]">
                                         <circle cx="12" cy="12" r="2"/>
@@ -165,7 +165,7 @@
                                 </div>
                                 <span class="font-mono text-sm uppercase tracking-widest">React / Next.js</span>
                             </div>
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-blue-400 hover:bg-blue-400 hover:text-black transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-blue-400 hover:bg-blue-400 hover:text-black transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8">
                                         <path d="M3.5 12C3.5 12 5 7 9.5 7C14 7 12 12 12 12C12 12 13.5 17 18 17C22.5 17 20.5 12 20.5 12"/>
@@ -174,7 +174,7 @@
                                 </div>
                                 <span class="font-mono text-sm uppercase tracking-widest">Tailwind CSS</span>
                             </div>
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-purple-500 hover:bg-purple-500 hover:text-white transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-purple-500 hover:bg-purple-500 hover:text-white transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8 group-hover/item:scale-110 transition">
                                         <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
@@ -194,7 +194,7 @@
                             BACKEND
                         </h4>
                         <div class="space-y-4">
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-green-500 hover:bg-green-500 hover:text-black transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-green-500 hover:bg-green-500 hover:text-black transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8">
                                         <path d="M12 2L4 7V17L12 22L20 17V7L12 2Z"/>
@@ -204,7 +204,7 @@
                                 </div>
                                 <span class="font-mono text-sm uppercase tracking-widest">Node.js</span>
                             </div>
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-yellow-400 hover:bg-yellow-400 hover:text-black transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-yellow-400 hover:bg-yellow-400 hover:text-black transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8">
                                         <path d="M12 2C6 2 6 5 6 5V8H14V11H5C2 11 2 14 2 14V17C2 20 5 20 5 20H9"/>
@@ -215,7 +215,7 @@
                                 </div>
                                 <span class="font-mono text-sm uppercase tracking-widest">Python</span>
                             </div>
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-white hover:bg-white hover:text-black transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-white hover:bg-white hover:text-black transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8">
                                         <ellipse cx="12" cy="5" rx="9" ry="3"/>
@@ -235,7 +235,7 @@
                             CREATIVE
                         </h4>
                         <div class="space-y-4">
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-pink-500 hover:bg-pink-500 hover:text-white transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-pink-500 hover:bg-pink-500 hover:text-white transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8">
                                         <path d="M12 12H16C18.2091 12 20 10.2091 20 8C20 5.79086 18.2091 4 16 4H8C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12"/>
@@ -245,7 +245,7 @@
                                 </div>
                                 <span class="font-mono text-sm uppercase tracking-widest">Figma</span>
                             </div>
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8">
                                         <path d="M12 8C9.79 8 8 9.79 8 12C8 14.21 9.79 16 12 16C14.21 16 16 14.21 16 12C16 9.79 14.21 8 12 8Z"/>
@@ -265,7 +265,7 @@
                             CHAOS
                         </h4>
                         <div class="space-y-4">
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-[#88ce02] hover:bg-[#88ce02] hover:text-black transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-[#88ce02] hover:bg-[#88ce02] hover:text-black transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8 group-hover/item:animate-bounce">
                                         <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z"/>
@@ -273,7 +273,7 @@
                                 </div>
                                 <span class="font-mono text-sm uppercase tracking-widest">GSAP / Lenis</span>
                             </div>
-                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 cursor-none group/item">
+                            <div class="flex items-center gap-4 p-3 border border-gray-800 bg-gray-900/50 hover:border-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 group/item">
                                 <div class="w-10 h-10 flex items-center justify-center">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-8 h-8 liquid-text">
                                         <path d="M2 12C2 12 6 8 12 8C18 8 22 12 22 12"/>
@@ -309,7 +309,14 @@
 
                 <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 perspective-1000">
                     @forelse($repos as $index => $repo)
-                        <div class="repo-card group hoverable relative bg-black border border-gray-800 p-6 flex flex-col h-full transform transition-all duration-500 hover:-translate-y-2 hover:border-white shadow-lg">
+                        <div class="repo-card group hoverable relative bg-black border border-gray-800 p-0 flex flex-col h-full transform transition-all duration-500 hover:-translate-y-2 hover:border-white shadow-lg overflow-hidden">
+                            
+                            @if($repo->image)
+                                <div class="w-full h-48 overflow-hidden border-b border-gray-800 group-hover:border-white transition-colors duration-300">
+                                    <img src="{{ Storage::url($repo->image) }}" alt="{{ $repo->title }}" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-700 grayscale group-hover:grayscale-0">
+                                </div>
+                            @endif
+                            <div class="p-6 flex flex-col flex-grow">
                             
                             <div class="absolute -top-4 -right-4 w-12 h-12 bg-white text-black font-graffiti flex items-center justify-center text-xl rounded-full border-2 border-black z-10 transform group-hover:scale-110 transition shadow-[4px_4px_0_rgba(0,0,0,1)]">
                                 {{ $index + 1 }}
@@ -317,22 +324,21 @@
 
                             <div class="flex items-center gap-3 mb-6 border-b border-gray-800 pb-4">
                                 <span class="w-3 h-3 rounded-full" style="background-color: box-shadow: 0 0 10px"></span>
-                                <span class="font-mono text-xs text-gray-400 uppercase tracking-widest">{{ $repo['language'] ?? 'UNDEFINED' }}</span>
-                                <span class="ml-auto font-mono text-[10px] text-gray-600">{{ \Carbon\Carbon::parse($repo['updated_at'])->format('m/d/Y') }}</span>
+                                <span class="font-mono text-xs text-gray-400 uppercase tracking-widest">PROJECT</span>
+                                <span class="ml-auto font-mono text-[10px] text-gray-600">{{ $repo->updated_at->format('m/d/Y') }}</span>
                             </div>
 
                             <h3 class="text-2xl md:text-3xl font-display font-bold mb-3 uppercase leading-none group-hover:text-stroke-white transition break-words">
-                                <a href="{{ $repo['html_url'] }}" target="_blank" class="hover:underline decoration-2 underline-offset-4">{{ $repo['name'] }}</a>
+                                <a href="{{ $repo->link ?? '#' }}" target="_blank" class="hover:underline decoration-2 underline-offset-4">{{ $repo->title }}</a>
                             </h3>
 
                             <p class="font-mono text-xs text-gray-500 mb-6 h-16 overflow-hidden leading-relaxed">
-                                {{ $repo['description'] ?? 'No description provided. Contains raw experimental code.' }}
+                                {{ $repo->description ?? 'No description provided.' }}
                             </p>
 
                             <div class="flex justify-between items-center mt-auto">
-                                <span class="font-mono text-xs text-white bg-gray-900 px-2 py-1 rounded">★ {{ $repo['stargazers_count'] }}</span>
-                                <span class="font-mono text-xs text-white bg-gray-900 px-2 py-1 rounded">⑂ {{ $repo['forks_count'] }}</span>
-                                <a href="{{ $repo['html_url'] }}" target="_blank" class="w-10 h-10 border border-white flex items-center justify-center rounded-full hover:bg-white hover:text-black transition">
+                                <span class="font-mono text-xs text-white bg-gray-900 px-2 py-1 rounded">STATUS: {{ strtoupper($repo->status) }}</span>
+                                <a href="{{ $repo->link ?? '#' }}" target="_blank" class="w-10 h-10 border border-white flex items-center justify-center rounded-full hover:bg-white hover:text-black transition">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M7 17L17 7M17 7H7M17 7V17"/>
                                     </svg>

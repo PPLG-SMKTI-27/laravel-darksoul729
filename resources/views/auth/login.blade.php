@@ -36,14 +36,18 @@
                     <div class="flex-grow border-t border-gray-800"></div>
                 </div>
 
-                <form action="#" method="POST" class="space-y-6">
+                <form action="{{ route('login') }}" method="POST" class="space-y-6">
+                    @csrf
                     <div>
                         <label for="email" class="block text-xs font-mono font-bold text-gray-400 mb-2 uppercase tracking-widest">User / Email</label>
                         <div class="relative group">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <span class="text-gray-600 group-hover:text-white transition">@</span>
                             </div>
-                            <input type="email" id="email" class="w-full pl-10 pr-4 py-3 bg-[#0a0a0a] border border-gray-800 text-white placeholder-gray-700 focus:border-white focus:bg-black focus:outline-none transition font-mono text-xs rounded-none" placeholder="USER@DOMAIN.COM" required>
+                            <input type="email" name="email" id="email" class="w-full pl-10 pr-4 py-3 bg-[#0a0a0a] border border-gray-800 text-white placeholder-gray-700 focus:border-white focus:bg-black focus:outline-none transition font-mono text-xs rounded-none" placeholder="USER@DOMAIN.COM" value="{{ old('email') }}" required>
+                            @error('email')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
 
@@ -55,7 +59,10 @@
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <span class="text-gray-600 group-hover:text-white transition">#</span>
                             </div>
-                            <input type="password" id="password" class="w-full pl-10 pr-10 py-3 bg-[#0a0a0a] border border-gray-800 text-white placeholder-gray-700 focus:border-white focus:bg-black focus:outline-none transition font-mono text-xs rounded-none" placeholder="••••••••" required>
+                            <input type="password" name="password" id="password" class="w-full pl-10 pr-10 py-3 bg-[#0a0a0a] border border-gray-800 text-white placeholder-gray-700 focus:border-white focus:bg-black focus:outline-none transition font-mono text-xs rounded-none" placeholder="••••••••" required>
+                            @error('password')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                             
                             <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-white focus:outline-none transition">
                                 <svg id="eyeIcon" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -72,7 +79,7 @@
 
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <input id="remember-me" type="checkbox" class="h-4 w-4 bg-black border-gray-700 text-white rounded focus:ring-offset-0 focus:ring-0 cursor-pointer">
+                            <input id="remember-me" name="remember" type="checkbox" class="h-4 w-4 bg-black border-gray-700 text-white rounded focus:ring-offset-0 focus:ring-0 cursor-pointer">
                             <label for="remember-me" class="ml-2 block text-xs font-mono text-gray-500 cursor-pointer hover:text-white transition">Remember Identity</label>
                         </div>
                         <div class="text-xs font-mono">

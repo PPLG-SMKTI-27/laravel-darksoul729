@@ -71,7 +71,7 @@
         height: 100%;
         background-color: #030303;
         color: #eeeeee;
-        cursor: none; /* Custom Cursor Active */
+        /* cursor: none; Custom Cursor Active - DISABLED */
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;
