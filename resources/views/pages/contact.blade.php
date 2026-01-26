@@ -54,15 +54,23 @@
                 </div>
                 
                 <h2 class="text-3xl font-display font-bold text-white mb-8">TRANSMIT DATA</h2>
-                <form id="contactForm" class="space-y-6">
+                
+                @if(session('success'))
+                    <div class="mb-6 p-4 border border-green-500 bg-green-900/20 text-green-500 font-mono text-sm">
+                        [TRANSMISSION RECEIVED]
+                    </div>
+                @endif
+
+                <form action="{{ route('contact.store') }}" method="POST" id="contactForm" class="space-y-6">
+                    @csrf
                     <div class="grid md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-xs font-mono text-gray-500 uppercase tracking-widest mb-2">Identifier</label>
-                            <input type="text" class="w-full px-4 py-3 bg-[#111] border border-gray-800 rounded-none text-white focus:border-white focus:outline-none transition font-mono" placeholder="CODENAME" required>
+                            <input type="text" name="name" class="w-full px-4 py-3 bg-[#111] border border-gray-800 rounded-none text-white focus:border-white focus:outline-none transition font-mono" placeholder="CODENAME" required>
                         </div>
                         <div>
                             <label class="block text-xs font-mono text-gray-500 uppercase tracking-widest mb-2">Frequency</label>
-                            <input type="email" class="w-full px-4 py-3 bg-[#111] border border-gray-800 rounded-none text-white focus:border-white focus:outline-none transition font-mono" placeholder="EMAIL@DOMAIN" required>
+                            <input type="email" name="email" class="w-full px-4 py-3 bg-[#111] border border-gray-800 rounded-none text-white focus:border-white focus:outline-none transition font-mono" placeholder="EMAIL@DOMAIN" required>
                         </div>
                     </div>
 
@@ -83,10 +91,10 @@
 
                     <div>
                         <label class="block text-xs font-mono text-gray-500 uppercase tracking-widest mb-2">Payload</label>
-                        <textarea rows="5" class="w-full px-4 py-3 bg-[#111] border border-gray-800 rounded-none text-white focus:border-white focus:outline-none transition font-mono" placeholder="ENTER MESSAGE..."></textarea>
+                        <textarea name="message" rows="5" class="w-full px-4 py-3 bg-[#111] border border-gray-800 rounded-none text-white focus:border-white focus:outline-none transition font-mono" placeholder="ENTER MESSAGE..." required></textarea>
                     </div>
 
-                    <button class="w-full bg-white text-black font-display font-bold uppercase py-4 hover:bg-gray-300 transition tracking-widest border border-white">Send Transmission</button>
+                    <button type="submit" class="w-full bg-white text-black font-display font-bold uppercase py-4 hover:bg-gray-300 transition tracking-widest border border-white">Send Transmission</button>
                 </form>
             </div>
 

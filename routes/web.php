@@ -34,6 +34,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('admin/projects', App\Http\Controllers\Admin\ProjectController::class)->names('admin.projects');
+    
+    // Messages Routes
+    Route::get('admin/messages', [App\Http\Controllers\Admin\MessageController::class, 'index'])->name('admin.messages.index');
+    Route::delete('admin/messages/{message}', [App\Http\Controllers\Admin\MessageController::class, 'destroy'])->name('admin.messages.destroy');
 });
+
+Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
+Route::get('/contact', function () {
+    return view('pages.contact');
+})->name('contact');
 
 Route::get('/project', action: [ProjectController::class, 'index']);

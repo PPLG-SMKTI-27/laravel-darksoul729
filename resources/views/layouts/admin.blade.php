@@ -40,7 +40,7 @@
                     <a href="{{ route('admin.projects.index') }}" class="block px-4 py-3 text-sm hover:bg-white hover:text-black transition-colors {{ request()->routeIs('admin.projects.*') ? 'bg-white text-black font-bold' : '' }}">
                         // PROJECTS
                     </a>
-                    <a href="#" class="block px-4 py-3 text-sm hover:bg-white hover:text-black transition-colors">
+                    <a href="{{ route('admin.messages.index') }}" class="block px-4 py-3 text-sm hover:bg-white hover:text-black transition-colors {{ request()->routeIs('admin.messages.*') ? 'bg-white text-black font-bold' : '' }}">
                         // MESSAGES
                     </a>
                     <a href="#" class="block px-4 py-3 text-sm hover:bg-white hover:text-black transition-colors">

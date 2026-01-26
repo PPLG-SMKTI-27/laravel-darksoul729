@@ -373,6 +373,7 @@
                 <div class="grid md:grid-cols-2 gap-20 mb-32">
                     <div>
                         <h3 class="font-graffiti text-3xl md:text-4xl text-gray-400 mb-8 transform -rotate-2">READY TO RIOT?</h3>
+                        
                         <a href="mailto:kevin@panzekk.com" class="hoverable block text-5xl md:text-7xl font-display font-bold leading-tight hover:text-transparent hover:text-stroke-white transition duration-300 break-words">
                             KEVIN<br>@PANZEKK.COM
                         </a>

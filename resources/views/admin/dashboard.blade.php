@@ -40,7 +40,7 @@
                 <span class="text-[10px] text-gray-500 font-mono uppercase tracking-widest">Pending Messages</span>
                 <svg class="w-4 h-4 text-gray-700 group-hover:text-white transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
             </div>
-            <h3 class="text-3xl font-bold text-white">5</h3>
+            <h3 class="text-3xl font-bold text-white">{{ $stats['messages'] }}</h3>
             <div class="mt-2 text-[10px] text-gray-600 font-mono">
                 Action required
             </div>
