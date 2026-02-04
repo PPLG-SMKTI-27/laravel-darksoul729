@@ -16,4 +16,13 @@ class Project extends Model
         'link',
         'status',
     ];
+
+    // Append accessor to JSON
+    protected $appends = ['image_url'];
+
+    // Accessor for image_url (React components use image_url)
+    public function getImageUrlAttribute()
+    {
+        return $this->image;
+    }
 }

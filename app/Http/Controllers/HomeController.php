@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Project;
+use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-
-    public function index()
+    public function index(): View
     {
+        $repos = Project::query()
+            ->where('status', 'published')
+            ->latest()
+            ->take(3)
+            ->get();
 
-        // $repos = require app_path('Data/projects.php'); // Legacy
-        $repos = \App\Models\Project::where('status', 'published')->latest()->get();
-        
-        return view('index', compact('repos'));
+        return view('index', [
+            'page' => 'LandingPage',
+            'props' => [
+                'repos' => $repos,
+            ],
+        ]);
     }
 }

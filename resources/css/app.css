@@ -1,11 +1,30 @@
-@import 'tailwindcss';
-
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+@import "tailwindcss";
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-plastic-red: #ff3b30;
+    --color-plastic-blue: #007aff;
+    --color-plastic-yellow: #ffcc00;
+    --color-plastic-green: #34c759;
+    --color-plastic-pink: #ff2d55;
+    --shadow-plastic: 0 4px 0 rgba(0, 0, 0, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-plastic-hover: 0 6px 0 rgba(0, 0, 0, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-plastic-active: 0 0 0 rgba(0, 0, 0, 0.15), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@utility plastic-card {
+    @apply bg-white rounded-3xl border-4 border-white;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+@utility plastic-button {
+    @apply font-bold py-3 px-6 rounded-2xl transition-all duration-100 ease-out transform active:translate-y-1;
+}
+
+body {
+    background-color: #f0f4f8;
+    background-image:
+        radial-gradient(#e2e8f0 2px, transparent 2px),
+        radial-gradient(#e2e8f0 2px, transparent 2px);
+    background-size: 30px 30px;
+    background-position: 0 0, 15px 15px;
 }

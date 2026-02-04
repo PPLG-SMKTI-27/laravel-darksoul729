@@ -31,21 +31,31 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'link' => 'nullable|url',
             'status' => 'required|in:draft,published',
         ]);
 
-        $data = $request->all();
+        $data = $validated;
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('projects', 'public');
             $data['image'] = $path;
         }
 
-        Project::create($data);
+        $project = Project::create($data);
+
+        // Return JSON for AJAX requests
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Project created successfully.',
+                'project' => $project
+            ], 201);
+        }
 
         return redirect()->route('admin.projects.index')->with('success', 'Project created successfully.');
     }
@@ -63,27 +73,74 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'status' => 'required|in:draft,published',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'required',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+                'link' => 'nullable|url',
+                'status' => 'required|in:draft,published',
+            ]);
 
-        $data = $request->all();
+            $data = $validated;
 
-        if ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($project->image) {
-                Storage::disk('public')->delete($project->image);
+            if ($request->hasFile('image')) {
+                \Log::info('Image upload attempt', [
+                    'original_name' => $request->file('image')->getClientOriginalName(),
+                    'size' => $request->file('image')->getSize(),
+                    'mime' => $request->file('image')->getMimeType(),
+                ]);
+
+                // Delete old image if exists
+                if ($project->image) {
+                    Storage::disk('public')->delete($project->image);
+                }
+                
+                $path = $request->file('image')->store('projects', 'public');
+                $data['image'] = $path;
+                
+                \Log::info('Image stored successfully', ['path' => $path]);
+            } else {
+                // Keep existing image if no new upload
+                unset($data['image']);
             }
-            $path = $request->file('image')->store('projects', 'public');
-            $data['image'] = $path;
+
+            $project->update($data);
+
+            // Return JSON for AJAX requests
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Project updated successfully.',
+                    'project' => $project
+                ]);
+            }
+
+            return redirect()->route('admin.projects.index')->with('success', 'Project updated successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed', ['errors' => $e->errors()]);
+            
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Update failed', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'message' => 'Failed to update project: ' . $e->getMessage(),
+                    'errors' => ['general' => [$e->getMessage()]]
+                ], 500);
+            }
+            throw $e;
         }
-
-        $project->update($data);
-
-        return redirect()->route('admin.projects.index')->with('success', 'Project updated successfully.');
     }
 
     /**
