@@ -1,9 +1,6 @@
-import React, { useState, Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import React, { useState } from 'react';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
-import Robot3D from '../components/3D/Robot3D';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -33,6 +30,7 @@ const Login = () => {
             const data = await response.json().catch(() => ({}));
 
             if (response.ok) {
+                localStorage.setItem('plastic_flash', JSON.stringify({ message: 'Welcome back, Commander!', type: 'success' }));
                 window.location.href = '/dashboard';
             } else {
                 setErrors(data.errors || { email: 'Invalid credentials.' });
@@ -45,149 +43,141 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 relative overflow-hidden flex items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
 
-            {/* AMBIENT BACKGROUND */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-pink-50 -z-20"></div>
-            <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] -z-10"></div>
+            {/* DESKTOP ONLY: LIQUID WAVE BACKGROUND */}
+            <div className="hidden md:block absolute inset-0 pointer-events-none -z-10 overflow-hidden">
+                {/* Wave 1 - Back */}
+                <div className="absolute bottom-[-10vh] left-0 w-[200%] h-[50vh] opacity-30 animate-wave-slow">
+                    <svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg" className="w-full h-full fill-blue-300">
+                        <path fillOpacity="1" d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                    </svg>
+                </div>
 
-            {/* FLOATING SHAPES */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/30 rounded-full blur-[100px] animate-pulse"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/30 rounded-full blur-[100px] animate-pulse delay-1000"></div>
+                {/* Wave 2 - Middle */}
+                <div className="absolute bottom-[-15vh] right-0 w-[200%] h-[60vh] opacity-40 animate-wave-medium" style={{ animationDelay: '-5s' }}>
+                    <svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg" className="w-full h-full fill-purple-300">
+                        <path fillOpacity="1" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                    </svg>
+                </div>
+
+                {/* Wave 3 - Front */}
+                <div className="absolute bottom-[-20vh] left-[-50%] w-[200%] h-[60vh] opacity-20 animate-wave-fast" style={{ animationDelay: '-2s' }}>
+                    <svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg" className="w-full h-full fill-blue-400">
+                        <path fillOpacity="1" d="M0,224L48,213.3C96,203,192,181,288,154.7C384,128,480,96,576,117.3C672,139,768,213,864,234.7C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <style>{`
+                @keyframes wave {
+                    0% { transform: translateX(0); }
+                    50% { transform: translateX(-25%); }
+                    100% { transform: translateX(0); }
+                }
+                .animate-wave-slow { animation: wave 25s ease-in-out infinite; }
+                .animate-wave-medium { animation: wave 18s ease-in-out infinite; }
+                .animate-wave-fast { animation: wave 12s ease-in-out infinite; }
+            `}</style>
 
             {/* BACK BUTTON */}
             <div className="absolute top-6 left-6 z-50">
                 <button
                     onClick={() => window.location.href = '/'}
-                    className="group flex items-center gap-2 px-5 py-2.5 bg-white/80 backdrop-blur-md text-slate-600 font-black rounded-full border-2 border-white shadow-sm hover:scale-105 transition-all"
+                    className="group flex items-center gap-2 px-5 py-2.5 bg-white text-slate-600 font-black rounded-xl border-2 border-slate-200 shadow-[0_4px_0_#cbd5e1] active:shadow-none active:translate-y-1 transition-all"
                 >
-                    <span className="text-lg">↩</span> Return to Shop
+                    <span className="text-lg">↩</span>
+                    <span className="hidden md:inline">Return</span>
                 </button>
             </div>
 
-            {/* MAIN WIDE CARD CONTAINER - COLLECTOR'S BOX STYLE */}
-            <div className="w-full max-w-5xl perspective-1000">
-                <PlasticCard color="pink" title="MEMBER EXCLUSIVE SET" className="w-full">
-                    <div className="flex flex-col md:flex-row min-h-[500px]">
+            {/* MAIN LOGIN CONTAINER */}
+            <div className="w-full max-w-4xl relative z-10">
+                <PlasticCard color="blue" title="USER AUTH" className="w-full">
+                    <div className="flex flex-col md:flex-row bg-white rounded-xl overflow-hidden min-h-[500px]">
 
-                        {/* LEFT: ROBOT SHOWCASE (The 'Product') */}
-                        <div className="w-full md:w-1/2 bg-gradient-to-b from-blue-50 to-blue-100/50 relative overflow-hidden flex flex-col items-center justify-center p-8 border-b-4 md:border-b-0 md:border-r-4 border-dashed border-slate-200/60">
-                            {/* Product Badge */}
-                            <div className="absolute top-6 left-6 bg-yellow-400 text-yellow-900 text-xs font-black px-3 py-1 rounded-md shadow-sm transform -rotate-2 border border-yellow-200 z-10">
-                                LIMITED EDITION
+                        {/* LEFT: DECORATIVE PANEL (CSS ONLY - NO HEAVY 3D) */}
+                        <div className="w-full md:w-5/12 bg-blue-50 p-8 flex flex-col justify-between relative overflow-hidden">
+                            {/* Abstract Shapes */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-bl-[4rem] opacity-50"></div>
+                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-200 rounded-tr-[3rem] opacity-50"></div>
+
+                            <div className="relative z-10">
+                                <h2 className="text-4xl font-black text-slate-800 leading-[0.9]">
+                                    WELCOME <br />
+                                    <span className="text-blue-500">BACK!</span>
+                                </h2>
+                                <p className="mt-4 text-slate-500 font-bold text-sm">
+                                    Access your dashboard to manage projects and settings.
+                                </p>
                             </div>
 
-                            {/* 3D Scene */}
-                            <div className="relative w-full h-[300px] md:h-full min-h-[300px]">
-                                <Canvas
-                                    dpr={1}
-                                    frameloop="demand"
-                                    camera={{ position: [0, 0.5, 6], fov: 40 }}
-                                    className="bg-transparent"
-                                    shadows={false}
-                                >
-                                    <Suspense fallback={null}>
-                                        <ambientLight intensity={1.4} />
-                                        <directionalLight position={[5, 10, 5]} intensity={2} />
-                                        <pointLight position={[-5, 5, -5]} intensity={1} color="#3b82f6" />
-                                        <group position={[0, -1.3, 0]}>
-                                            <Robot3D scale={1.5} />
-                                        </group>
-                                        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={1.5} />
-                                    </Suspense>
-                                </Canvas>
+                            <div className="relative z-10 mt-8 hidden md:block">
+                                {/* CSS Illustration of a Key or Lock */}
+                                <div className="w-24 h-24 bg-white rounded-2xl border-4 border-slate-200 shadow-xl flex items-center justify-center mx-auto transform rotate-6">
+                                    <div className="text-4xl">🔐</div>
+                                </div>
                             </div>
 
-                            {/* Decorative Nameplate */}
-                            <div className="mt-4 text-center">
-                                <h3 className="text-3xl font-black text-slate-800 tracking-tighter uppercase">
-                                    Security Bot
-                                </h3>
-                                <p className="text-slate-400 text-xs font-bold tracking-[0.2em] uppercase mt-1">
-                                    Series 1 • Gatekeeper
+                            <div className="mt-auto relative z-10 hidden md:block">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest text-center">
+                                    System v2.0
                                 </p>
                             </div>
                         </div>
 
-                        {/* RIGHT: LOGIN FORM (The 'Manual/Access') */}
-                        <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center bg-white relative">
-                            {/* Pattern Overlay */}
-                            <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-40 pointer-events-none"></div>
+                        {/* RIGHT: LOGIN FORM */}
+                        <div className="w-full md:w-7/12 p-8 md:p-12 flex flex-col justify-center">
 
-                            <div className="relative z-10 max-w-sm mx-auto w-full">
-                                <div className="mb-8 text-center md:text-left">
-                                    <h2 className="text-2xl font-black text-slate-800 mb-2">ACCESS TERMINAL</h2>
-                                    <p className="text-slate-500 font-medium text-sm leading-relaxed">
-                                        Welcome, Collector. Please verify your identity to access the archives.
-                                    </p>
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                        Email Address
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full bg-slate-50 text-slate-800 font-bold p-4 rounded-xl border-2 border-slate-200 focus:border-blue-400 focus:bg-white outline-none transition-colors"
+                                        placeholder="user@example.com"
+                                        required
+                                    />
+                                    {errors.email && <p className="text-red-500 text-xs font-bold mt-1 ml-1">{errors.email}</p>}
                                 </div>
 
-                                <form onSubmit={handleSubmit} className="space-y-5">
-                                    {/* Email Field */}
-                                    <div className="group">
-                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                                            Authorized ID
-                                        </label>
-                                        <div className="relative transition-transform duration-200 focus-within:scale-[1.02]">
-                                            <input
-                                                type="email"
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
-                                                className="w-full bg-slate-50 text-slate-800 font-bold p-4 pl-12 rounded-xl border-2 border-slate-200 outline-none focus:border-pink-400 focus:bg-white shadow-sm transition-colors"
-                                                placeholder="user@system.dev"
-                                                required
-                                            />
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-xl grayscale opacity-50 group-focus-within:grayscale-0 group-focus-within:opacity-100 transition-all">
-                                                📧
-                                            </div>
-                                        </div>
-                                        {errors.email && <p className="text-red-500 text-xs font-bold mt-1 ml-1">{errors.email}</p>}
-                                    </div>
-
-                                    {/* Password Field */}
-                                    <div className="group">
-                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                                            Access Code
-                                        </label>
-                                        <div className="relative transition-transform duration-200 focus-within:scale-[1.02]">
-                                            <input
-                                                type="password"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                className="w-full bg-slate-50 text-slate-800 font-bold p-4 pl-12 rounded-xl border-2 border-slate-200 outline-none focus:border-pink-400 focus:bg-white shadow-sm transition-colors tracking-widest"
-                                                placeholder="••••••"
-                                                required
-                                            />
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-xl grayscale opacity-50 group-focus-within:grayscale-0 group-focus-within:opacity-100 transition-all">
-                                                🔐
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4">
-                                        <PlasticButton
-                                            color="blue"
-                                            type="submit"
-                                            className="w-full py-4 rounded-xl text-lg shadow-md hover:shadow-lg hover:-translate-y-1"
-                                            disabled={processing}
-                                        >
-                                            {processing ? 'VERIFYING...' : 'INITIATE SESSION'}
-                                        </PlasticButton>
-                                    </div>
-                                </form>
-
-                                <div className="mt-8 flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-60">
-                                    <span>ToyLogic Systems</span>
-                                    <span>SECURE CONN</span>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                        Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full bg-slate-50 text-slate-800 font-bold p-4 rounded-xl border-2 border-slate-200 focus:border-blue-400 focus:bg-white outline-none transition-colors"
+                                        placeholder="••••••••"
+                                        required
+                                    />
                                 </div>
-                            </div>
+
+                                <div className="pt-4">
+                                    <PlasticButton
+                                        color="blue"
+                                        type="submit"
+                                        className="w-full py-4 text-lg shadow-md active:scale-95 transition-transform"
+                                        disabled={processing}
+                                    >
+                                        {processing ? 'Logging In...' : 'LOG IN'}
+                                    </PlasticButton>
+                                </div>
+                            </form>
                         </div>
+
                     </div>
                 </PlasticCard>
             </div>
+
         </div>
     );
 };
-
 
 export default Login;
