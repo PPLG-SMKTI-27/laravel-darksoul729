@@ -102,7 +102,7 @@ const About = ({ page }) => {
 
                                 <div>
                                     <h1 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter transform -rotate-2 leading-none">
-                                        Kevin<br /><span className="text-pink-500">Hermansyah</span>
+                                        Levin<br /><span className="text-pink-500">Hermansyah</span>
                                     </h1>
                                     <div className="inline-block bg-slate-900 text-white text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-full mt-2 uppercase tracking-widest shadow-md">
                                         Full Stack Dev
