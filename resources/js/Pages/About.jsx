@@ -105,7 +105,7 @@ const About = ({ page }) => {
                                         Kevin<br /><span className="text-pink-500">Hermansyah</span>
                                     </h1>
                                     <div className="inline-block bg-slate-900 text-white text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-full mt-2 uppercase tracking-widest shadow-md">
-                                        Full Stack Builder
+                                        Full Stack Dev
                                     </div>
                                 </div>
 
