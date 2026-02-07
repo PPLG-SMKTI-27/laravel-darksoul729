@@ -121,7 +121,7 @@ const Login = () => {
 
                             <div className="mt-auto relative z-10 hidden md:block">
                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest text-center">
-                                    System v2.0
+                                    System v3.0
                                 </p>
                             </div>
                         </div>
