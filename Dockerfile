@@ -4,13 +4,12 @@
 FROM node:20-alpine AS frontend
 WORKDIR /app
 
-# install deps
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# copy source then build
 COPY . .
 RUN npm run build
+
 
 # =========================
 # 2) BACKEND BUILD (Composer)
@@ -18,30 +17,36 @@ RUN npm run build
 FROM composer:2 AS vendor
 WORKDIR /app
 
-# only composer files first (better cache)
+# copy composer files first for caching
 COPY composer.json composer.lock ./
+
+# install dependencies WITHOUT running scripts (artisan not copied yet)
 RUN composer install \
   --no-dev \
   --prefer-dist \
   --no-interaction \
   --no-progress \
-  --optimize-autoloader
+  --optimize-autoloader \
+  --no-scripts
 
-# copy the rest of app
+# now copy full app (includes artisan)
 COPY . .
+
+# run scripts after artisan exists
+RUN composer dump-autoload --optimize \
+ && php artisan package:discover --ansi || true
+
 
 # =========================
 # 3) RUNTIME (Apache + PHP)
 # =========================
 FROM php:8.4-apache
 
-# Apache: enable rewrite + set Laravel public folder
 RUN a2enmod rewrite
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
  && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# PHP extensions common for Laravel
 RUN apt-get update && apt-get install -y \
     git unzip libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
   && docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -50,18 +55,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /var/www/html
 
-# copy app + vendor (composer result)
+# app + vendor already installed
 COPY --from=vendor /app /var/www/html
 
-# copy built Vite assets (manifest.json lives here)
+# copy built Vite assets (manifest.json)
 COPY --from=frontend /app/public/build /var/www/html/public/build
 
-# permissions for Laravel
 RUN mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache \
  && chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R ug+rwX storage bootstrap/cache
-
-# optional (kadang membantu, tapi aman juga tanpa ini)
-# RUN php artisan config:clear && php artisan view:clear && php artisan route:clear
 
 EXPOSE 80
