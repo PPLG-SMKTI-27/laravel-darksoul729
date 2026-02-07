@@ -1,15 +1,23 @@
+# =========================
 # 1) FRONTEND BUILD (Vite)
+# =========================
 FROM node:20-alpine AS frontend
 WORKDIR /app
+
 COPY package.json package-lock.json* ./
 RUN npm ci
+
 COPY . .
 RUN npm run build
 
 
+# =========================
 # 2) BACKEND BUILD (Composer)
+# =========================
 FROM composer:2 AS vendor
 WORKDIR /app
+
+# copy composer files first for caching
 COPY composer.json composer.lock ./
 RUN composer install \
   --no-dev \
@@ -18,11 +26,18 @@ RUN composer install \
   --no-progress \
   --optimize-autoloader \
   --no-scripts
+
+# now copy full app (includes artisan)
 COPY . .
-RUN composer dump-autoload --optimize
+
+# run laravel scripts AFTER artisan exists
+RUN composer dump-autoload --optimize \
+ && php artisan package:discover --ansi || true
 
 
+# =========================
 # 3) RUNTIME (Apache + PHP)
+# =========================
 FROM php:8.4-apache
 
 RUN a2enmod rewrite
@@ -37,18 +52,22 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
+
+# app + vendor
 COPY --from=vendor /app /var/www/html
+
+# built Vite assets
 COPY --from=frontend /app/public/build /var/www/html/public/build
 
+# permissions
 RUN mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache \
  && chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R ug+rwX storage bootstrap/cache
 
+# entrypoint
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["apache2-foreground"]
