@@ -14,15 +14,25 @@ const Login = () => {
         setErrors({});
 
         try {
-            const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-            const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+            const getCookie = (name) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+
+                if (parts.length === 2) {
+                    return parts.pop().split(';').shift() || '';
+                }
+
+                return '';
+            };
+
+            const xsrfToken = decodeURIComponent(getCookie('XSRF-TOKEN'));
 
             const response = await fetch('/login', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-XSRF-TOKEN': xsrfToken,
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({ email, password }),
