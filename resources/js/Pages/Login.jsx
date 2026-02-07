@@ -28,7 +28,22 @@ const Login = () => {
                 body: JSON.stringify({ email, password }),
             });
 
-            const data = await response.json().catch(() => ({}));
+            if (response.redirected) {
+                const redirectUrl = new URL(response.url);
+
+                if (redirectUrl.pathname === '/login') {
+                    setErrors({ email: 'Invalid credentials.' });
+                    return;
+                }
+
+                window.location.href = response.url;
+                return;
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            const data = contentType.includes('application/json')
+                ? await response.json().catch(() => ({}))
+                : {};
 
             if (response.ok) {
                 localStorage.setItem('plastic_flash', JSON.stringify({ message: 'Welcome back, Commander!', type: 'success' }));
