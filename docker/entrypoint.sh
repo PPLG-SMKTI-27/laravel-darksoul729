@@ -3,9 +3,13 @@ set -e
 
 cd /var/www/html
 
-mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache
+mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache || true
 chmod -R ug+rwX storage bootstrap/cache || true
+
+touch storage/logs/laravel.log || true
+chown www-data:www-data storage/logs/laravel.log || true
+chmod 664 storage/logs/laravel.log || true
 
 # .env fallback (tidak menimpa env vars dari Coolify)
 if [ ! -f .env ] && [ -f .env.example ]; then
