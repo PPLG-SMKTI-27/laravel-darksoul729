@@ -1,16 +1,19 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useLayoutEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const Feature = ({ page }) => {
     // Main "Toy Figures" - Programming Languages
     const mainSkills = [
-        { name: "JavaScript", type: "Scripting", image: "/images/javascript_toy.png", color: "yellow", level: "Lv. 90", desc: "Dynamic web logic" },
-        { name: "PHP", type: "Backend", image: "/images/php_toy.png", color: "pink", level: "Lv. 85", desc: "Server-side power" },
-        { name: "Python", type: "Data/AI", image: "/images/python_toy.png", color: "green", level: "Lv. 80", desc: "Automation & Math" },
-        { name: "SQL", type: "Database", image: "/images/sql_toy.png", color: "blue", level: "Lv. 75", desc: "Query mastery" },
-        { name: "Git", type: "Versioning", image: "/images/git_toy.png", color: "orange", level: "Lv. 88", desc: "Time travel repo" },
+        { name: "JavaScript", type: "Scripting", image: "/images/javascript_toy.webp", color: "yellow", level: "Lv. 90", desc: "Dynamic web logic" },
+        { name: "PHP", type: "Backend", image: "/images/php_toy.webp", color: "pink", level: "Lv. 85", desc: "Server-side power" },
+        { name: "Python", type: "Data/AI", image: "/images/python_toy.webp", color: "green", level: "Lv. 80", desc: "Automation & Math" },
+        { name: "SQL", type: "Database", image: "/images/sql_toy.webp", color: "blue", level: "Lv. 75", desc: "Query mastery" },
+        { name: "Git", type: "Versioning", image: "/images/git_toy.webp", color: "orange", level: "Lv. 88", desc: "Time travel repo" },
     ];
 
     // "Accessory Packs" - Frameworks & Tools
@@ -25,9 +28,39 @@ const Feature = ({ page }) => {
         { name: "Figma", category: "Design", color: "pink" },
     ];
 
+    const containerRef = useRef(null);
+    const toolsRef = useRef([]);
+
+    useLayoutEffect(() => {
+        let ctx = gsap.context(() => {
+            // Animate Main Skills (Simple Fade In)
+            gsap.from(".skill-card", {
+                scrollTrigger: {
+                    trigger: ".skills-grid",
+                    start: "top 80%",
+                },
+                y: 50,
+                opacity: 0,
+                duration: 0.8,
+                stagger: 0.1,
+                ease: "power2.out"
+            });
+
+            // Animate Tools Grid (Batch)
+            ScrollTrigger.batch(toolsRef.current, {
+                start: "top 90%",
+                onEnter: batch => gsap.to(batch, { opacity: 1, scale: 1, y: 0, stagger: 0.1, overwrite: true, ease: "back.out(1.2)" }),
+                onLeaveBack: batch => gsap.to(batch, { opacity: 0, scale: 0.8, y: 20, overwrite: true })
+            });
+
+        }, containerRef);
+
+        return () => ctx.revert();
+    }, []);
+
     return (
         <MainLayout page={page}>
-            <div className="max-w-7xl mx-auto pb-20">
+            <div ref={containerRef} className="max-w-7xl mx-auto pb-20">
 
                 {/* HEADLINE */}
                 <div className="text-center mb-16 pt-8">
@@ -66,47 +99,47 @@ const Feature = ({ page }) => {
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 px-4">
+                    <div className="skills-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 px-4">
                         {mainSkills.map((skill, i) => (
-                            <PlasticCard
-                                key={i}
-                                color={skill.color}
-                                title={skill.name}
-                                delay={i * 0.1}
-                                className="h-full"
-                            >
-                                <div className="flex flex-col items-center h-full">
-                                    {/* Image Container */}
-                                    <div className="
-                                        w-full aspect-square bg-white rounded-lg mb-4 
-                                        flex items-center justify-center p-4 
-                                        shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]
-                                        border border-slate-100
-                                        group-hover:bg-slate-50 transition-colors
-                                    ">
-                                        <img
-                                            src={skill.image}
-                                            alt={skill.name}
-                                            className="w-full h-full object-contain filter drop-shadow-md transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                                        />
-                                    </div>
+                            <div key={i} className="skill-card h-full">
+                                <PlasticCard
+                                    color={skill.color}
+                                    title={skill.name}
+                                    className="h-full"
+                                >
+                                    <div className="flex flex-col items-center h-full">
+                                        {/* Image Container */}
+                                        <div className="
+                                            w-full aspect-square bg-white rounded-lg mb-4 
+                                            flex items-center justify-center p-4 
+                                            shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]
+                                            border border-slate-100
+                                            group-hover:bg-slate-50 transition-colors
+                                        ">
+                                            <img
+                                                src={skill.image}
+                                                alt={skill.name}
+                                                className="w-full h-full object-contain filter drop-shadow-md transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                                            />
+                                        </div>
 
-                                    {/* Stats Card */}
-                                    <div className="w-full bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs flex-grow">
-                                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
-                                            <span className="font-bold text-slate-400 uppercase">Class</span>
-                                            <span className="font-black text-slate-700">{skill.type}</span>
+                                        {/* Stats Card */}
+                                        <div className="w-full bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs flex-grow">
+                                            <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
+                                                <span className="font-bold text-slate-400 uppercase">Class</span>
+                                                <span className="font-black text-slate-700">{skill.type}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="font-bold text-slate-400 uppercase">Power</span>
+                                                <span className="font-black text-pink-500">{skill.level}</span>
+                                            </div>
+                                            <p className="text-slate-500 italic leading-tight mt-2">
+                                                "{skill.desc}"
+                                            </p>
                                         </div>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="font-bold text-slate-400 uppercase">Power</span>
-                                            <span className="font-black text-pink-500">{skill.level}</span>
-                                        </div>
-                                        <p className="text-slate-500 italic leading-tight mt-2">
-                                            "{skill.desc}"
-                                        </p>
                                     </div>
-                                </div>
-                            </PlasticCard>
+                                </PlasticCard>
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -122,12 +155,10 @@ const Feature = ({ page }) => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                         {tools.map((tool, i) => (
-                            <motion.div
+                            <div
                                 key={i}
-                                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                                whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                                transition={{ delay: i * 0.05, type: "spring", stiffness: 150 }}
-                                className="group cursor-pointer perspective-500"
+                                ref={el => toolsRef.current[i] = el}
+                                className="group cursor-pointer perspective-500 opacity-0 transform translate-y-5 scale-95" // Initial state for GSAP to animate from
                             >
                                 <div className={`
                                     relative 
@@ -183,7 +214,7 @@ const Feature = ({ page }) => {
                                     {/* Plastic Overlay Reflection */}
                                     <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-white/0 via-white/20 to-transparent pointer-events-none sticky-gloss"></div>
                                 </div>
-                            </motion.div>
+                            </div>
                         ))}
                     </div>
                 </div>
