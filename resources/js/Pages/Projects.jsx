@@ -7,7 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
-const Robot3D = React.lazy(() => import('../components/3D/Robot3D'));
+import Robot3D from '../components/3D/Robot3D';
 
 gsap.registerPlugin(ScrollTrigger);
 
