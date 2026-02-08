@@ -1,33 +1,14 @@
 import React, { useLayoutEffect, useRef, Suspense, useState, useEffect } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
-// Lazy load Robot3D
-const Robot3D = React.lazy(() => import('../components/3D/Robot3D'));
+import Robot3D from '../components/3D/Robot3D';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
-
-// Helper to pause rendering when offscreen
-const PerformanceOptimizer = () => {
-    const { gl, setFrameloop } = useThree();
-    useEffect(() => {
-        const observer = new IntersectionObserver(([entry]) => {
-            // When visible, run animation loop. When hidden, stop it.
-            setFrameloop(entry.isIntersecting ? 'always' : 'never');
-        }, { threshold: 0.1 });
-
-        if (gl.domElement.parentElement) {
-            observer.observe(gl.domElement.parentElement);
-        }
-
-        return () => observer.disconnect();
-    }, [gl, setFrameloop]);
-    return null;
-};
 
 const LandingPage = ({ page, props }) => {
     const { repos = [] } = props;
@@ -97,31 +78,31 @@ const LandingPage = ({ page, props }) => {
         {
             title: "JavaScript",
             desc: "Modern ES6+, React, Node.js, and TypeScript for dynamic web applications.",
-            icon: "/images/javascript_toy.webp",
+            icon: "/images/javascript_toy.png",
             color: "blue"
         },
         {
             title: "PHP",
             desc: "Laravel, MySQL, RESTful APIs, and backend development expertise.",
-            icon: "/images/php_toy.webp",
+            icon: "/images/php_toy.png",
             color: "pink"
         },
         {
             title: "Python",
             desc: "Data processing, automation, scripting, and backend development.",
-            icon: "/images/python_toy.webp",
+            icon: "/images/python_toy.png",
             color: "green"
         },
         {
             title: "SQL",
             desc: "Database design, complex queries, and data integrity optimization.",
-            icon: "/images/sql_toy.webp",
+            icon: "/images/sql_toy.png",
             color: "yellow"
         },
         {
             title: "Git",
             desc: "Version control, team collaboration, and repository management.",
-            icon: "/images/git_toy.webp",
+            icon: "/images/git_toy.png",
             color: "orange"
         }
     ];
@@ -164,19 +145,18 @@ const LandingPage = ({ page, props }) => {
                     </div>
 
                     {/* Right: 3D Robot Showcase */}
-                    <div ref={comp} className="hero-robot order-first md:order-none relative w-[280px] h-[280px] sm:w-[350px] sm:h-[350px] md:w-[550px] md:h-[550px] flex-shrink-0 z-20">
+                    <div className="hero-robot order-first md:order-none relative w-[280px] h-[280px] sm:w-[350px] sm:h-[350px] md:w-[550px] md:h-[550px] flex-shrink-0 z-20">
                         {/* Glow Effect */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-400/30 rounded-full blur-[80px] pointer-events-none"></div>
 
                         <Canvas
-                            dpr={[1, 1.5]} // Performance: Dynamic dpr, capped at 1.5 for sharper look on mobile without killing battery
-                            frameloop="always" // We'll rely on the fact that when this component unmounts/is hidden, it stops. 
-                        // Actually, "always" is better for the smooth idle animations unless we specifically hook up an intersection observer to the Canvas props. 
-                        // But for now, let's keep it simple and performant. The user asked for "framedloop demand" logic in the plan, let's stick to that if possible or optimize.
-                        // Actually, for continuous animation like the robot's idle movement, "always" is needed when visible.
-                        // Optimization: We can toggle this based on visibility.
+                            dpr={1} // Performance: Strict 1.0 Pixel Ratio
+                            frameloop="demand" // Performance: Stop rendering when not interacting
+                            camera={{ position: [0, 0.2, 5.5], fov: 45 }}
+                            className="bg-transparent"
+                            style={{ width: '100%', height: '100%' }}
+                            shadows={false}
                         >
-                            <PerformanceOptimizer />
                             <Suspense fallback={null}>
                                 <ambientLight intensity={1.4} />
                                 <directionalLight position={[5, 10, 5]} intensity={2.5} />

@@ -1,183 +1,138 @@
-import React, { useRef, useLayoutEffect } from 'react';
-import gsap from 'gsap';
+import React from 'react';
+import { motion } from 'framer-motion';
 
-const PlasticCard = ({ children, title, subtitle, color = 'pink', className = '', isNew = false }) => {
-    const cardRef = useRef(null);
-    const blisterRef = useRef(null);
-    const shineRef = useRef(null);
-
-    // Color definitions for the CARDBOARD backing
-    const colors = {
-        pink: {
-            bg: 'bg-gradient-to-br from-pink-400 to-pink-600',
-            border: 'border-pink-300',
-            shadow: 'shadow-[0_10px_20px_rgba(219,39,119,0.3),inset_0_0_0_1px_rgba(255,255,255,0.2)]',
-            text: 'text-white',
-            accent: 'bg-pink-700'
-        },
-        blue: {
-            bg: 'bg-gradient-to-br from-blue-400 to-blue-600',
-            border: 'border-blue-300',
-            shadow: 'shadow-[0_10px_20px_rgba(37,99,235,0.3),inset_0_0_0_1px_rgba(255,255,255,0.2)]',
-            text: 'text-white',
-            accent: 'bg-blue-700'
-        },
-        yellow: {
-            bg: 'bg-gradient-to-br from-yellow-300 to-yellow-500',
-            border: 'border-yellow-200',
-            shadow: 'shadow-[0_10px_20px_rgba(202,138,4,0.3),inset_0_0_0_1px_rgba(255,255,255,0.2)]',
-            text: 'text-yellow-900',
-            accent: 'bg-yellow-600'
-        },
-        green: {
-            bg: 'bg-gradient-to-br from-green-400 to-green-600',
-            border: 'border-green-300',
-            shadow: 'shadow-[0_10px_20px_rgba(22,163,74,0.3),inset_0_0_0_1px_rgba(255,255,255,0.2)]',
-            text: 'text-white',
-            accent: 'bg-green-700'
-        },
-        orange: {
-            bg: 'bg-gradient-to-br from-orange-400 to-orange-600',
-            border: 'border-orange-300',
-            shadow: 'shadow-[0_10px_20px_rgba(234,88,12,0.3),inset_0_0_0_1px_rgba(255,255,255,0.2)]',
-            text: 'text-white',
-            accent: 'bg-orange-700'
-        }
+const PlasticCard = ({ children, className = '', delay = 0, color = 'pink', title, isNew = false }) => {
+    const cardColors = {
+        pink: 'bg-gradient-to-br from-pink-400 to-pink-500 border-pink-700',
+        yellow: 'bg-gradient-to-br from-yellow-300 to-yellow-400 border-yellow-600',
+        green: 'bg-gradient-to-br from-green-400 to-green-500 border-green-700',
+        blue: 'bg-gradient-to-br from-blue-400 to-blue-500 border-blue-700',
     };
 
-    const theme = colors[color] || colors.pink;
-
-    useLayoutEffect(() => {
-        const card = cardRef.current;
-
-        let ctx = gsap.context(() => {
-            // Hover Animation - Floating Effect
-            card.addEventListener('mouseenter', () => {
-                gsap.to(card, {
-                    y: -12,
-                    scale: 1.02,
-                    rotateX: 5,
-                    rotateY: -5,
-                    duration: 0.4,
-                    ease: "back.out(2)" // More bouncy
-                });
-
-                // Animate Shine
-                if (shineRef.current) {
-                    gsap.fromTo(shineRef.current,
-                        { x: '-150%', opacity: 0 },
-                        { x: '150%', opacity: 0.5, duration: 0.6, ease: "power1.inOut" }
-                    );
-                }
-            });
-
-            card.addEventListener('mouseleave', () => {
-                gsap.to(card, {
-                    y: 0,
-                    scale: 1,
-                    rotateX: 0,
-                    rotateY: 0,
-                    duration: 0.5,
-                    ease: "elastic.out(1, 0.5)" // Wobble back to place
-                });
-            });
-        }, cardRef);
-
-        return () => ctx.revert();
-    }, [color]);
+    const selectedColor = cardColors[color] || cardColors.pink;
 
     return (
-        <div
-            ref={cardRef}
-            className={`
-                relative 
-                w-full h-full
-                rounded-[24px] 
-                ${theme.bg}
-                border-2 ${theme.border}
-                ${theme.shadow}
-                pb-5 pt-14 px-4
-                flex flex-col
-                will-change-transform
-                group
-                transform-gpu
-                perspective-1000
-                ${className}
-            `}
+        <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            whileInView={{ opacity: 1, scale: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ delay, type: "tween", ease: "backOut", duration: 0.6 }}
+            className={`relative group ${className}`}
         >
-            {/* --- CARDBOARD TEXTURE & SHADOW --- */}
-            <div className="absolute inset-0 rounded-[22px] bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-10 mix-blend-multiply pointer-events-none"></div>
-
-            {/* --- CARDBOARD HANGER HOLE --- */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-0">
-                <div className="w-16 h-5 bg-black/20 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] border-b border-white/20"></div>
-            </div>
-
-            {/* --- BACKGROUND GRAPHICS (Subtle Pattern on Cardboard) --- */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] [background-size:10px_10px] rounded-[18px]"></div>
-
-            {/* --- LABEL AREA (Top Name) --- */}
-            <div className="text-center mb-3 z-10 relative">
-                <h3 className={`font-black uppercase tracking-tighter text-2xl md:text-3xl drop-shadow-lg ${theme.text}`}
-                    style={{ textShadow: '0 3px 0 rgba(0,0,0,0.15)' }}>
-                    {title}
-                </h3>
-                {subtitle && <p className="text-xs font-bold text-white/90 tracking-wide">{subtitle}</p>}
-            </div>
-
-            {/* --- THE BLISTER PACK (Plastic Bubble) --- */}
+            {/* The Cardboard Backing */}
             <div
-                ref={blisterRef}
-                className="
-                    relative 
-                    bg-white/20
-                    backdrop-blur-[2px]
-                    rounded-[1.8rem]
-                    border-t border-l border-white/80
-                    border-b-2 border-r-2 border-white/30
-                    shadow-[inset_0_5px_15px_rgba(255,255,255,0.4),0_8px_20px_rgba(0,0,0,0.15)]
-                    p-4
-                    flex-grow
-                    flex flex-col
-                    overflow-hidden
-                    z-20
-                "
+                className={`
+                    ${selectedColor} relative 
+                    rounded-[2rem] p-3 pb-6
+                    shadow-[0_15px_30px_rgba(0,0,0,0.2),0_5px_10px_rgba(0,0,0,0.1)] 
+                    border-[4px] border-white/30
+                    transition-all duration-300 ease-out 
+                    group-hover:-translate-y-4 group-hover:rotate-1 group-hover:shadow-[0_25px_50px_rgba(0,0,0,0.3),0_10px_20px_rgba(0,0,0,0.15)]
+                    flex flex-col h-full
+                    overflow-visible
+                `}
             >
-                {/* Internal Drop Shadow (Fake depth between plastic and card) */}
-                <div className="absolute inset-0 rounded-[1.8rem] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] pointer-events-none"></div>
+                {/* Cardboard Texture */}
+                <div className="absolute inset-0 rounded-[2rem] opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] pointer-events-none mix-blend-multiply"></div>
 
-                {/* Bubble Highlights */}
-                <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/50 to-transparent rounded-t-[1.6rem] pointer-events-none"></div>
-                <div className="absolute bottom-0 inset-x-0 h-1/4 bg-gradient-to-t from-white/20 to-transparent rounded-b-[1.6rem] pointer-events-none"></div>
-
-                {/* Sharp Glare */}
-                <div className="absolute top-6 right-6 w-20 h-10 bg-white blur-[6px] rounded-full rotate-[-25deg] opacity-70 pointer-events-none mix-blend-overlay"></div>
-
-                {/* Moving Shine Effect inside the bubble */}
-                <div ref={shineRef} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent skew-x-12 pointer-events-none z-30" style={{ transform: 'translateX(-150%)' }}></div>
-
-                {/* --- CONTENT INSIDE THE BUBBLE --- */}
-                <div className="relative z-10 h-full flex flex-col items-center justify-center transform transition-transform duration-300 group-hover:scale-105">
-                    {/* Shadow for the content itself to lift it off the backing */}
-                    <div className="filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.2)] w-full h-full flex flex-col">
-                        {children}
+                {/* Euro Hanger Hole (Punched out) */}
+                <div className="relative flex justify-center -mt-1 mb-2 z-10 opacity-80">
+                    <div className="w-16 h-6 bg-slate-900/20 rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] border-b border-white/20">
                     </div>
                 </div>
-            </div>
 
-            {/* --- "NEW" STICKER --- */}
-            {isNew && (
-                <div className="absolute -top-3 -right-3 rotate-12 bg-yellow-400 text-yellow-900 border-[3px] border-white shadow-xl font-black text-xs px-3 py-1 rounded-full z-30">
-                    NEW!
+                {/* Branding / Title on Cardboard */}
+                {title && (
+                    <div className="text-center mb-3 px-1 relative z-10">
+                        <h3 className="
+                            font-black text-2xl uppercase tracking-tighter leading-none
+                            text-white drop-shadow-[0_2px_0_rgba(0,0,0,0.3)]
+                            stroke-black stroke-2
+                        " style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.2), -1px -1px 0 rgba(255,255,255,0.2)' }}>
+                            {title}
+                        </h3>
+                    </div>
+                )}
+
+                {/* The "Blister" Bubble (Plastic Container) */}
+                <div className="relative flex-grow">
+
+                    {/* Heat Seal / Flange */}
+                    <div className="absolute -inset-1 rounded-[1.8rem] border-[3px] border-dashed border-white/30 opacity-60"></div>
+
+                    {/* The Plastic Bubble */}
+                    <div className="
+                        relative 
+                        bg-white/5 
+                        rounded-[1.5rem] 
+                        p-2 md:p-3
+                        shadow-[inset_0_0_20px_rgba(255,255,255,0.4),0_10px_20px_rgba(0,0,0,0.1)] 
+                        backdrop-blur-[1px] 
+                        border-[2px] border-white/50
+                        h-full flex flex-col
+                        overflow-hidden
+                    ">
+                        {/* Bubble Volume / Curvature Highlight (Top) */}
+                        <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent rounded-t-[1.5rem] pointer-events-none"></div>
+
+                        {/* Content Inside Bubble */}
+                        <div className="
+                            relative z-10 
+                            bg-gradient-to-b from-slate-50 to-slate-100
+                            rounded-xl 
+                            border border-white/60
+                            shadow-inner
+                            p-2
+                            h-full flex flex-col
+                            group-hover:scale-[1.02] transition-transform duration-300
+                        ">
+                            {/* Inner Tray Texture */}
+                            <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:8px_8px] opacity-20 pointer-events-none"></div>
+
+                            {children}
+                        </div>
+
+                        {/* STRONG Plastic Reflection / Glare Overlay */}
+                        <div className="absolute inset-0 pointer-events-none z-50 rounded-[1.5rem] overflow-hidden">
+                            {/* Main Glare */}
+                            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-to-br from-white/40 via-transparent to-transparent opacity-80 transform -rotate-12"></div>
+                            {/* Sharp Highlight */}
+                            <div className="absolute top-4 right-4 w-24 h-12 bg-white blur-[8px] opacity-60 transform rotate-12 mix-blend-overlay"></div>
+                            {/* Surface Imperfections (Scratches) */}
+                            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/scratches.png')] mix-blend-screen"></div>
+                        </div>
+
+                    </div>
                 </div>
-            )}
 
-            {/* --- BOTTOM BRANDING AREA --- */}
-            <div className="mt-3 text-center opacity-70">
-                <span className={`text-[9px] uppercase tracking-[0.2em] font-black ${theme.text}`}>Collection Series 1</span>
+                {/* "New!" Foil Sticker */}
+                {isNew && (
+                    <div className="
+                        absolute -top-4 -right-4 
+                        w-20 h-20 
+                        z-50 
+                        transform rotate-[15deg] group-hover:rotate-[20deg] group-hover:scale-110 transition-transform duration-300
+                    ">
+                        <div className="
+                            w-full h-full 
+                            bg-yellow-400 
+                            rounded-full 
+                            border-[2px] border-white 
+                            shadow-xl 
+                            flex items-center justify-center 
+                            bg-[conic-gradient(at_center,_var(--tw-gradient-stops))] from-yellow-300 via-yellow-500 to-yellow-300
+                        ">
+                            <div className="text-center leading-[0.85] text-red-600 drop-shadow-sm transform -rotate-12">
+                                <span className="block font-black text-xs uppercase tracking-wider">Fresh</span>
+                                <span className="block font-black text-xl uppercase italic">Drop!</span>
+                            </div>
+                            {/* Sticker Sheen */}
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/40 to-transparent"></div>
+                        </div>
+                    </div>
+                )}
             </div>
-
-        </div>
+        </motion.div>
     );
 };
 
