@@ -1,7 +1,10 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useLayoutEffect } from 'react';
+import gsap from 'gsap';
 
 const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) => {
+    const buttonRef = useRef(null);
+    const contentRef = useRef(null);
+
     const colorClasses = {
         blue: 'bg-gradient-to-b from-[#4dabf7] to-[#1971c2] shadow-[0_6px_0_#1864ab] border-[#1864ab]',
         red: 'bg-gradient-to-b from-[#ff8787] to-[#e03131] shadow-[0_6px_0_#c92a2a] border-[#c92a2a]',
@@ -12,10 +15,33 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
 
     const activeColor = colorClasses[color] || colorClasses.blue;
 
+    useLayoutEffect(() => {
+        const button = buttonRef.current;
+
+        let ctx = gsap.context(() => {
+            button.addEventListener('mouseenter', () => {
+                gsap.to(button, { y: -2, scale: 1.05, duration: 0.2, ease: "power1.out" });
+            });
+
+            button.addEventListener('mouseleave', () => {
+                gsap.to(button, { y: 0, scale: 1, duration: 0.2, ease: "power1.out" });
+            });
+
+            button.addEventListener('mousedown', () => {
+                gsap.to(button, { y: 4, scale: 0.95, boxShadow: '0 0px 0 0 rgba(0,0,0,0)', duration: 0.1 });
+            });
+
+            button.addEventListener('mouseup', () => {
+                gsap.to(button, { y: -2, scale: 1.05, clearProps: 'boxShadow', duration: 0.1 });
+            });
+        }, buttonRef);
+
+        return () => ctx.revert();
+    }, []);
+
     return (
-        <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95, y: 4, boxShadow: '0 0px 0 0 rgba(0,0,0,0)' }}
+        <button
+            ref={buttonRef}
             onClick={onClick}
             className={`
                 relative
@@ -24,7 +50,8 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
                 font-black uppercase tracking-wider text-sm md:text-base
                 text-white
                 border-2
-                transition-all duration-100 ease-out
+                transition-shadow duration-100 ease-out
+                will-change-transform
                 ${activeColor}
                 ${className}
             `}
@@ -32,10 +59,10 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
             {/* Top Shine/Glow */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[90%] h-[40%] bg-gradient-to-b from-white/40 to-transparent rounded-full opacity-80 pointer-events-none"></div>
 
-            <span className="relative z-10 drop-shadow-sm flex items-center justify-center gap-2">
+            <span ref={contentRef} className="relative z-10 drop-shadow-sm flex items-center justify-center gap-2">
                 {children}
             </span>
-        </motion.button>
+        </button>
     );
 };
 

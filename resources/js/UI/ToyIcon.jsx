@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 // Premium 3D Toy Icons - Beautiful & Content-Specific
 const ToyIcon = ({ type, size = 'md', className = '' }) => {
@@ -10,7 +10,8 @@ const ToyIcon = ({ type, size = 'md', className = '' }) => {
         '2xl': 'w-36 h-36'
     };
 
-    const iconStyles = {
+    // Use useMemo to prevent recreating the object on every render
+    const iconStyles = useMemo(() => ({
         // Dashboard - Analytics Chart Icon (BETTER!)
         dashboard: (
             <div className={`${sizes[size]} ${className} relative`}>
@@ -410,9 +411,9 @@ const ToyIcon = ({ type, size = 'md', className = '' }) => {
                 </svg>
             </div>
         ),
-    };
+    }), [size, className]);
 
     return iconStyles[type] || iconStyles.folder;
 };
 
-export default ToyIcon;
+export default React.memo(ToyIcon);
