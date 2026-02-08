@@ -3,70 +3,69 @@ import gsap from 'gsap';
 
 const IntroOverlay = ({ onComplete }) => {
     const containerRef = useRef(null);
-    const textGroupRef = useRef(null);
-    const nameRef = useRef(null);
-    const surnameRef = useRef(null);
-    const greetingRef = useRef(null);
+    const topFlapRef = useRef(null);
+    const bottomFlapRef = useRef(null);
+    const tapeRef = useRef(null);
+    const labelRef = useRef(null);
 
     useLayoutEffect(() => {
         let ctx = gsap.context(() => {
             const tl = gsap.timeline({
-                onComplete: onComplete
+                onComplete: onComplete,
+                delay: 0.5 // Slight start delay
             });
 
-            // Initial Setup
-            gsap.set([nameRef.current, surnameRef.current], { y: 150, opacity: 0, rotate: 5 });
-            gsap.set(greetingRef.current, { opacity: 0, scale: 0.8 });
-            gsap.set(containerRef.current, { transformOrigin: 'top center' });
+            // Initial State
+            gsap.set(containerRef.current, { zIndex: 100 });
 
-            // Sequence
-            // 1. Greeting
-            tl.to(greetingRef.current, {
-                opacity: 1,
-                scale: 1,
-                duration: 0.8,
-                ease: "back.out(1.7)"
+            // Sequence (~5s total)
+
+            // 1. Suspense: Box Shake (1s)
+            tl.to(labelRef.current, {
+                x: -3,
+                rotation: 1, // Slight wobble
+                duration: 0.1,
+                repeat: 10,
+                yoyo: true,
+                ease: "sine.inOut"
             })
-                .to(greetingRef.current, {
-                    opacity: 0,
-                    y: -50,
-                    filter: "blur(10px)",
-                    duration: 0.5,
-                    delay: 0.8,
-                    ease: "power2.in"
+                .to(labelRef.current, {
+                    x: 0,
+                    rotation: 2, // Reset to original tilt
+                    duration: 0.2
                 })
 
-                // 2. Name Reveal (Staggered & Heavy)
-                .to([nameRef.current], {
-                    y: 0,
-                    rotate: 0,
-                    opacity: 1,
-                    duration: 1,
-                    ease: "power4.out"
-                }, "-=0.2")
-                .to([surnameRef.current], {
-                    y: 0,
-                    rotate: 0,
-                    opacity: 1,
-                    duration: 1,
-                    ease: "power4.out"
-                }, "-=0.8")
-
-                // 3. Hold for reading
-                .to({}, { duration: 1.2 })
-
-                // 4. Exit - Slide Up Curtain
-                .to(textGroupRef.current, {
-                    y: -100,
+                // 2. Tape Peel (1.5s)
+                .to(tapeRef.current, {
+                    scaleX: 0,
                     opacity: 0,
-                    duration: 0.5,
+                    duration: 1.5,
+                    ease: "power2.inOut"
+                }, "+=0.2")
+
+                // 3. Label Blow Away (Overlap)
+                .to(labelRef.current, {
+                    scale: 3,
+                    opacity: 0,
+                    duration: 1.0,
                     ease: "power2.in"
-                })
-                .to(containerRef.current, {
+                }, "-=1.0")
+
+                // 4. Flaps Open (2.5s)
+                .to(topFlapRef.current, {
                     yPercent: -100,
-                    duration: 1,
-                    ease: "power4.inOut" // Smooth curtain up effect
-                }, "-=0.3");
+                    duration: 2.5,
+                    ease: "power3.inOut"
+                }, "-=0.3")
+                .to(bottomFlapRef.current, {
+                    yPercent: 100,
+                    duration: 2.5,
+                    ease: "power3.inOut"
+                }, "<") // Sync with top flap
+
+                .to(containerRef.current, {
+                    display: 'none'
+                });
 
         }, containerRef);
 
@@ -76,48 +75,101 @@ const IntroOverlay = ({ onComplete }) => {
     return (
         <div
             ref={containerRef}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50 overflow-hidden"
+            className="fixed inset-0 z-[100] flex flex-col pointer-events-none"
         >
-            {/* Background Texture (Subtle) */}
-            <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none"></div>
-
-            <div className="relative z-10 text-center w-full px-4" ref={textGroupRef}>
-
-                {/* Greeting Text - Absolute Buffered */}
-                <div className="relative h-[20vh] flex items-center justify-center mb-4">
-                    <div ref={greetingRef} className="absolute">
-                        <h2 className="text-3xl md:text-5xl font-black text-slate-300 tracking-[0.2em] uppercase">
-                            Hello World.
-                        </h2>
-                    </div>
+            {/* --- TOP FLAP --- */}
+            <div
+                ref={topFlapRef}
+                className="absolute top-0 left-0 right-0 h-1/2 bg-[#d4a373] shadow-md z-20 flex items-end justify-center overflow-hidden"
+                style={{
+                    backgroundImage: `url("https://www.transparenttextures.com/patterns/cardboard-flat.png")`,
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                }}
+            >
+                {/* Math Doodles (Top) */}
+                <div className="absolute inset-0 opacity-10 pointer-events-none select-none flex flex-wrap content-center justify-center gap-20 overflow-hidden">
+                    <span className="text-6xl font-script rotate-12">∫ e^x dx</span>
+                    <span className="text-8xl font-serif -rotate-12">π</span>
+                    <span className="text-5xl font-mono rotate-45">∑</span>
+                    <span className="text-7xl font-sans -rotate-6">√-1</span>
                 </div>
 
-                {/* Name Reveal - Masked Containers for reveal effect */}
-                <div className="flex flex-col items-center justify-center space-y-2 md:space-y-4">
-                    <div className="overflow-hidden py-2">
-                        <h1
-                            ref={nameRef}
-                            className="text-5xl md:text-8xl lg:text-9xl font-black text-slate-800 tracking-tighter leading-[0.9]"
-                            style={{ textShadow: '4px 4px 0px #cbd5e1' }}
-                        >
-                            KEVIN
-                        </h1>
-                    </div>
-                    <div className="overflow-hidden py-2">
-                        <h1
-                            ref={surnameRef}
-                            className="text-5xl md:text-8xl lg:text-9xl font-black text-blue-600 tracking-tighter leading-[0.9]"
-                            style={{ textShadow: '4px 4px 0px #1e40af' }}
-                        >
-                            HERMANSYAH
-                        </h1>
-                    </div>
+                {/* Flap Shade/Crease */}
+                <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black/20 to-transparent"></div>
+            </div>
+
+            {/* --- BOTTOM FLAP --- */}
+            <div
+                ref={bottomFlapRef}
+                className="absolute bottom-0 left-0 right-0 h-1/2 bg-[#d4a373] shadow-inner-lg z-20 flex items-start justify-center overflow-hidden"
+                style={{
+                    backgroundImage: `url("https://www.transparenttextures.com/patterns/cardboard-flat.png")`
+                }}
+            >
+                {/* Math Doodles (Bottom) */}
+                <div className="absolute inset-0 opacity-10 pointer-events-none select-none flex flex-wrap content-center justify-center gap-32 overflow-hidden">
+                    <span className="text-7xl font-mono -rotate-12">E=mc²</span>
+                    <span className="text-6xl font-serif rotate-6">∞</span>
+                    <span className="text-9xl font-sans rotate-12">λ</span>
+                    <span className="text-5xl font-script -rotate-45">f(x)</span>
                 </div>
 
-                <div className="mt-12 flex justify-center gap-4 opacity-30">
-                    <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce"></div>
-                    <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce delay-200"></div>
+                {/* Flap Shade/Crease */}
+                <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-black/20 to-transparent"></div>
+            </div>
+
+            {/* --- CENTER ELEMENTS (Tape & Label) --- */}
+            <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-auto">
+
+                {/* PACKING TAPE */}
+                <div
+                    ref={tapeRef}
+                    className="absolute w-full h-24 bg-[#e5e5e5]/90 backdrop-blur-sm shadow-sm border-y border-white/40 transform -rotate-1"
+                ></div>
+
+                {/* SHIPPING LABEL */}
+                <div
+                    ref={labelRef}
+                    className="relative bg-white p-6 md:p-8 rounded-lg shadow-xl max-w-sm md:max-w-md w-11/12 transform rotate-2 border border-slate-200"
+                >
+                    {/* Barcode Strip */}
+                    <div className="h-8 bg-black mb-4 w-full opacity-80"
+                        style={{ maskImage: 'repeating-linear-gradient(90deg, black, black 2px, transparent 2px, transparent 4px)' }}>
+                    </div>
+
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">FROM</p>
+                            <h2 className="font-black text-slate-800 text-lg">KEVIN HERMANSYAH</h2>
+                            <p className="text-xs text-slate-500 font-medium">BOGOR, ID</p>
+                        </div>
+                        <div className="border-2 border-slate-800 p-1 px-2 rounded transform rotate-3">
+                            <span className="font-black text-xs block text-slate-800">PRIORITY</span>
+                        </div>
+                    </div>
+
+                    <div className="border-t-2 border-dashed border-slate-300 pt-4 relative">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">CONTENTS</p>
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-800 leading-tight tracking-tight">
+                            MATH + CODE <br />
+                            <span className="text-blue-600">& TOYS</span>
+                        </h1>
+
+                        {/* Toy Badge: Ages 3-99 */}
+                        <div className="absolute top-2 right-0 bg-yellow-400 text-yellow-900 text-[10px] font-black px-2 py-1 rounded-full border-2 border-white shadow-md transform -rotate-12">
+                            AGES 3-99
+                        </div>
+                    </div>
+
+                    {/* Stamps */}
+                    <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full border-4 border-red-600/50 flex items-center justify-center transform -rotate-12 opacity-80 pointer-events-none">
+                        <span className="text-red-600/50 font-black text-xs text-center leading-tight">LOGIC<br />INSIDE</span>
+                    </div>
+
+                    {/* Math Badge */}
+                    <div className="absolute -top-4 -left-4 bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg border-4 border-white transform rotate-6">
+                        <span className="font-serif italic font-bold text-xl">∑</span>
+                    </div>
                 </div>
             </div>
         </div>
