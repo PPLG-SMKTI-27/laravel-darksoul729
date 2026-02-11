@@ -5,7 +5,7 @@ import Contact from './Pages/Contact';
 import Feature from './Pages/Feature';
 import Projects from './Pages/Projects';
 import Login from './Pages/Login';
-import Dashboard from './Pages/Dashboard';
+import Dashboard from './Pages/Admin/Dashboard';
 
 // Admin Components
 import AdminProjects from './Pages/Admin/AdminProjects';
@@ -32,7 +32,9 @@ const App = ({ initialPage, initialProps }) => {
                 return <Projects page={initialPage} props={initialProps} />;
             case 'Login':
                 return <Login page={initialPage} />;
-            case 'Dashboard':
+            case 'Admin/Dashboard':
+                return <Dashboard {...initialProps} />;
+            case 'Dashboard': // Fallback or if used elsewhere
                 return <Dashboard {...initialProps} />;
             case 'AdminProjects':
                 return <AdminProjects {...initialProps} />;

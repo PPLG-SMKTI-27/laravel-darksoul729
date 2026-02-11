@@ -1,7 +1,33 @@
-import React from 'react';
-import ToyIcon from '../UI/ToyIcon';
+import React, { useRef, useLayoutEffect, useState } from 'react';
+import { gsap } from 'gsap';
+import ToyIcon from '../../UI/ToyIcon';
+import IntroDashboard from '../../components/IntroDashboard';
 
 const Dashboard = ({ stats, recentProjects }) => {
+    const containerRef = useRef(null);
+    const [introComplete, setIntroComplete] = useState(false);
+
+    useLayoutEffect(() => {
+        const ctx = gsap.context(() => {
+            // Initial state: Hide content
+            if (!introComplete) {
+                gsap.set('.dashboard-content', { opacity: 0, y: 50 });
+            } else {
+                // Animate Content IN
+                gsap.to('.dashboard-content', {
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    duration: 0.8,
+                    stagger: 0.1,
+                    ease: "back.out(1.2)"
+                });
+            }
+        }, containerRef);
+
+        return () => ctx.revert();
+    }, [introComplete]);
+
     const handleLogout = async () => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
@@ -21,7 +47,7 @@ const Dashboard = ({ stats, recentProjects }) => {
 
     // Enhanced Stat Card with better 3D
     const StatCard = ({ label, value, color, bgColor, icon, gradientFrom, gradientTo }) => (
-        <div className="group relative">
+        <div className="group relative dashboard-content">
             {/* 3D Shadow Layer */}
             <div className={`absolute inset-0 ${bgColor} rounded-3xl opacity-40 transform translate-y-2 translate-x-2 blur-sm`}></div>
 
@@ -83,7 +109,7 @@ const Dashboard = ({ stats, recentProjects }) => {
     const ActionButton = ({ icon, label, onClick, gradientFrom, gradientTo, borderColor }) => (
         <button
             onClick={onClick}
-            className={`relative group bg-gradient-to-br ${gradientFrom} ${gradientTo} rounded-2xl p-6 md:p-8 border-b-8 border-r-8 ${borderColor} shadow-2xl hover:shadow-3xl active:border-b-2 active:border-r-2 active:translate-y-2 active:translate-x-2 transition-all duration-200 overflow-hidden w-full`}
+            className={`relative group bg-gradient-to-br ${gradientFrom} ${gradientTo} rounded-2xl p-6 md:p-8 border-b-8 border-r-8 ${borderColor} shadow-2xl hover:shadow-3xl active:border-b-2 active:border-r-2 active:translate-y-2 active:translate-x-2 transition-all duration-200 overflow-hidden w-full dashboard-content`}
         >
             {/* Animated background */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300">
@@ -124,7 +150,7 @@ const Dashboard = ({ stats, recentProjects }) => {
         };
 
         return (
-            <div className="group relative" onClick={handleCardClick}>
+            <div className="group relative dashboard-content" onClick={handleCardClick}>
                 {/* Shadow */}
                 <div className="absolute inset-0 bg-purple-300 rounded-3xl opacity-30 transform translate-y-2 translate-x-2 blur-sm"></div>
 
@@ -192,10 +218,14 @@ const Dashboard = ({ stats, recentProjects }) => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-8">
+        <div ref={containerRef} className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-8 relative overflow-hidden">
+
+            {/* INTRO OVERLAY */}
+            {!introComplete && <IntroDashboard onComplete={() => setIntroComplete(true)} />}
+
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* ===== HEADER ===== */}
-                <div className="relative group">
+                <div className="relative group dashboard-content">
                     {/* Shadow */}
                     <div className="absolute inset-0 bg-purple-300 rounded-3xl opacity-30 transform translate-y-2 translate-x-2 blur-sm"></div>
 
@@ -256,7 +286,7 @@ const Dashboard = ({ stats, recentProjects }) => {
                 </div>
 
                 {/* ===== STATISTICS ===== */}
-                <div>
+                <div className="dashboard-content">
                     <div className="flex items-center gap-3 mb-6">
                         <ToyIcon type="dashboard" size="lg" />
                         <h2 className="text-2xl md:text-3xl font-black text-blue-600 uppercase tracking-wide"
@@ -309,7 +339,7 @@ const Dashboard = ({ stats, recentProjects }) => {
                 </div>
 
                 {/* ===== QUICK ACTIONS ===== */}
-                <div>
+                <div className="dashboard-content">
                     <div className="flex items-center gap-3 mb-6">
                         <ToyIcon type="settings" size="lg" />
                         <h2 className="text-3xl font-black text-green-600 uppercase tracking-wide"
@@ -354,7 +384,7 @@ const Dashboard = ({ stats, recentProjects }) => {
                 </div>
 
                 {/* ===== RECENT PROJECTS ===== */}
-                <div>
+                <div className="dashboard-content">
                     <div className="flex items-center gap-3 mb-6">
                         <ToyIcon type="folder" size="lg" />
                         <h2 className="text-3xl font-black text-pink-600 uppercase tracking-wide"

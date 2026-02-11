@@ -10,7 +10,7 @@
 </head>
 <body class="bg-blue-50 text-slate-800 antialiased">
     <div id="app" 
-         data-page="Dashboard"
+         data-page="Admin/Dashboard"
          data-props='@json(['stats' => $stats, 'recentProjects' => $recentProjects])'>
     </div>
 </body>
