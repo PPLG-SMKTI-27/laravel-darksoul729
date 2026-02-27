@@ -1,6 +1,0 @@
-node_modules
-vendor
-storage/*.log
-storage/logs
-.env
-.git

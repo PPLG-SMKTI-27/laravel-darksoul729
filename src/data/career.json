@@ -1,0 +1,22 @@
+[
+    {
+        "year": "2021",
+        "title": "Frontend Intern",
+        "desc": "Built reusable UI modules and improved bundle performance for a product landing site."
+    },
+    {
+        "year": "2022",
+        "title": "Junior Full-Stack Developer",
+        "desc": "Delivered internal dashboards with Laravel + React and automated repetitive reporting flows."
+    },
+    {
+        "year": "2024",
+        "title": "Software Engineer",
+        "desc": "Led feature delivery for customer-facing apps, including 3D interactions and richer onboarding UX."
+    },
+    {
+        "year": "2026",
+        "title": "Independent Builder",
+        "desc": "Focuses on immersive web experiences, product storytelling, and scalable full-stack architecture."
+    }
+]

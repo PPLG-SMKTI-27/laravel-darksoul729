@@ -8,10 +8,11 @@ import Footer from '../components/Footer';
 import IntroOverlay from '../components/IntroOverlay';
 import PlasticToast from '../UI/PlasticToast';
 import PlasticModal from '../UI/PlasticModal';
+import FloatingShapesBackground from '../components/UI/FloatingShapesBackground';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const MainLayout = ({ children, page }) => {
+const MainLayout = ({ children, page, standalone = false }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showIntro, setShowIntro] = useState(false);
 
@@ -136,19 +137,33 @@ const MainLayout = ({ children, page }) => {
     };
 
     const navItems = [
-        { name: 'Home', href: '/' },
-        { name: 'Projects', href: '/projects' },
-        { name: 'Skills', href: '/skills' },
-        { name: 'Contact', href: '/contact' },
-        { name: 'About', href: '/about' },
+        { name: 'Home', href: '/', colorClass: 'text-pink-500 bg-white/90 shadow-[inset_0_-4px_0_1px_rgba(219,39,119,0.3),_0_10px_20px_rgba(219,39,119,0.2)]', dotColor: 'bg-pink-400 border-pink-200', themeColor: 'pink' },
+        { name: 'Projects', href: '/projects', colorClass: 'text-blue-500 bg-white/90 shadow-[inset_0_-4px_0_1px_rgba(59,130,246,0.3),_0_10px_20px_rgba(59,130,246,0.2)]', dotColor: 'bg-blue-400 border-blue-200', themeColor: 'blue' },
+        { name: 'Skills', href: '/skills', colorClass: 'text-green-500 bg-white/90 shadow-[inset_0_-4px_0_1px_rgba(34,197,94,0.3),_0_10px_20px_rgba(34,197,94,0.2)]', dotColor: 'bg-green-400 border-green-200', themeColor: 'green' },
+        { name: 'Contact', href: '/contact', colorClass: 'text-orange-500 bg-white/90 shadow-[inset_0_-4px_0_1px_rgba(249,115,22,0.3),_0_10px_20px_rgba(249,115,22,0.2)]', dotColor: 'bg-orange-400 border-orange-200', themeColor: 'orange' },
+        { name: 'About', href: '/about', colorClass: 'text-purple-500 bg-white/90 shadow-[inset_0_-4px_0_1px_rgba(168,85,247,0.3),_0_10px_20px_rgba(168,85,247,0.2)]', dotColor: 'bg-purple-400 border-purple-200', themeColor: 'purple' },
         // Conditional Logout/Login
         isLoggedIn
-            ? { name: 'Logout', href: '#', onClick: handleLogoutClick, isAction: true }
-            : { name: 'Login', href: '/login' },
+            ? { name: 'Logout', href: '#', onClick: handleLogoutClick, isAction: true, colorClass: 'text-red-500 bg-white/90 shadow-[inset_0_-4px_0_1px_rgba(239,68,68,0.3),_0_10px_20px_rgba(239,68,68,0.2)]', dotColor: 'bg-red-400 border-red-200', themeColor: 'red' }
+            : { name: 'Login', href: '/login', colorClass: 'text-yellow-500 bg-white/90 shadow-[inset_0_-4px_0_1px_rgba(234,179,8,0.3),_0_10px_20px_rgba(234,179,8,0.2)]', dotColor: 'bg-yellow-400 border-yellow-200', themeColor: 'yellow' },
     ];
 
+    const activeRouteMap = {
+        pink: { borderClass: 'border-pink-400', shadowColor: 'rgba(244,114,182,0.7)', indicator: 'bg-pink-400 shadow-[0_0_15px_rgba(244,114,182,1)]' },
+        blue: { borderClass: 'border-blue-400', shadowColor: 'rgba(96,165,250,0.7)', indicator: 'bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,1)]' },
+        green: { borderClass: 'border-green-400', shadowColor: 'rgba(74,222,128,0.7)', indicator: 'bg-green-400 shadow-[0_0_15px_rgba(74,222,128,1)]' },
+        orange: { borderClass: 'border-orange-400', shadowColor: 'rgba(251,146,60,0.7)', indicator: 'bg-orange-400 shadow-[0_0_15px_rgba(251,146,60,1)]' },
+        purple: { borderClass: 'border-purple-400', shadowColor: 'rgba(192,132,252,0.7)', indicator: 'bg-purple-400 shadow-[0_0_15px_rgba(192,132,252,1)]' },
+        red: { borderClass: 'border-red-400', shadowColor: 'rgba(248,113,113,0.7)', indicator: 'bg-red-400 shadow-[0_0_15px_rgba(248,113,113,1)]' },
+        yellow: { borderClass: 'border-yellow-400', shadowColor: 'rgba(250,204,21,0.7)', indicator: 'bg-yellow-400 shadow-[0_0_15px_rgba(250,204,21,1)]' },
+        default: { borderClass: 'border-blue-300', shadowColor: 'rgba(0,0,0,0.3)', indicator: 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]' }
+    };
+
+    const activeItemProp = navItems.find((item) => page === item.name || (window.location.pathname === item.href && !item.isAction));
+    const activeTheme = activeItemProp ? activeRouteMap[activeItemProp.themeColor] : activeRouteMap.default;
+
     return (
-        <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden text-slate-800">
+        <div className={standalone ? "" : "min-h-screen flex flex-col font-sans relative overflow-x-hidden text-slate-800"}>
 
             {/* OVERLAYS */}
             <AnimatePresence>
@@ -167,10 +182,13 @@ const MainLayout = ({ children, page }) => {
             </AnimatePresence>
 
             {/* OPTIMIZED BACKGROUND: Simple Static Gradient */}
-            <div className="fixed inset-0 pointer-events-none -z-10 bg-gradient-to-br from-blue-50 via-white to-pink-50">
+            <div className="fixed inset-0 pointer-events-none -z-20 bg-gradient-to-br from-blue-50 via-white to-pink-50">
                 {/* Simple Noise Overlay */}
                 <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
             </div>
+
+            {/* Global Floating Shapes Background */}
+            <FloatingShapesBackground />
 
             {/* Navbar Section */}
             <nav className="relative z-50 pt-8 px-6 md:px-12 flex items-center justify-between h-20">
@@ -197,16 +215,22 @@ const MainLayout = ({ children, page }) => {
                                 href={item.href}
                                 onClick={item.onClick}
                                 className={`
-                                    relative px-5 py-2 rounded-full font-black text-xs md:text-sm tracking-wide transition-all duration-200 cursor-pointer
+                                    relative px-5 py-2 rounded-full font-black text-xs md:text-sm tracking-wide transition-all duration-300 cursor-pointer overflow-hidden group
                                     ${isActive
-                                        ? 'bg-[#ec4899] text-white shadow-[0_3px_0_#be185d]'
+                                        ? 'bg-[#ec4899] text-white shadow-[0_3px_0_#be185d] border-b-2 border-[#be185d]'
                                         : isAction
                                             ? 'text-yellow-200 hover:text-white hover:bg-white/10' // Action style (Logout)
-                                            : 'text-blue-100 hover:text-white hover:bg-white/10'
+                                            : 'text-white backdrop-blur-md bg-white/20 border-t-2 border-l-2 border-r border-b border-white/80 shadow-[inset_0_-4px_8px_rgba(255,255,255,0.4),_inset_0_4px_8px_rgba(255,255,255,0.8),_0_4px_10px_rgba(0,0,0,0.15)] hover:bg-white/30 hover:shadow-[inset_0_-6px_10px_rgba(255,255,255,0.6),_inset_0_6px_10px_rgba(255,255,255,1),_0_6px_12px_rgba(0,0,0,0.2)]'
                                     }
                                 `}
                             >
-                                {item.name}
+                                {/* Glass reflection effect for inactive items (Top curved highlight) */}
+                                {!isActive && !isAction && (
+                                    <div className="absolute top-1 left-2 right-2 h-1/2 bg-gradient-to-b from-white to-transparent opacity-90 rounded-t-full pointer-events-none"></div>
+                                )}
+                                <span className="relative z-10" style={(!isActive && !isAction) ? { textShadow: '0 1px 2px rgba(0,0,0,0.2)' } : {}}>
+                                    {item.name}
+                                </span>
                             </a>
                         );
                     })}
@@ -259,27 +283,44 @@ const MainLayout = ({ children, page }) => {
                 <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl animate-pulse"></div>
                 <div className="absolute bottom-20 right-10 w-48 h-48 bg-pink-500/20 rounded-full blur-3xl animate-pulse delay-700"></div>
 
-                <div className="flex flex-col gap-8 text-center relative z-10">
-                    {navItems.map((item, index) => (
-                        <a
-                            key={item.name}
-                            ref={el => linkRefs.current[index] = el}
-                            href={item.href}
-                            onClick={(e) => {
-                                if (item.onClick) {
-                                    item.onClick(e);
-                                } else {
-                                    setIsMenuOpen(false);
-                                }
-                            }}
-                            className={`
-                                text-3xl font-black text-white tracking-tighter uppercase transform transition-transform hover:scale-110 active:scale-95 opacity-0 translate-x-10
-                            `}
-                            style={{ textShadow: '0 4px 0 rgba(0,0,0,0.2)' }}
-                        >
-                            {item.name}
-                        </a>
-                    ))}
+                <div className="flex flex-col gap-6 text-center relative z-10 w-full px-6">
+                    {navItems.map((item, index) => {
+                        const isActive = page === item.name || (window.location.pathname === item.href && !item.isAction);
+                        const isAction = item.isAction;
+
+                        return (
+                            <a
+                                key={item.name}
+                                ref={el => linkRefs.current[index] = el}
+                                href={item.href}
+                                onClick={(e) => {
+                                    if (item.onClick) {
+                                        item.onClick(e);
+                                    } else {
+                                        setIsMenuOpen(false);
+                                    }
+                                }}
+                                className={`
+                                    relative w-full py-4 rounded-3xl text-3xl font-black tracking-tighter uppercase transform transition-all duration-300 active:scale-95 opacity-0 translate-x-10 overflow-hidden group
+                                    ${isActive
+                                        ? `scale-105 border-b-4 border-r-4 border-slate-200/50 ${item.colorClass}`
+                                        : 'text-white backdrop-blur-xl bg-white/20 border-t-2 border-l-2 border-r border-b border-white/60 shadow-[inset_0_-8px_15px_rgba(255,255,255,0.4),_inset_0_4px_10px_rgba(255,255,255,0.8),_0_5px_15px_rgba(0,0,0,0.2)] hover:bg-white/30 hover:shadow-[inset_0_-10px_20px_rgba(255,255,255,0.6),_inset_0_8px_20px_rgba(255,255,255,1),_0_8px_20px_rgba(0,0,0,0.25)] hover:scale-105'
+                                    }
+                                `}
+                                style={isActive ? { textShadow: 'none' } : { textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}
+                            >
+                                {/* Glass reflection effect for inactive items (Top curved highlight) */}
+                                {!isActive && !isAction && (
+                                    <div className="absolute top-1 left-3 right-3 h-1/3 bg-gradient-to-b from-white to-transparent opacity-90 rounded-t-3xl pointer-events-none"></div>
+                                )}
+                                <span className="relative z-10">{item.name}</span>
+                                {/* Glowing Line Indicator for Active Page */}
+                                {isActive && (
+                                    <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-[6px] h-2/3 max-h-[40px] rounded-r-lg z-20 ${activeRouteMap[item.themeColor].indicator}`}></div>
+                                )}
+                            </a>
+                        );
+                    })}
                 </div>
 
                 <div className="absolute bottom-12 text-white/50 text-sm font-bold tracking-widest uppercase">
@@ -287,8 +328,8 @@ const MainLayout = ({ children, page }) => {
                 </div>
             </div>
 
-            {/* Main Content */}
-            <main className="flex-grow container mx-auto px-4 py-8 relative z-10 w-full">
+            {/* Main Content Area */}
+            <main className={`${standalone ? 'relative z-10 w-full' : 'flex-grow container mx-auto px-4 py-8 relative z-10 w-full'}`}>
                 <motion.div
                     key={page}
                     initial={{ opacity: 0, scale: 0.98 }}
@@ -301,7 +342,7 @@ const MainLayout = ({ children, page }) => {
             </main>
 
             {/* Footer */}
-            <Footer />
+            {!standalone && <Footer />}
         </div>
     );
 };

@@ -93,7 +93,11 @@ const Feature = ({ page }) => {
                 {/* SECTION 1: MAIN FIGURES */}
                 <div className="mb-20">
                     <div className="flex items-center justify-center md:justify-start gap-4 mb-10 px-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-pink-500 rounded-xl flex items-center justify-center text-xl md:text-2xl shadow-lg border-2 border-white">🚀</div>
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-pink-500 rounded-xl flex items-center justify-center shadow-lg border-2 border-white text-white">
+                            <svg className="w-6 h-6 md:w-8 md:h-8 drop-shadow-[0_2px_0_rgba(0,0,0,0.2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                            </svg>
+                        </div>
                         <h2 className="text-2xl md:text-3xl font-black text-slate-700 uppercase tracking-tight">
                             Main Characters <span className="text-slate-400 text-sm md:text-lg font-bold ml-2">(Languages)</span>
                         </h2>
@@ -147,7 +151,11 @@ const Feature = ({ page }) => {
                 {/* SECTION 2: ACCESSORY PACKS */}
                 <div className="px-4">
                     <div className="flex items-center justify-center md:justify-start gap-4 mb-10">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500 rounded-xl flex items-center justify-center text-xl md:text-2xl shadow-lg border-2 border-white">⚡</div>
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg border-2 border-white text-white">
+                            <svg className="w-6 h-6 md:w-8 md:h-8 drop-shadow-[0_2px_0_rgba(0,0,0,0.2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
                         <h2 className="text-2xl md:text-3xl font-black text-slate-700 uppercase tracking-tight">
                             Expansion Packs <span className="text-slate-400 text-sm md:text-lg font-bold ml-2">(Tools & Libs)</span>
                         </h2>

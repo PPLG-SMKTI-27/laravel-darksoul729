@@ -8,7 +8,7 @@ const Contact = ({ page }) => {
 
     return (
         <MainLayout page={page}>
-            <div className="relative min-h-[90vh] flex items-center justify-center p-4 md:p-8 overflow-hidden bg-slate-50">
+            <div className="relative min-h-[90vh] flex items-center justify-center p-4 md:p-8 overflow-hidden">
 
                 {/* Background: Clean/Polos as requested - No Grid, No Floating Shapes */}
 
