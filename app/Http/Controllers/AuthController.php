@@ -19,20 +19,22 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        // DEBUGGING BLOCK
-        $user = \App\Models\User::where('email', $request->email)->first();
-        $check = $user ? (\Illuminate\Support\Facades\Hash::check($request->password, $user->password) ? 'MATCH' : 'FAIL') : 'USER_NOT_FOUND';
-
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            return redirect()->intended('/dashboard')->with('success', 'Welcome back! You have successfully logged in.');
+            $user = $request->user();
+
+            // Redirect based on role
+            if ($user->role === 'teacher') {
+                return redirect()->intended('/teacher');
+            }
+
+            // Default redirect for admin and other roles
+            return redirect()->intended('/dashboard');
         }
 
-        \Illuminate\Support\Facades\Log::info('Login failed for email: '.$request->email);
-
         return back()->withErrors([
-            'email' => "Debug: Status=$check. Hash=".($user ? substr($user->password, 0, 10).'...' : 'N/A'),
+            'email' => 'Email atau password salah.',
         ])->onlyInput('email');
     }
 
@@ -44,6 +46,6 @@ class AuthController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect('/');
     }
 }

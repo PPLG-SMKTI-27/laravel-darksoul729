@@ -1,13 +1,13 @@
 import React, { useLayoutEffect, useRef, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, ContactShadows } from '@react-three/drei';
+import { OrbitControls, ContactShadows, Html, useProgress } from '@react-three/drei';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
-const Robot3D = React.lazy(() => import('../components/3D/Robot3D'));
+const RetroConsole3D = React.lazy(() => import('../components/3D/RetroConsole3D'));
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -121,15 +121,22 @@ const Projects = ({ page, props }) => {
                             // Disable expensive features
                             shadows={false}
                         >
-                            <Suspense fallback={null}>
+                            <Suspense fallback={
+                                <Html center>
+                                    <div className="flex flex-col items-center justify-center bg-white/50 backdrop-blur-sm p-4 rounded-3xl border-2 border-white/40 shadow-xl">
+                                        <div className="w-12 h-12 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin"></div>
+                                        <div className="mt-3 text-pink-500 font-bold uppercase tracking-widest text-xs">Loading Spec...</div>
+                                    </div>
+                                </Html>
+                            }>
                                 <ambientLight intensity={1.2} />
                                 <directionalLight position={[5, 10, 5]} intensity={2} />
                                 <pointLight position={[-5, 5, -5]} intensity={1} color="#pink" />
 
-                                <group position={[0, -1, 0]}>
-                                    <Robot3D scale={1.2} />
+                                <group position={[0, -0.6, 0]}>
+                                    <RetroConsole3D scale={0.8} />
                                     <ContactShadows
-                                        position={[0, 0, 0]}
+                                        position={[0, -1.8, 0]}
                                         opacity={0.4}
                                         scale={10}
                                         blur={2.5}

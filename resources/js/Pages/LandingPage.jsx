@@ -1,11 +1,12 @@
 import React, { useLayoutEffect, useRef, Suspense, useState, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, Html, useProgress } from '@react-three/drei';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
-// Lazy load Robot3D
-const Robot3D = React.lazy(() => import('../components/3D/Robot3D'));
+// Lazy load Robocop3D
+const Robocop3D = React.lazy(() => import('../components/3D/Robocop3D'));
+
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -27,6 +28,59 @@ const PerformanceOptimizer = () => {
         return () => observer.disconnect();
     }, [gl, setFrameloop]);
     return null;
+};
+
+// --- NEW FIX: Floating Background Shapes for empty side spaces ---
+const FloatingShapesBackground = () => {
+    return (
+        <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: -10 }}>
+            {/* Left Side Shapes */}
+            <div className="absolute top-[10%] left-[-2%] md:left-[5%] w-32 h-32 bg-pink-400 rounded-2xl rotate-12 opacity-40 blur-[2px] shadow-[inset_10px_10px_20px_rgba(255,255,255,0.8),_inset_-10px_-10px_20px_rgba(0,0,0,0.1),_10px_10px_20px_rgba(0,0,0,0.05)] animate-[float_8s_ease-in-out_infinite]"></div>
+
+            <div className="absolute top-[40%] left-[-5%] md:left-[2%] w-48 h-48 bg-blue-300 rounded-full opacity-30 blur-[4px] shadow-[inset_15px_15px_30px_rgba(255,255,255,0.7),_inset_-15px_-15px_30px_rgba(0,0,0,0.1),_15px_15px_30px_rgba(0,0,0,0.05)] animate-[float_12s_ease-in-out_infinite_reverse]"></div>
+
+            <div className="absolute top-[80%] left-[1%] md:left-[8%] w-24 h-24 bg-yellow-300 rounded-[2rem] rotate-45 opacity-50 blur-[1px] shadow-[inset_8px_8px_16px_rgba(255,255,255,0.9),_inset_-8px_-8px_16px_rgba(0,0,0,0.15)] animate-[float_9s_ease-in-out_infinite_1s]"></div>
+
+            {/* Right Side Shapes */}
+            <div className="absolute top-[20%] right-[-5%] md:right-[2%] w-40 h-40 bg-green-300 rounded-full opacity-30 blur-[3px] shadow-[inset_12px_12px_24px_rgba(255,255,255,0.7),_inset_-12px_-12px_24px_rgba(0,0,0,0.1)] animate-[float_10s_ease-in-out_infinite_0.5s]"></div>
+
+            <div className="absolute top-[60%] right-[-2%] md:right-[6%] w-28 h-28 bg-orange-300 rounded-3xl -rotate-12 opacity-40 blur-[2px] shadow-[inset_10px_10px_20px_rgba(255,255,255,0.8),_inset_-10px_-10px_20px_rgba(0,0,0,0.1)] animate-[float_7s_ease-in-out_infinite_reverse_2s]"></div>
+
+            <div className="absolute top-[90%] right-[0%] md:right-[4%] w-36 h-36 bg-purple-300 rounded-[2.5rem] rotate-[30deg] opacity-20 blur-[5px] shadow-[inset_15px_15px_30px_rgba(255,255,255,0.6)] animate-[float_11s_ease-in-out_infinite]"></div>
+
+            <style>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0) rotate(0deg); }
+                    50% { transform: translateY(-30px) rotate(10deg); }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+// Custom Loader component with progress bar
+const CanvasLoader = () => {
+    const { progress } = useProgress();
+    return (
+        <Html center>
+            <div className="flex flex-col items-center justify-center p-6 bg-white/60 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-48 transition-all duration-300">
+                <div className="relative w-16 h-16 animate-pulse mb-4">
+                    {/* Animated Campfire placeholder icon or just circles */}
+                    <div className="absolute inset-0 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin"></div>
+                    <div className="absolute inset-2 border-4 border-orange-200 border-b-orange-500 rounded-full animate-spin-reverse" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                    <span className="absolute inset-0 flex flex-col items-center justify-center text-xs font-black text-orange-600">
+                        {Math.floor(progress)}%
+                    </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
+                </div>
+                <div className="text-orange-500 font-bold uppercase tracking-widest text-[10px] mt-1 text-center">
+                    Setting up Camp...
+                </div>
+            </div>
+        </Html>
+    );
 };
 
 const LandingPage = ({ page, props }) => {
@@ -128,7 +182,7 @@ const LandingPage = ({ page, props }) => {
 
     return (
         <MainLayout page={page}>
-            <div ref={comp} className="flex flex-col gap-24 pb-20">
+            <div ref={comp} className="flex flex-col gap-12 md:gap-16 pb-12">
 
                 {/* HERO SECTION: 2-Column Layout */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-6 md:pt-12 max-w-7xl mx-auto w-full px-4">
@@ -169,28 +223,27 @@ const LandingPage = ({ page, props }) => {
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-400/30 rounded-full blur-[80px] pointer-events-none"></div>
 
                         <Canvas
+                            camera={{ position: [0, 1.5, 7], fov: 45 }}
                             dpr={[1, 1.5]} // Performance: Dynamic dpr, capped at 1.5 for sharper look on mobile without killing battery
                             frameloop="always" // We'll rely on the fact that when this component unmounts/is hidden, it stops. 
-                        // Actually, "always" is better for the smooth idle animations unless we specifically hook up an intersection observer to the Canvas props. 
-                        // But for now, let's keep it simple and performant. The user asked for "framedloop demand" logic in the plan, let's stick to that if possible or optimize.
-                        // Actually, for continuous animation like the robot's idle movement, "always" is needed when visible.
-                        // Optimization: We can toggle this based on visibility.
                         >
                             <PerformanceOptimizer />
-                            <Suspense fallback={null}>
+                            <Suspense fallback={<CanvasLoader />}>
                                 <ambientLight intensity={1.4} />
                                 <directionalLight position={[5, 10, 5]} intensity={2.5} />
                                 <pointLight position={[-5, 5, -5]} intensity={1.2} color="#ff6b9d" />
 
-                                <group position={isMobile ? [0, -1.2, 0] : [0.8, -1.0, 0]}>
-                                    <Robot3D scale={isMobile ? 1.2 : 1.35} />
+                                <group position={isMobile ? [0, 0, 0] : [0, 0, 0]}>
+                                    <Robocop3D
+                                        scale={isMobile ? 1.6 : 1.8}
+                                        position={isMobile ? [0, -0.6, 0] : [0.2, -0.6, 0]}
+                                    />
                                 </group>
 
                                 <OrbitControls
                                     enableZoom={false}
                                     enablePan={false}
-                                    minPolarAngle={Math.PI / 4}
-                                    maxPolarAngle={Math.PI / 1.6}
+                                    enableRotate={false}
                                 />
                             </Suspense>
                         </Canvas>
@@ -198,8 +251,8 @@ const LandingPage = ({ page, props }) => {
                 </div>
 
                 {/* FEATURES / TOY SPECS SECTION */}
-                <div className="features-section max-w-6xl mx-auto w-full px-4 mt-8">
-                    <div className="flex items-center gap-4 mb-12">
+                <div className="features-section max-w-6xl mx-auto w-full px-4 mt-4">
+                    <div className="flex items-center gap-4 mb-8">
                         <div className="h-1 flex-grow bg-slate-200 rounded-full"></div>
                         <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest">Languages & Tech</h2>
                         <div className="h-1 flex-grow bg-slate-200 rounded-full"></div>
@@ -224,8 +277,8 @@ const LandingPage = ({ page, props }) => {
                 </div>
 
                 {/* NEW ARRIVALS PREVIEW */}
-                <div className="projects-section max-w-6xl mx-auto w-full px-4">
-                    <div className="flex justify-between items-end mb-12 px-2">
+                <div className="projects-section max-w-6xl mx-auto w-full px-4 mt-8">
+                    <div className="flex justify-between items-end mb-8 px-2">
                         <div className="relative">
                             <h2 className="text-5xl md:text-6xl font-black text-slate-800 tracking-tight leading-none">
                                 Featured <br />
@@ -313,8 +366,6 @@ const LandingPage = ({ page, props }) => {
                     </div>
                 </div>
 
-                {/* CALL TO ACTION BANNER */}
-                {/* CALL TO ACTION BANNER */}
                 {/* CALL TO ACTION BANNER */}
                 <div className="max-w-4xl mx-auto w-full px-4 mb-20">
                     <style>{`

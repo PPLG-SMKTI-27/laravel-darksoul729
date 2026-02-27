@@ -15,24 +15,42 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        if (! class_exists(\Faker\Factory::class)) {
-            $user = new User;
-            $user->name = 'Admin';
-            $user->email = 'admin@panzekk.com';
-            $user->password = Hash::make('password');
-            $user->email_verified_at = now();
-            $user->save();
+        // Create Admin User
+        User::updateOrCreate(
+            ['email' => 'admin@panzekk.com'],
+            [
+                'name' => 'Admin',
+                'email_verified_at' => now(),
+                'role' => 'admin',
+                'age' => 25,
+                'password' => Hash::make('password'),
+                'remember_token' => \Illuminate\Support\Str::random(10),
+            ]
+        );
 
-            return;
-        }
+        // Create Teacher User
+        User::updateOrCreate(
+            ['email' => 'guru@sekolah.id'],
+            [
+                'name' => 'Guru Teladan',
+                'email_verified_at' => now(),
+                'role' => 'teacher',
+                'age' => 30,
+                'password' => Hash::make('password'),
+                'remember_token' => \Illuminate\Support\Str::random(10),
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'admin@panzekk.com',
-            'password' => Hash::make('password'),
-        ]);
+        // Create additional users
+        User::factory()->count(5)->create();
 
-        Project::factory(10)->create();
-        Message::factory(10)->create();
+        // Create teacher users
+        User::factory()->count(2)->teacher()->create();
+
+        // Create Projects
+        Project::factory()->count(10)->create();
+
+        // Create Messages
+        Message::factory()->count(10)->create();
     }
 }
