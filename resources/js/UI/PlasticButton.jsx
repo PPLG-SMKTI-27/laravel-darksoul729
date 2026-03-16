@@ -6,11 +6,11 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
     const contentRef = useRef(null);
 
     const colorClasses = {
-        blue: 'bg-gradient-to-b from-[#4dabf7] to-[#1971c2] shadow-[0_6px_0_#1864ab] border-[#1864ab]',
-        red: 'bg-gradient-to-b from-[#ff8787] to-[#e03131] shadow-[0_6px_0_#c92a2a] border-[#c92a2a]',
-        yellow: 'bg-gradient-to-b from-[#ffe066] to-[#fcc419] shadow-[0_6px_0_#e67700] border-[#e67700] text-amber-900',
-        green: 'bg-gradient-to-b from-[#69db7c] to-[#2f9e44] shadow-[0_6px_0_#2b8a3e] border-[#2b8a3e]',
-        pink: 'bg-gradient-to-b from-[#faa2c1] to-[#d6336c] shadow-[0_6px_0_#a61e4d] border-[#a61e4d]',
+        blue: { main: 'bg-[#4dabf7] text-white border-[#1864ab] shadow-[0_6px_0_#1864ab,_0_10px_20px_rgba(0,0,0,0.2)]', inset: 'shadow-[inset_0_-4px_6px_rgba(0,0,0,0.2),_inset_0_4px_6px_rgba(255,255,255,0.3)]' },
+        red: { main: 'bg-[#ff8787] text-white border-[#c92a2a] shadow-[0_6px_0_#c92a2a,_0_10px_20px_rgba(0,0,0,0.2)]', inset: 'shadow-[inset_0_-4px_6px_rgba(0,0,0,0.2),_inset_0_4px_6px_rgba(255,255,255,0.3)]' },
+        yellow: { main: 'bg-[#ffe066] text-[#854d0e] border-[#e67700] shadow-[0_6px_0_#e67700,_0_10px_20px_rgba(0,0,0,0.2)]', inset: 'shadow-[inset_0_-4px_6px_rgba(133,77,14,0.15),_inset_0_4px_6px_rgba(255,255,255,0.5)]' },
+        green: { main: 'bg-[#69db7c] text-white border-[#2b8a3e] shadow-[0_6px_0_#2b8a3e,_0_10px_20px_rgba(0,0,0,0.2)]', inset: 'shadow-[inset_0_-4px_6px_rgba(0,0,0,0.2),_inset_0_4px_6px_rgba(255,255,255,0.3)]' },
+        pink: { main: 'bg-[#faa2c1] text-white border-[#a61e4d] shadow-[0_6px_0_#a61e4d,_0_10px_20px_rgba(0,0,0,0.2)]', inset: 'shadow-[inset_0_-4px_6px_rgba(0,0,0,0.2),_inset_0_4px_6px_rgba(255,255,255,0.3)]' },
     };
 
     const activeColor = colorClasses[color] || colorClasses.blue;
@@ -20,7 +20,7 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
 
         let ctx = gsap.context(() => {
             button.addEventListener('mouseenter', () => {
-                gsap.to(button, { y: -2, scale: 1.05, duration: 0.2, ease: "power1.out" });
+                gsap.to(button, { y: -2, scale: 1.02, duration: 0.2, ease: "power1.out" });
             });
 
             button.addEventListener('mouseleave', () => {
@@ -28,11 +28,11 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
             });
 
             button.addEventListener('mousedown', () => {
-                gsap.to(button, { y: 4, scale: 0.95, boxShadow: '0 0px 0 0 rgba(0,0,0,0)', duration: 0.1 });
+                gsap.to(button, { y: 6, scale: 0.98, boxShadow: '0 0px 0 0 rgba(0,0,0,0)', duration: 0.1 });
             });
 
             button.addEventListener('mouseup', () => {
-                gsap.to(button, { y: -2, scale: 1.05, clearProps: 'boxShadow', duration: 0.1 });
+                gsap.to(button, { y: -2, scale: 1.02, clearProps: 'boxShadow', duration: 0.1 });
             });
         }, buttonRef);
 
@@ -46,18 +46,17 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
             className={`
                 relative
                 py-3 px-8
-                rounded-full
-                font-black uppercase tracking-wider text-sm md:text-base
-                text-white
+                rounded-2xl
                 border-2
-                transition-shadow duration-100 ease-out
+                font-black uppercase tracking-wider text-sm md:text-base
+                transition-all duration-100 ease-out
                 will-change-transform
-                ${activeColor}
+                ${activeColor.main}
                 ${className}
             `}
         >
-            {/* Top Shine/Glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[90%] h-[40%] bg-gradient-to-b from-white/40 to-transparent rounded-full opacity-80 pointer-events-none"></div>
+            {/* Inner Clay Edge Shadow Layer */}
+            <div className={`absolute inset-0 rounded-2xl pointer-events-none ${activeColor.inset}`}></div>
 
             <span ref={contentRef} className="relative z-10 drop-shadow-sm flex items-center justify-center gap-2">
                 {children}

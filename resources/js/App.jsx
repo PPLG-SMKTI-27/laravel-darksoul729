@@ -3,6 +3,7 @@ import LandingPage from './Pages/LandingPage';
 import About from './Pages/About';
 import Contact from './Pages/Contact';
 import Feature from './Pages/Feature';
+import Skills from './Pages/Skills';
 import Projects from './Pages/Projects';
 import Login from './Pages/Login';
 import Dashboard from './Pages/Admin/Dashboard';
@@ -26,8 +27,7 @@ const App = ({ initialPage, initialProps }) => {
             case 'Feature':
                 return <Feature page={initialPage} />;
             case 'Skills':
-                // Mapping "Skills" to "Feature" page for now, as requested by the implicit design match
-                return <Feature page={initialPage} />;
+                return <Skills page={initialPage} />;
             case 'Projects':
                 return <Projects page={initialPage} props={initialProps} />;
             case 'Login':

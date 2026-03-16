@@ -1,0 +1,31 @@
+--- LandingPage.jsx
++++ LandingPage.jsx
+@@ -348,15 +348,22 @@
+ 
+                                 {/* Inner White Screen */}
+-                                <div className="relative h-full bg-[#f8fafc] rounded-2xl p-6 md:p-10 flex flex-col justify-center border-[6px] border-[#cbd5e1] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.1),0_2px_0_white] overflow-hidden">
+-                                    <h3 className="text-4xl font-black text-slate-900 uppercase tracking-tighter mb-1 mt-4" style={{ textShadow: '0 2px 0 rgba(255,255,255,0.8), 0 4px 6px rgba(15,23,42,0.05)' }}>
+-                                        TENTANG SAYA
+-                                    </h3>
++                                <div className="relative h-full bg-[#f8fafc] rounded-2xl p-6 md:p-8 flex flex-col justify-center border-[6px] border-[#cbd5e1] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.1),0_2px_0_white] overflow-hidden leading-none">
++                                    <div className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-800 drop-shadow-sm mb-1 mt-2">TENTANG SAYA</div>
++                                    
++                                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter flex gap-0.5 relative z-10 mb-4 scale-y-110 origin-bottom" style={{ WebkitTextStroke: '2px white', paintOrder: 'stroke fill', textShadow: '0 3px 0 #cbd5e1, 0 6px 12px rgba(0,0,0,0.15)' }}>
++                                        <span className="text-red-500 transform -rotate-2 inline-block">K</span>
++                                        <span className="text-orange-500 transform rotate-2 inline-block translate-y-0.5">E</span>
++                                        <span className="text-green-500 transform -rotate-1 inline-block">V</span>
++                                        <span className="text-blue-500 transform rotate-2 inline-block -translate-y-0.5">I</span>
++                                        <span className="text-purple-500 transform -rotate-2 inline-block">N</span>
++                                    </h2>
++                                    
+                                     <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-6">
+-                                        KEVIN HERMANSYAH
++                                        HERMANSYAH
+                                     </p>
+                                     
+                                     <ul className="flex flex-col gap-3 text-slate-800 font-bold text-sm mb-4">
+                                         <li className="flex items-start gap-4">
+-                                            <span className="text-xl opacity-70 mt-[-2px]">📍</span>
++                                            <img src="https://img.icons8.com/3d-fluency/94/marker.png" className="w-6 h-6 object-contain" alt="Location" loading="lazy" />
+                                             <span className="leading-snug">Samarinda, Indonesia</span>
+                                         </li>

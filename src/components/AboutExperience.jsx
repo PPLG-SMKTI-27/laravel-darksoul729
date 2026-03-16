@@ -1,15 +1,16 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, ScrollControls, useScroll } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import OverlayUI from './OverlayUI';
 import RoomTour from './RoomTour';
-import PlasticCard from '../../resources/js/UI/PlasticCard';
 import PlasticButton from '../../resources/js/UI/PlasticButton';
 
 const CAREER_SPOT = 0.35;
 const PROFILE_SPOT = 0.75;
+const ARRIVAL_PROGRESS = -0.18;
+const CAMERA_STEP = 0.16;
 const SPOT_PROGRESS = {
     wide: 0,
     career: CAREER_SPOT,
@@ -25,53 +26,17 @@ const clamp01 = (value) => {
     return Math.max(0, Math.min(1, value));
 };
 
+const clampTourProgress = (value) => {
+    if (!Number.isFinite(value)) {
+        return ARRIVAL_PROGRESS;
+    }
+
+    return Math.max(ARRIVAL_PROGRESS, Math.min(1, value));
+};
+
 const INTRO_FALL_CUTOFF = 0.65;
 const INTRO_FALL_DURATION = 1.6;
 const INTRO_LAND_DURATION = 1.0;
-const INTRO_REVEAL_START = 0.5;
-
-const ScrollProgressDriver = ({ phase, enabled, onProgressUpdate, onRegisterApi }) => {
-    const scroll = useScroll();
-    const lastOffsetRef = useRef(-1);
-
-    useEffect(() => {
-        if (!onRegisterApi) {
-            return undefined;
-        }
-
-        const setOffset = (nextOffset) => {
-            if (!scroll.el) {
-                return;
-            }
-
-            const clamped = clamp01(nextOffset);
-            const maxScrollTop = Math.max(scroll.el.scrollHeight - scroll.el.clientHeight, 0);
-            scroll.el.scrollTop = clamped * maxScrollTop;
-        };
-
-        onRegisterApi({ setOffset });
-
-        return () => {
-            onRegisterApi(null);
-        };
-    }, [onRegisterApi, scroll]);
-
-    useFrame(() => {
-        if (phase !== 'tour' || !enabled) {
-            return;
-        }
-
-        const nextOffset = clamp01(scroll.offset);
-        if (Math.abs(nextOffset - lastOffsetRef.current) <= 0.0006) {
-            return;
-        }
-
-        lastOffsetRef.current = nextOffset;
-        onProgressUpdate(nextOffset);
-    });
-
-    return null;
-};
 
 const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress, roomReady, onStart, startDisabled }) => {
     const inIntro = phase === 'intro';
@@ -86,11 +51,13 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
     const fallProgress = inTransition ? clamp01(transitionProgress) : 0;
     const noiseOpacity = inIntro ? 0.3 : (0.22 + fallProgress * 0.62) * cloudLayerOpacity;
     const windOpacity = inTransition ? clamp01(fallProgress * 1.35) * 0.4 : 0;
+    const bridgeGlowOpacity = inTransition
+        ? clamp01(Math.sin(clamp01((fallProgress - 0.18) / 0.64) * Math.PI)) * 0.75
+        : 0;
+    const revealWindowOpacity = inTransition ? clamp01((fallProgress - 0.52) / 0.36) * 0.42 : 0;
 
     return (
         <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden bg-[#8ec5ff]">
-
-
             {/* Sky Background */}
             <div
                 className="absolute inset-0"
@@ -110,10 +77,52 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
             <div
                 className="absolute inset-0"
                 style={{
+                    opacity: bridgeGlowOpacity,
+                    background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.78) 22%, rgba(229,240,252,0.28) 55%, rgba(229,240,252,0) 100%)',
+                }}
+            />
+
+            <div
+                className="absolute inset-0"
+                style={{
                     opacity: inTransition ? clamp01(fallProgress * 0.6) : 0,
                     background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 0%, rgba(120,168,206,0.2) 60%, rgba(66,110,152,0.4) 100%)',
                 }}
             />
+
+            {[{
+                key: 'left',
+                className: 'top-[8%] left-[-12%] h-[38rem] w-[38rem]',
+                color: 'rgba(255,255,255,0.52)',
+                speed: 24,
+                drift: -12,
+                blur: 22,
+            }, {
+                key: 'right',
+                className: 'top-[14%] right-[-10%] h-[30rem] w-[30rem]',
+                color: 'rgba(239,246,255,0.62)',
+                speed: 18,
+                drift: 10,
+                blur: 18,
+            }, {
+                key: 'bottom',
+                className: 'bottom-[-22%] left-[16%] h-[28rem] w-[42rem]',
+                color: 'rgba(224,242,254,0.48)',
+                speed: 30,
+                drift: -18,
+                blur: 24,
+            }].map((layer) => (
+                <div
+                    key={layer.key}
+                    className={`absolute rounded-full ${layer.className}`}
+                    style={{
+                        opacity: clamp01((inIntro ? 0.58 : 0.4 + fallProgress * 0.28) * cloudLayerOpacity),
+                        background: `radial-gradient(circle at 50% 50%, ${layer.color} 0%, rgba(255,255,255,0.18) 42%, rgba(255,255,255,0) 76%)`,
+                        filter: `blur(${layer.blur}px)`,
+                        transform: `translate3d(${inTransition ? layer.drift * fallProgress : 0}%, ${inTransition ? -layer.speed * fallProgress : 0}%, 0) scale(${1 + (inTransition ? fallProgress * 0.35 : 0)})`,
+                    }}
+                />
+            ))}
 
             {/* SVG Base Definitions solely for fractalNoise mist */}
             <svg className="pointer-events-none absolute h-0 w-0" aria-hidden="true">
@@ -176,35 +185,53 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
                 }}
             />
 
+            <div
+                className="absolute inset-0"
+                style={{
+                    opacity: revealWindowOpacity,
+                    background: 'radial-gradient(circle at 52% 62%, rgba(146,168,196,0) 0%, rgba(146,168,196,0) 18%, rgba(177,198,221,0.18) 34%, rgba(225,237,249,0.55) 100%)',
+                }}
+            />
+
+            <div
+                className="absolute inset-0"
+                style={{
+                    opacity: noiseOpacity,
+                    backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.7) 0 1px, transparent 1.5px), radial-gradient(circle at 70% 38%, rgba(255,255,255,0.45) 0 1px, transparent 1.5px), radial-gradient(circle at 42% 72%, rgba(255,255,255,0.35) 0 1px, transparent 1.5px)',
+                    backgroundSize: '180px 180px, 220px 220px, 260px 260px',
+                    transform: `translate3d(0, ${inTransition ? -fallProgress * 40 : 0}%, 0)`,
+                }}
+            />
+
             {inIntro && (
-                <div className="pointer-events-auto absolute inset-0 flex items-center justify-center px-6">
-                    <div className="w-full max-w-sm h-[26rem]">
-                        <PlasticCard
-                            title="Room Tour"
-                            subtitle="About Experience"
-                            color="blue"
-                            className="text-center"
+                <div className="pointer-events-auto absolute inset-x-0 bottom-8 z-50 flex justify-center px-6">
+                    <div className="flex w-full max-w-lg items-center justify-between gap-4 rounded-full border border-white/35 bg-white/14 px-5 py-3 text-black shadow-[0_24px_80px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-[0.38em] text-black/70">About descent</p>
+                            <p className="mt-1 text-sm font-medium leading-snug text-black">
+                                Turun dari langit, menembus kabut, lalu masuk ke workspace.
+                            </p>
+                        </div>
+                        <PlasticButton
+                            color="red"
+                            onClick={onStart}
+                            disabled={startDisabled}
                         >
-                            <div className="flex flex-col items-center justify-center h-full gap-5">
-                                <p className="text-sm text-slate-700/90 font-medium px-2 leading-relaxed">
-                                    Start Experience untuk jatuh dari langit, menembus awan tebal, lalu masuk ke workspace.
-                                </p>
-                                <PlasticButton
-                                    color="red"
-                                    onClick={onStart}
-                                    disabled={startDisabled}
-                                >
-                                    Start Experience
-                                </PlasticButton>
-                            </div>
-                        </PlasticCard>
+                            Start
+                        </PlasticButton>
                     </div>
                 </div>
             )}
 
             {inTransition && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full border border-white/50 bg-white/62 px-5 py-2 text-xs font-semibold text-slate-700 backdrop-blur">
-                    {roomReady ? 'Falling through clouds...' : 'Loading room...'}
+                <div className="absolute bottom-12 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-3 transition-opacity duration-500">
+                    <div className="relative w-10 h-10 flex items-center justify-center drop-shadow-md">
+                        <div className="absolute inset-0 border-[3px] border-white/30 rounded-full"></div>
+                        <div className="absolute inset-0 border-[3px] border-transparent border-t-white rounded-full animate-spin"></div>
+                    </div>
+                    <div className="rounded-full border border-white/20 bg-black/20 px-4 py-1.5 text-[11px] font-bold tracking-widest text-white backdrop-blur shadow-xl uppercase">
+                        {roomReady ? 'Crossing the cloud gate' : 'Loading room'}
+                    </div>
                 </div>
             )}
         </div>
@@ -242,17 +269,18 @@ const AboutExperience = ({ careerItems, debug = false }) => {
     const [currentSpot, setCurrentSpot] = useState('wide');
     const [requestedSpot, setRequestedSpot] = useState('wide');
     const [isAnimating, setIsAnimating] = useState(false);
+    const [wideControlsEnabled, setWideControlsEnabled] = useState(calibrationMode);
 
     const smoothedRef = useRef(0);
     const transitionTimelineRef = useRef(null);
     const fadeTimelineRef = useRef(null);
     const worldLoadTimelineRef = useRef(null);
+    const arrivalTimelineRef = useRef(null);
     const firstPrerenderRafRef = useRef(null);
     const secondPrerenderRafRef = useRef(null);
     const landingSequenceRef = useRef(0);
-    const isProgrammaticScrollRef = useRef(false);
-    const scrollApiRef = useRef(null);
     const roomReadyRef = useRef(false);
+    const targetProgressRef = useRef(0);
 
     const cancelPrerenderWait = useCallback(() => {
         if (firstPrerenderRafRef.current) {
@@ -280,34 +308,18 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         });
     }, [cancelPrerenderWait]);
 
-    const syncScrollOffset = useCallback((nextOffset) => {
-        if (!scrollApiRef.current) {
-            return;
-        }
-
-        isProgrammaticScrollRef.current = true;
-        scrollApiRef.current.setOffset(clamp01(nextOffset));
-        window.requestAnimationFrame(() => {
-            isProgrammaticScrollRef.current = false;
-        });
-    }, []);
-
     const setTargetProgressSafe = useCallback((nextValue) => {
-        const clamped = clamp01(nextValue);
+        const clamped = clampTourProgress(nextValue);
         setTargetProgress(clamped);
     }, []);
-
-    const handleScrollProgress = useCallback((nextOffset) => {
-        if (calibrationMode || phase !== 'tour' || isAnimating || currentSpot !== 'wide' || isProgrammaticScrollRef.current) {
-            return;
-        }
-
-        setTargetProgressSafe(nextOffset);
-    }, [calibrationMode, currentSpot, isAnimating, phase, setTargetProgressSafe]);
 
     useEffect(() => {
         roomReadyRef.current = roomReady;
     }, [roomReady]);
+
+    useEffect(() => {
+        targetProgressRef.current = targetProgress;
+    }, [targetProgress]);
 
     useEffect(() => {
         const htmlElement = document.documentElement;
@@ -330,21 +342,22 @@ const AboutExperience = ({ careerItems, debug = false }) => {
     }, []);
 
     const completeTransitionToTour = useCallback(() => {
+        arrivalTimelineRef.current?.kill();
         worldLoadTimelineRef.current?.kill();
 
         setPhase('tour');
         setWaitingForRoom(false);
         setIsAnimating(false);
+        setWideControlsEnabled(false);
         setTransitionProgress(1);
         setRoomRevealOpacity(1);
         setTransitionShake(0);
         setHazeOpacity(0);
         setCloudOpacity(0);
         setDepthCueProgress(1);
-        setTargetProgressSafe(SPOT_PROGRESS.wide);
+        setTargetProgressSafe(ARRIVAL_PROGRESS);
         setRequestedSpot('wide');
         setCurrentSpot('wide');
-        syncScrollOffset(SPOT_PROGRESS.wide);
 
         setIsWorldLoading(true);
         setWorldLoadT(1);
@@ -362,14 +375,14 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                 worldLoadTimelineRef.current = null;
             },
         });
-    }, [setTargetProgressSafe, syncScrollOffset]);
+    }, [setTargetProgressSafe]);
 
     const continueLanding = useCallback(() => {
         fadeTimelineRef.current?.kill();
         setWaitingForRoom(false);
 
         const sequenceId = landingSequenceRef.current;
-        setRoomRevealOpacity(1);
+        setRoomRevealOpacity(0.22);
         setCloudOpacity(1);
         setHazeOpacity(1);
 
@@ -377,6 +390,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             transition: transitionTimelineRef.current?.progress() > 0 ? transitionTimelineRef.current.progress() * INTRO_FALL_CUTOFF : INTRO_FALL_CUTOFF,
             shake: 0,
             depthCue: 0,
+            room: 0.22,
         };
 
         const landingTimeline = gsap.timeline({
@@ -393,6 +407,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                     const revealState = {
                         haze: 1,
                         clouds: 1,
+                        room: 0.72,
                     };
 
                     const revealTimeline = gsap.timeline({
@@ -407,11 +422,13 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                     revealTimeline.to(revealState, {
                         haze: 0,
                         clouds: 0,
-                        duration: 0.6,
+                        room: 1,
+                        duration: 0.7,
                         ease: 'power2.out',
                         onUpdate: () => {
                             setHazeOpacity(revealState.haze);
                             setCloudOpacity(revealState.clouds);
+                            setRoomRevealOpacity(revealState.room);
                         },
                     });
 
@@ -422,31 +439,38 @@ const AboutExperience = ({ careerItems, debug = false }) => {
 
         landingTimeline.to(state, {
             transition: 1,
-            duration: INTRO_LAND_DURATION,
+            duration: INTRO_LAND_DURATION * 0.9,
             ease: 'power3.out',
-            onUpdate: () => setTransitionProgress(state.transition)
+            onUpdate: () => setTransitionProgress(state.transition),
         }, 0);
 
         landingTimeline.to(state, {
             depthCue: 1,
-            duration: 0.4,
+            duration: 0.55,
             ease: 'power2.out',
-            onUpdate: () => setDepthCueProgress(state.depthCue)
-        }, 0.5);
+            onUpdate: () => setDepthCueProgress(state.depthCue),
+        }, 0.2);
 
         landingTimeline.to(state, {
             shake: 1,
-            duration: 0.15,
+            duration: 0.16,
             ease: 'power2.out',
-            onUpdate: () => setTransitionShake(state.shake)
-        }, 0.5);
+            onUpdate: () => setTransitionShake(state.shake),
+        }, 0.26);
 
         landingTimeline.to(state, {
             shake: 0,
-            duration: 0.25,
+            duration: 0.35,
             ease: 'power2.inOut',
-            onUpdate: () => setTransitionShake(state.shake)
-        }, 0.65);
+            onUpdate: () => setTransitionShake(state.shake),
+        }, 0.42);
+
+        landingTimeline.to(state, {
+            room: 0.72,
+            duration: INTRO_LAND_DURATION * 0.72,
+            ease: 'power2.out',
+            onUpdate: () => setRoomRevealOpacity(state.room),
+        }, 0.1);
 
         fadeTimelineRef.current = landingTimeline;
     }, [completeTransitionToTour, waitForTwoPrerenderFrames]);
@@ -457,6 +481,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         }
 
         worldLoadTimelineRef.current?.kill();
+        arrivalTimelineRef.current?.kill();
         cancelPrerenderWait();
         landingSequenceRef.current += 1;
         setPhase('tour');
@@ -472,6 +497,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         setRequestedSpot('wide');
         setWaitingForRoom(false);
         setIsAnimating(false);
+        setWideControlsEnabled(true);
     }, [calibrationMode, cancelPrerenderWait, setTargetProgressSafe]);
 
     useEffect(() => {
@@ -487,6 +513,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             transitionTimelineRef.current?.kill();
             fadeTimelineRef.current?.kill();
             worldLoadTimelineRef.current?.kill();
+            arrivalTimelineRef.current?.kill();
             cancelPrerenderWait();
         };
     }, [cancelPrerenderWait]);
@@ -499,16 +526,17 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         transitionTimelineRef.current?.kill();
         fadeTimelineRef.current?.kill();
         worldLoadTimelineRef.current?.kill();
+        arrivalTimelineRef.current?.kill();
         cancelPrerenderWait();
         landingSequenceRef.current += 1;
 
         setPhase('transition');
         setIsAnimating(true);
+        setWideControlsEnabled(false);
         setWaitingForRoom(false);
         setRequestedSpot('wide');
         setCurrentSpot('wide');
         setTargetProgressSafe(SPOT_PROGRESS.wide);
-        syncScrollOffset(SPOT_PROGRESS.wide);
         setRoomRevealOpacity(0);
         setTransitionShake(0);
         setDepthCueProgress(0);
@@ -519,11 +547,13 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             transition: 0,
             haze: 0.18,
             clouds: 1,
+            room: 0,
         };
 
         setTransitionProgress(state.transition);
         setHazeOpacity(state.haze);
         setCloudOpacity(state.clouds);
+        setRoomRevealOpacity(state.room);
 
         const timeline = gsap.timeline({
             onComplete: () => {
@@ -537,7 +567,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
 
         timeline.to(state, {
             transition: INTRO_FALL_CUTOFF,
-            duration: INTRO_FALL_DURATION,
+            duration: INTRO_FALL_DURATION * 0.78,
             ease: 'power4.in',
             onUpdate: () => {
                 setTransitionProgress(state.transition);
@@ -547,7 +577,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         timeline.to(state, {
             haze: 1.0,
             clouds: 1.0,
-            duration: INTRO_FALL_DURATION,
+            duration: INTRO_FALL_DURATION * 0.78,
             ease: 'power4.in',
             onUpdate: () => {
                 setHazeOpacity(state.haze);
@@ -555,8 +585,17 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             },
         }, 0);
 
+        timeline.to(state, {
+            room: 0.18,
+            duration: INTRO_FALL_DURATION * 0.55,
+            ease: 'power2.in',
+            onUpdate: () => {
+                setRoomRevealOpacity(state.room);
+            },
+        }, INTRO_FALL_DURATION * 0.28);
+
         transitionTimelineRef.current = timeline;
-    }, [calibrationMode, cancelPrerenderWait, continueLanding, phase, setTargetProgressSafe, syncScrollOffset]);
+    }, [calibrationMode, cancelPrerenderWait, continueLanding, phase, setTargetProgressSafe]);
 
     const goToSpot = useCallback((nextSpot) => {
         if (calibrationMode || phase !== 'tour' || isAnimating || !nextSpot) {
@@ -579,8 +618,68 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         setIsAnimating(true);
         const progressValue = SPOT_PROGRESS[nextSpot] ?? 0;
         setTargetProgressSafe(progressValue);
-        syncScrollOffset(progressValue);
-    }, [calibrationMode, currentSpot, isAnimating, phase, setTargetProgressSafe, syncScrollOffset]);
+    }, [calibrationMode, currentSpot, isAnimating, phase, setTargetProgressSafe]);
+
+    useEffect(() => {
+        if (calibrationMode || phase !== 'tour' || currentSpot !== 'wide') {
+            return;
+        }
+
+        if (targetProgressRef.current >= SPOT_PROGRESS.wide) {
+            setWideControlsEnabled(true);
+            arrivalTimelineRef.current?.kill();
+            arrivalTimelineRef.current = null;
+            return;
+        }
+
+        if (wideControlsEnabled || arrivalTimelineRef.current) {
+            return;
+        }
+
+        const arrivalState = { progress: targetProgressRef.current };
+        arrivalTimelineRef.current = gsap.to(arrivalState, {
+            progress: SPOT_PROGRESS.wide,
+            duration: 1.9,
+            delay: 0.18,
+            ease: 'power2.out',
+            onUpdate: () => {
+                setTargetProgressSafe(arrivalState.progress);
+            },
+            onComplete: () => {
+                setTargetProgressSafe(SPOT_PROGRESS.wide);
+                setWideControlsEnabled(true);
+                arrivalTimelineRef.current = null;
+            },
+        });
+
+        return () => {
+            arrivalTimelineRef.current?.kill();
+            arrivalTimelineRef.current = null;
+        };
+    }, [calibrationMode, currentSpot, phase, setTargetProgressSafe, wideControlsEnabled]);
+
+    const stepCameraProgress = useCallback((direction) => {
+        if (calibrationMode || phase !== 'tour' || isAnimating || currentSpot !== 'wide' || !wideControlsEnabled) {
+            return;
+        }
+
+        let nextProgress = targetProgress;
+        if (direction < 0) {
+            if (targetProgress <= 0.02) {
+                nextProgress = ARRIVAL_PROGRESS;
+            } else if (targetProgress <= CAMERA_STEP + 0.02) {
+                nextProgress = 0;
+            } else {
+                nextProgress = targetProgress - CAMERA_STEP;
+            }
+        } else if (targetProgress < 0) {
+            nextProgress = 0;
+        } else {
+            nextProgress = targetProgress + CAMERA_STEP;
+        }
+
+        setTargetProgressSafe(nextProgress);
+    }, [calibrationMode, currentSpot, isAnimating, phase, setTargetProgressSafe, targetProgress, wideControlsEnabled]);
 
     const handleSmoothedProgress = useCallback((nextProgress) => {
         if (Math.abs(nextProgress - smoothedRef.current) <= 0.0015) {
@@ -606,10 +705,6 @@ const AboutExperience = ({ careerItems, debug = false }) => {
     const showCareerCard = phase === 'tour' && currentSpot === 'career' && !careerDismissed;
     const showProfileCard = phase === 'tour' && currentSpot === 'profile' && !profileDismissed;
 
-    const handleRegisterScrollApi = useCallback((api) => {
-        scrollApiRef.current = api;
-    }, []);
-
     const handleRoomReady = useCallback((ready) => {
         roomReadyRef.current = ready;
         setRoomReady(ready);
@@ -620,7 +715,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         : phase === 'intro'
             ? 0
             : phase === 'transition'
-                ? (roomReady ? roomRevealOpacity : 0)
+                ? (roomReady ? clamp01(Math.max(roomRevealOpacity, (transitionProgress - 0.52) * 1.65)) : 0)
                 : 1;
 
     return (
@@ -665,39 +760,30 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                     <hemisphereLight intensity={0.45} color="#eaf5ff" groundColor="#9ec7ff" />
                     <Environment preset="city" intensity={0.55} />
 
-                    <ScrollControls pages={3} damping={0.1} enabled={!calibrationMode && phase === 'tour' && !isAnimating}>
-                        <ScrollProgressDriver
+                    <Suspense fallback={null}>
+                        <RoomTour
                             phase={phase}
-                            enabled={currentSpot === 'wide' && !isAnimating}
-                            onProgressUpdate={handleScrollProgress}
-                            onRegisterApi={handleRegisterScrollApi}
+                            targetProgress={targetProgress}
+                            transitionProgress={transitionProgress}
+                            transitionShake={transitionShake}
+                            fogFactor={hazeOpacity}
+                            worldLoadT={worldLoadT}
+                            isWorldLoading={isWorldLoading}
+                            debug={debug}
+                            calibrationMode={calibrationMode}
+                            careerItems={careerItems}
+                            showCareerCard={showCareerCard}
+                            showProfileCard={showProfileCard}
+                            onCloseCareerCard={() => setCareerDismissed(true)}
+                            onCloseProfileCard={() => setProfileDismissed(true)}
+                            onRoomReady={handleRoomReady}
+                            onSmoothedProgress={handleSmoothedProgress}
+                            onConfigReady={setCameraConfig}
+                            requestedSpot={requestedSpot}
+                            onSpotChange={setCurrentSpot}
+                            onNavAnimatingChange={setIsAnimating}
                         />
-
-                        <Suspense fallback={null}>
-                            <RoomTour
-                                phase={phase}
-                                targetProgress={targetProgress}
-                                transitionProgress={transitionProgress}
-                                transitionShake={transitionShake}
-                                fogFactor={hazeOpacity}
-                                worldLoadT={worldLoadT}
-                                isWorldLoading={isWorldLoading}
-                                debug={debug}
-                                calibrationMode={calibrationMode}
-                                careerItems={careerItems}
-                                showCareerCard={showCareerCard}
-                                showProfileCard={showProfileCard}
-                                onCloseCareerCard={() => setCareerDismissed(true)}
-                                onCloseProfileCard={() => setProfileDismissed(true)}
-                                onRoomReady={handleRoomReady}
-                                onSmoothedProgress={handleSmoothedProgress}
-                                onConfigReady={setCameraConfig}
-                                requestedSpot={requestedSpot}
-                                onSpotChange={setCurrentSpot}
-                                onNavAnimatingChange={setIsAnimating}
-                            />
-                        </Suspense>
-                    </ScrollControls>
+                    </Suspense>
                 </Canvas>
 
                 <CloudGateOverlay
@@ -716,40 +802,17 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                     phase={phase}
                     debug={debug}
                     onJumpWide={() => goToSpot('wide')}
+                    onStepUp={() => stepCameraProgress(-1)}
+                    onStepDown={() => stepCameraProgress(1)}
                     navLocked={isAnimating}
+                    wideControlsEnabled={wideControlsEnabled}
+                    canStepUp={wideControlsEnabled && currentSpot === 'wide' && targetProgress > ARRIVAL_PROGRESS + 0.02}
+                    canStepDown={wideControlsEnabled && currentSpot === 'wide' && targetProgress < 0.98}
                     smoothedProgress={smoothedProgress}
                     targetProgress={targetProgress}
                 />
 
-                <div
-                    style={{
-                        position: 'absolute',
-                        left: 12,
-                        top: 12,
-                        zIndex: 30,
-                        borderRadius: 10,
-                        border: '1px solid rgba(226,232,240,0.95)',
-                        background: 'rgba(255,255,255,0.9)',
-                        padding: '6px 10px',
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                        color: '#334155',
-                        pointerEvents: 'none',
-                    }}
-                >
-                    <div>phase: {phase}</div>
-                    <div>spot: {currentSpot}</div>
-                    {cameraConfig && (
-                        <>
-                            <div>diag: {cameraConfig.diag.toFixed(3)}</div>
-                            <div>near: {cameraConfig.clipNear.toFixed(3)}</div>
-                            <div>far: {cameraConfig.clipFar.toFixed(3)}</div>
-                        </>
-                    )}
-                    {debug && (
-                        <div>roomReady: {roomReady ? 'yes' : 'no'}</div>
-                    )}
-                </div>
+
             </div>
         </div>
     );
