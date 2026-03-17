@@ -234,7 +234,7 @@ const SkillsGame = () => {
     const keysRef = useRef({});
 
     // Swipe Look state
-    const touchLookRef = useRef({ active: false, lastX: 0, lastY: 0 });
+    const touchLookRef = useRef({ active: false, touchId: null, lastX: 0, lastY: 0 });
 
     const [loaded, setLoaded] = useState(false);
     const [hud, setHud] = useState(null);
@@ -699,7 +699,7 @@ const SkillsGame = () => {
         };
         window.addEventListener('resize', onResize);
 
-        gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onResize };
+        gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onResize, player };
         setLoaded(true);
     }
 
@@ -728,11 +728,13 @@ const SkillsGame = () => {
     const onTouchLookStart = (e) => {
         if (paused) return;
         const t = e.touches[0];
-        touchLookRef.current = { active: true, lastX: t.clientX, lastY: t.clientY };
+        if (!t) return;
+        touchLookRef.current = { active: true, touchId: t.identifier, lastX: t.clientX, lastY: t.clientY };
     };
     const onTouchLookMove = (e) => {
         if (!touchLookRef.current.active || paused) return;
-        const t = e.touches[0];
+        const t = Array.from(e.touches).find((touch) => touch.identifier === touchLookRef.current.touchId);
+        if (!t) return;
         const dx = t.clientX - touchLookRef.current.lastX;
         const dy = t.clientY - touchLookRef.current.lastY;
 
@@ -746,8 +748,10 @@ const SkillsGame = () => {
         touchLookRef.current.lastX = t.clientX;
         touchLookRef.current.lastY = t.clientY;
     };
-    const onTouchLookEnd = () => {
-        touchLookRef.current.active = false;
+    const onTouchLookEnd = (e) => {
+        const activeTouchEnded = Array.from(e.changedTouches).some((touch) => touch.identifier === touchLookRef.current.touchId);
+        if (!activeTouchEnded) return;
+        touchLookRef.current = { active: false, touchId: null, lastX: 0, lastY: 0 };
     };
     const mobileJump = () => { keysRef.current['Space'] = true; setTimeout(() => { keysRef.current['Space'] = false; }, 160); };
 
