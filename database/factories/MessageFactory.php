@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use Faker\Factory as FakerFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,11 +17,13 @@ class MessageFactory extends Factory
      */
     public function definition(): array
     {
+        $faker = FakerFactory::create();
+
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'message' => fake()->paragraph(),
-            'is_read' => fake()->boolean(),
+            'name' => $faker->name(),
+            'email' => $faker->unique()->safeEmail(),
+            'message' => $faker->paragraph(),
+            'is_read' => $faker->boolean(),
         ];
     }
 }
