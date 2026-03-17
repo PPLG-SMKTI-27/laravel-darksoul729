@@ -1,0 +1,565 @@
+import React, { useLayoutEffect, useRef, Suspense, useState, useEffect } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { OrbitControls, Environment, ContactShadows, Html, useProgress } from '@react-three/drei';
+import MainLayout from '../Layout/MainLayout';
+import PlasticCard from '../UI/PlasticCard';
+import PlasticButton from '../UI/PlasticButton';
+// Lazy load Robocop3D
+const Robocop3D = React.lazy(() => import('../components/3D/Robocop3D'));
+
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
+
+class ModelErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <Html center>
+                    <div className="flex flex-col items-center justify-center p-6 bg-white/70 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-56 text-center">
+                        <div className="text-slate-700 font-black uppercase tracking-widest text-[10px]">
+                            3D Model Error
+                        </div>
+                        <div className="mt-2 text-xs font-semibold text-slate-600">
+                            Model belum bisa dimuat. Cek koneksi atau file 3D.
+                        </div>
+                    </div>
+                </Html>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
+// Helper to pause rendering when offscreen
+const PerformanceOptimizer = () => {
+    const { gl, setFrameloop } = useThree();
+    useEffect(() => {
+        const observer = new IntersectionObserver(([entry]) => {
+            // When visible, run animation loop. When hidden, stop it.
+            setFrameloop(entry.isIntersecting ? 'always' : 'never');
+        }, { threshold: 0.1 });
+
+        if (gl.domElement.parentElement) {
+            observer.observe(gl.domElement.parentElement);
+        }
+
+        return () => observer.disconnect();
+    }, [gl, setFrameloop]);
+    return null;
+};
+
+// --- NEW FIX: Floating Background Shapes for empty side spaces ---
+const FloatingShapesBackground = () => {
+    return (
+        <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: -10 }}>
+            {/* Left Side Shapes */}
+            <div className="absolute top-[10%] left-[-2%] md:left-[5%] w-32 h-32 bg-pink-400 rounded-2xl rotate-12 opacity-40 blur-[2px] shadow-[inset_10px_10px_20px_rgba(255,255,255,0.8),_inset_-10px_-10px_20px_rgba(0,0,0,0.1),_10px_10px_20px_rgba(0,0,0,0.05)] animate-[float_8s_ease-in-out_infinite]"></div>
+
+            <div className="absolute top-[40%] left-[-5%] md:left-[2%] w-48 h-48 bg-blue-300 rounded-full opacity-30 blur-[4px] shadow-[inset_15px_15px_30px_rgba(255,255,255,0.7),_inset_-15px_-15px_30px_rgba(0,0,0,0.1),_15px_15px_30px_rgba(0,0,0,0.05)] animate-[float_12s_ease-in-out_infinite_reverse]"></div>
+
+            <div className="absolute top-[80%] left-[1%] md:left-[8%] w-24 h-24 bg-yellow-300 rounded-[2rem] rotate-45 opacity-50 blur-[1px] shadow-[inset_8px_8px_16px_rgba(255,255,255,0.9),_inset_-8px_-8px_16px_rgba(0,0,0,0.15)] animate-[float_9s_ease-in-out_infinite_1s]"></div>
+
+            {/* Right Side Shapes */}
+            <div className="absolute top-[20%] right-[-5%] md:right-[2%] w-40 h-40 bg-green-300 rounded-full opacity-30 blur-[3px] shadow-[inset_12px_12px_24px_rgba(255,255,255,0.7),_inset_-12px_-12px_24px_rgba(0,0,0,0.1)] animate-[float_10s_ease-in-out_infinite_0.5s]"></div>
+
+            <div className="absolute top-[60%] right-[-2%] md:right-[6%] w-28 h-28 bg-orange-300 rounded-3xl -rotate-12 opacity-40 blur-[2px] shadow-[inset_10px_10px_20px_rgba(255,255,255,0.8),_inset_-10px_-10px_20px_rgba(0,0,0,0.1)] animate-[float_7s_ease-in-out_infinite_reverse_2s]"></div>
+
+            <div className="absolute top-[90%] right-[0%] md:right-[4%] w-36 h-36 bg-purple-300 rounded-[2.5rem] rotate-[30deg] opacity-20 blur-[5px] shadow-[inset_15px_15px_30px_rgba(255,255,255,0.6)] animate-[float_11s_ease-in-out_infinite]"></div>
+
+            <style>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0) rotate(0deg); }
+                    50% { transform: translateY(-30px) rotate(10deg); }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+// Custom Loader component with progress bar
+const CanvasLoader = () => {
+    const { progress, active } = useProgress();
+    const [showSlowNetwork, setShowSlowNetwork] = useState(false);
+
+    useEffect(() => {
+        if (!active) {
+            setShowSlowNetwork(false);
+            return undefined;
+        }
+
+        const timer = setTimeout(() => {
+            setShowSlowNetwork(true);
+        }, 2500);
+
+        return () => clearTimeout(timer);
+    }, [active]);
+
+    return (
+        <Html center>
+            <div className="flex flex-col items-center justify-center p-6 bg-white/60 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-48 transition-all duration-300">
+                <div className="relative w-16 h-16 animate-pulse mb-4">
+                    {/* Animated Campfire placeholder icon or just circles */}
+                    <div className="absolute inset-0 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin"></div>
+                    <div className="absolute inset-2 border-4 border-orange-200 border-b-orange-500 rounded-full animate-spin-reverse" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                    <span className="absolute inset-0 flex flex-col items-center justify-center text-xs font-black text-orange-600">
+                        {Math.floor(progress)}%
+                    </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
+                </div>
+                <div className="text-orange-500 font-bold uppercase tracking-widest text-[10px] mt-1 text-center">
+                    Setting up Camp...
+                </div>
+                {showSlowNetwork && (
+                    <div className="mt-2 text-[10px] font-semibold text-slate-600 text-center">
+                        Koneksi lambat, model 3D masih loading.
+                    </div>
+                )}
+            </div>
+        </Html>
+    );
+};
+
+const LandingPage = ({ page, props }) => {
+    const { repos = [] } = props;
+    const comp = useRef();
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    useLayoutEffect(() => {
+        let ctx = gsap.context(() => {
+            // Hero Text Animation
+            gsap.from('.hero-text', {
+                y: 50,
+                opacity: 0,
+                duration: 1,
+                stagger: 0.2,
+                ease: 'back.out(1.7)'
+            });
+
+            // Robot Entrance (Scale up)
+            gsap.from('.hero-robot', {
+                scale: 0,
+                opacity: 0,
+                duration: 1.2,
+                ease: 'elastic.out(1, 0.5)',
+                delay: 0.2
+            });
+
+            // Profile Card Animation
+            gsap.from('.profile-card', {
+                scrollTrigger: {
+                    trigger: '.profile-section',
+                    start: 'top 80%',
+                },
+                y: 50,
+                opacity: 0,
+                duration: 0.8,
+                ease: 'power2.out'
+            });
+
+            // Projects Animation
+            gsap.from('.project-card', {
+                scrollTrigger: {
+                    trigger: '.projects-section',
+                    start: 'top 75%',
+                },
+                y: 80,
+                opacity: 0,
+                duration: 1,
+                stagger: 0.2,
+                ease: 'elastic.out(1, 0.8)'
+            });
+        }, comp);
+        return () => ctx.revert();
+    }, []);
+
+    return (
+        <MainLayout page={page}>
+            <FloatingShapesBackground />
+            <div ref={comp} className="flex flex-col gap-12 md:gap-16 pb-12">
+
+                {/* HERO SECTION: 2-Column Layout */}
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-6 md:pt-12 max-w-7xl mx-auto w-full px-4">
+
+                    {/* Left: Text Content */}
+                    {/* Left: Text Content */}
+                    <div className="flex flex-col items-center md:items-start text-center md:text-left z-10 w-full md:w-1/2">
+                        <h1 className="hero-text font-black tracking-tighter mb-4 leading-[0.9] select-none">
+                            <span className="flex justify-center md:justify-start text-[3.5rem] sm:text-[4.5rem] md:text-[6.5rem] lg:text-[7.5rem] drop-shadow-xl -ml-2 relative z-10">
+                                <span className="text-[#ff6584] transform -rotate-3 origin-bottom" style={{ textShadow: "0 2px 0 #e84c6c, 0 4px 0 #c93450, 0 6px 0 #a31c36, 0 12px 12px rgba(0,0,0,0.3)" }}>K</span>
+                                <span className="text-[#ffdc44] transform rotate-2 origin-bottom translate-y-2" style={{ textShadow: "0 2px 0 #eabc26, 0 4px 0 #c79a11, 0 6px 0 #a27a03, 0 12px 12px rgba(0,0,0,0.3)" }}>E</span>
+                                <span className="text-[#68cb68] transform -rotate-1 origin-bottom -translate-y-1" style={{ textShadow: "0 2px 0 #4eb24e, 0 4px 0 #389538, 0 6px 0 #287a28, 0 12px 12px rgba(0,0,0,0.3)" }}>V</span>
+                                <span className="text-[#45b7ff] transform rotate-3 origin-bottom translate-y-1" style={{ textShadow: "0 2px 0 #2a98db, 0 4px 0 #167cb8, 0 6px 0 #0a6397, 0 12px 12px rgba(0,0,0,0.3)" }}>I</span>
+                                <span className="text-[#ffbe54] transform -rotate-2 origin-bottom translate-y-2" style={{ textShadow: "0 2px 0 #e69d2a, 0 4px 0 #c68213, 0 6px 0 #a36504, 0 12px 12px rgba(0,0,0,0.3)" }}>N</span>
+                            </span>
+                            <span className="block text-[2.5rem] sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5.5rem] text-white drop-shadow-2xl scale-y-100 origin-top mt-1 relative z-0"
+                                style={{ textShadow: "0 2px 0 #7dd3fc, 0 4px 0 #38bdf8, 0 6px 0 #0284c7, 0 8px 0 #0369a1, 0 10px 0 #075985, 0 12px 0 #082f49, 0 16px 20px rgba(0,0,0,0.4)" }}>
+                                HERMANSYAH
+                            </span>
+                        </h1>
+                        <p className="hero-text text-sm sm:text-base md:text-xl font-bold text-white mb-10 max-w-md leading-relaxed uppercase tracking-widest drop-shadow-md" style={{ textShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
+                            LEARNINGS IN TOY-BOX TYPOGRAPHY
+                        </p>
+                        <div className="hero-text flex flex-wrap justify-center md:justify-start gap-4 scale-100 md:scale-105 origin-top-left">
+                            <PlasticButton color="blue" onClick={() => window.location.href = '/projects'} className="uppercase !text-[11px] md:!text-sm">
+                                VIEW PROJECTS
+                            </PlasticButton>
+                            <PlasticButton color="yellow" onClick={() => window.location.href = '/contact'} className="uppercase !text-[11px] md:!text-sm !text-[#854d0e]">
+                                HIRE CREATOR
+                            </PlasticButton>
+                        </div>
+                    </div>
+
+                    {/* Right: 3D Robot Showcase */}
+                    <div ref={comp} className="hero-robot order-first md:order-none relative w-[280px] h-[280px] sm:w-[350px] sm:h-[350px] md:w-[550px] md:h-[550px] flex-shrink-0 z-20">
+                        {/* Glow Effect */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-400/30 rounded-full blur-[80px] pointer-events-none"></div>
+
+                        <Canvas
+                            camera={{ position: [0, 1.5, 7], fov: 45 }}
+                            dpr={[1, 1.5]} // Performance: Dynamic dpr, capped at 1.5 for sharper look on mobile without killing battery
+                            frameloop="always" // We'll rely on the fact that when this component unmounts/is hidden, it stops. 
+                        >
+                            <PerformanceOptimizer />
+                            <Suspense fallback={<CanvasLoader />}>
+                                <ambientLight intensity={1.4} />
+                                <directionalLight position={[5, 10, 5]} intensity={2.5} />
+                                <pointLight position={[-5, 5, -5]} intensity={1.2} color="#ff6b9d" />
+
+                                <group position={isMobile ? [0, 0, 0] : [0, 0, 0]}>
+                                    <ModelErrorBoundary>
+                                        <Robocop3D
+                                            scale={isMobile ? 2.25 : 2.6}
+                                            position={isMobile ? [-0.25, -0.18, 0] : [-0.55, -0.18, 0]}
+                                            rotation={[0, Math.PI, 0]}
+                                        />
+                                    </ModelErrorBoundary>
+                                </group>
+
+                                <OrbitControls
+                                    enableZoom={false}
+                                    enablePan={false}
+                                    enableRotate={false}
+                                />
+                            </Suspense>
+                        </Canvas>
+                    </div>
+                </div>
+
+                {/* PROFILE SECTION */}
+                <div className="profile-section max-w-5xl mx-auto w-full px-4 mt-8 md:mt-16 mb-20 z-10 relative">
+                    <div className="flex flex-col gap-6 items-center">
+
+                        {/* Title Header */}
+                        <div className="flex flex-col items-center gap-1 z-10 relative">
+                            <span className="text-sm font-black uppercase tracking-[0.2em] text-slate-800 drop-shadow-sm">SECTION SEPARATOR</span>
+                            <div className="flex items-center gap-4">
+                                <img src="https://img.icons8.com/3d-fluency/94/settings.png" alt="Gears" className="w-12 h-12 md:w-16 md:h-16 drop-shadow-lg" loading="lazy" />
+                                <h2 className="text-5xl md:text-7xl font-black tracking-tight flex gap-1 relative z-10" style={{ WebkitTextStroke: '2px white', paintOrder: 'stroke fill', textShadow: '0 4px 0 #cbd5e1, 0 8px 16px rgba(0,0,0,0.15)' }}>
+                                    <span className="text-red-500 transform -rotate-3 origin-bottom inline-block">P</span>
+                                    <span className="text-orange-500 transform rotate-2 origin-bottom inline-block translate-y-1">R</span>
+                                    <span className="text-yellow-400 transform -rotate-1 origin-bottom inline-block">O</span>
+                                    <span className="text-green-500 transform rotate-3 origin-bottom inline-block -translate-y-1">F</span>
+                                    <span className="text-blue-500 transform -rotate-2 origin-bottom inline-block">I</span>
+                                    <span className="text-purple-500 transform rotate-1 origin-bottom inline-block translate-y-1">L</span>
+                                    <span className="text-pink-500 transform -rotate-2 origin-bottom inline-block">E</span>
+                                </h2>
+                                <img src="https://img.icons8.com/3d-fluency/94/rocket.png" alt="Rocket" className="w-12 h-12 md:w-16 md:h-16 drop-shadow-lg" loading="lazy" />
+                            </div>
+                        </div>
+
+                        {/* Horizontal Gameboy Layout */}
+                        <div className="profile-card relative w-full mt-4 md:mt-8 flex flex-col md:flex-row items-stretch justify-center drop-shadow-2xl">
+
+                            {/* Left: Gameboy Console (Light Grey) */}
+                            <div className="relative w-full md:w-[380px] bg-[#d1d5db] rounded-[2rem] p-6 z-20 border-b-[8px] border-r-[8px] border-slate-400 border-l-[2px] border-t-[2px] border-l-white border-t-white shadow-[8px_8px_0px_rgba(0,0,0,0.15)] flex flex-col">
+
+                                {/* Screen Area */}
+                                <div className="relative bg-[#475569] rounded-[1.5rem] p-4 md:p-6 mb-6 shadow-[inset_0_4px_8px_rgba(0,0,0,0.5),0_2px_0_white]">
+                                    {/* Red Power Light */}
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+
+                                    {/* The Screen Display */}
+                                    <div className="relative w-full aspect-[4/3] bg-black rounded-lg overflow-hidden border-2 border-slate-800 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] ml-2 border-[4px] border-black border-l-[#222] border-t-[#222]">
+                                        <img
+                                            src="https://picsum.photos/seed/about-profile-anchor/300/300"
+                                            alt="Profile"
+                                            className="w-full h-full object-cover opacity-90"
+                                            loading="lazy"
+                                        />
+                                        {/* Screen Glare */}
+                                        <div className="absolute top-0 right-0 w-full h-[150%] bg-white/10 -rotate-45 transform translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                    </div>
+                                </div>
+
+                                {/* Controls Area */}
+                                <div className="flex justify-between items-center px-4">
+                                    {/* Directional Pad (D-pad) */}
+                                    <div className="relative w-24 h-24">
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-20 bg-[#334155] rounded-md shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.4),inset_2px_2px_4px_rgba(255,255,255,0.1)]"></div>
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-8 bg-[#334155] rounded-md shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.4),inset_2px_2px_4px_rgba(255,255,255,0.1)]"></div>
+                                        {/* Center dot/indent */}
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-[#1e293b] rounded-full opacity-50"></div>
+                                    </div>
+
+                                    {/* A / B Buttons */}
+                                    <div className="flex gap-4 transform -rotate-12 mt-4 ml-6">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <div className="w-10 h-10 rounded-full bg-rose-500 border-b-[4px] border-rose-800 shadow-[0_4px_6px_rgba(0,0,0,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),inset_0_2px_4px_rgba(255,255,255,0.4)] transition-all flex items-center justify-center font-black text-rose-800 text-sm"></div>
+                                        </div>
+                                        <div className="flex flex-col items-center gap-1 -mt-6">
+                                            <div className="w-10 h-10 rounded-full bg-rose-500 border-b-[4px] border-rose-800 shadow-[0_4px_6px_rgba(0,0,0,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),inset_0_2px_4px_rgba(255,255,255,0.4)] transition-all flex items-center justify-center font-black text-rose-800 text-sm"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Start / Select */}
+                                <div className="flex justify-center gap-6 mt-8">
+                                    <div className="w-12 h-3 rounded-full bg-[#475569] transform -rotate-12 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6),0_1px_0_rgba(255,255,255,0.5)] cursor-pointer active:translate-y-px"></div>
+                                    <div className="w-12 h-3 rounded-full bg-[#475569] transform -rotate-12 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6),0_1px_0_rgba(255,255,255,0.5)] cursor-pointer active:translate-y-px"></div>
+                                </div>
+                            </div>
+
+                            {/* Right: Info Screen (Sliding out / attached) */}
+                            <div className="relative w-full md:w-[500px] bg-[#d1d5db] md:rounded-r-[2rem] md:rounded-l-none rounded-b-[2rem] rounded-t-none p-4 md:p-6 md:-ml-6 z-10 border-b-[8px] border-r-[8px] border-slate-400 md:border-t-[8px] md:border-t-slate-300 md:border-l-0 shadow-[8px_8px_0px_rgba(0,0,0,0.15)] flex flex-col justify-center min-h-[300px] mt-[-20px] md:mt-0 pt-10 md:pt-6">
+
+                                {/* Inner White Screen */}
+                                <div className="relative h-full bg-[#f8fafc] rounded-2xl p-6 md:p-10 flex flex-col justify-center border-[6px] border-[#cbd5e1] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.1),0_2px_0_white] overflow-hidden">
+                                    <h3 className="text-4xl font-black text-slate-900 uppercase tracking-tighter mb-1 mt-4" style={{ textShadow: '0 2px 0 rgba(255,255,255,0.8), 0 4px 6px rgba(15,23,42,0.05)' }}>
+                                        <div className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-800 drop-shadow-sm">TENTANG SAYA</div>
+                                    </h3>
+                                    <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-6">
+                                        KEVIN HERMANSYAH
+                                    </p>
+
+                                    <ul className="flex flex-col gap-3 text-slate-800 font-bold text-sm mb-4">
+                                        <li className="flex items-start gap-4">
+                                            <span className="text-xl opacity-70 mt-[-2px]">📍</span>
+                                            <span className="leading-snug">Samarinda, Indonesia</span>
+                                        </li>
+                                        <li className="flex items-start gap-4">
+                                            <span className="text-xl opacity-70 mt-[-2px]">🎯</span>
+                                            <span className="leading-snug">Web Development & 3D Interaksi</span>
+                                        </li>
+                                        <li className="flex items-start gap-4">
+                                            <span className="text-xl opacity-70 mt-[-2px]">🎓</span>
+                                            <span className="leading-snug">SMKTI Airlangga<br />B.S. in Computer Science</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+                {/* NEW ARRIVALS PREVIEW */}
+                <div className="projects-section max-w-6xl mx-auto w-full px-4 mt-8">
+                    <div className="flex justify-between items-end mb-8 px-2">
+                        <div className="relative">
+                            <h2 className="text-5xl md:text-6xl font-black text-slate-800 tracking-tight leading-none">
+                                Featured <br />
+                                <span className="
+                                    text-pink-500 inline-block mt-2
+                                " style={{
+                                        textShadow: `
+                                        0 1px 0 #db2777,
+                                        0 2px 0 #db2777,
+                                        0 3px 0 #db2777,
+                                        0 4px 0 #be185d,
+                                        0 5px 0 #be185d,
+                                        0 6px 0 #be185d,
+                                        0 7px 12px rgba(0,0,0,0.2)
+                                    `,
+                                        WebkitTextStroke: '2px white',
+                                        paintOrder: 'stroke fill'
+                                    }}>PROJECTS</span>
+                            </h2>
+                            <div className="absolute -top-6 -right-12 rotate-12 bg-yellow-400 text-yellow-900 text-xs font-black px-3 py-1 rounded-full shadow-md uppercase tracking-wide border-2 border-white">
+                                Collectors Edition
+                            </div>
+                        </div>
+                        <a href="/projects" className="hidden md:block text-pink-500 font-black hover:underline decoration-4 underline-offset-4 text-lg">
+                            See Collection &rarr;
+                        </a>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+                        {repos.slice(0, 3).map((repo, index) => (
+                            <div
+                                key={repo.id || index}
+                                onClick={() => window.location.href = `/project?id=${repo.id}`}
+                                className="project-card cursor-pointer group relative"
+                            >
+                                <div className="absolute -inset-2 bg-gradient-to-r from-blue-200 to-pink-200 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition duration-500 blur-xl"></div>
+                                <PlasticCard
+                                    color={['blue', 'pink', 'green'][index % 3]}
+                                    title={repo.title || 'Mystery Box'}
+                                    className="transform transition-all duration-300 group-hover:-translate-y-4 group-hover:rotate-1"
+                                >
+                                    <div className="relative aspect-[4/5] bg-gradient-to-b from-slate-50 to-white rounded-lg flex items-center justify-center p-6 overflow-hidden">
+                                        {/* Background Pattern */}
+                                        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#4a5568_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+                                        {repo.image_url ? (
+                                            <img
+                                                src={repo.image_url.startsWith('http') ? repo.image_url : `/storage/${repo.image_url}`}
+                                                className="w-full h-full object-contain drop-shadow-xl transform transition-transform duration-500 group-hover:scale-110"
+                                                alt={repo.title}
+                                            />
+                                        ) : (
+                                            <span className="text-7xl animate-bounce">🎁</span>
+                                        )}
+
+                                        {/* Overlay Button */}
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <div className="bg-white text-slate-900 font-black px-6 py-2 rounded-full shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 border-2 border-slate-100">
+                                                OPEN BOX
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex justify-between items-center px-2">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Series 0{index + 1}</span>
+                                        <div className="flex gap-1">
+                                            {[...Array(5)].map((_, i) => (
+                                                <div key={i} className={`w-2 h-2 rounded-full ${i < 4 ? 'bg-yellow-400' : 'bg-slate-200'}`}></div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </PlasticCard>
+                            </div>
+                        ))}
+                        {repos.length === 0 && (
+                            <div className="col-span-3 text-center py-20 bg-white/50 rounded-[3rem] border-4 border-dashed border-slate-300 flex flex-col items-center justify-center gap-4">
+                                <span className="text-6xl">🚧</span>
+                                <p className="font-bold text-slate-400 text-2xl">New projects being manufactured...</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="md:hidden mt-8 text-center">
+                        <a href="/projects" className="text-pink-500 font-black hover:underline decoration-4 underline-offset-4 text-lg">
+                            See All Collection &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                {/* CALL TO ACTION BANNER */}
+                <div className="max-w-4xl mx-auto w-full px-4 mb-20">
+                    <style>{`
+                        @keyframes wave {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-50%); }
+                        }
+                        @keyframes rise {
+                            0% { bottom: -20px; transform: translateX(0) scale(0.5); opacity: 0; }
+                            50% { opacity: 1; }
+                            100% { bottom: 100%; transform: translateX(20px) scale(1); opacity: 0; }
+                        }
+                        .wave-layer {
+                            position: absolute;
+                            bottom: 0;
+                            left: 0;
+                            width: 200%;
+                            height: 100%;
+                            background-repeat: repeat-x;
+                            background-position: bottom;
+                            background-size: 50% auto;
+                            animation: wave linear infinite;
+                            z-index: 0;
+                        }
+                        .bubble {
+                            position: absolute;
+                            background: rgba(255,255,255,0.4);
+                            border-radius: 50%;
+                            z-index: 5;
+                        }
+                    `}</style>
+                    <div className="relative bg-white rounded-[3rem] p-12 text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden group border-4 border-slate-100 ring-4 ring-slate-50 ring-offset-4 ring-offset-white">
+
+                        {/* Glass Container Inner Shadow */}
+                        <div className="absolute inset-0 rounded-[3rem] shadow-[inset_0_10px_20px_rgba(0,0,0,0.05)] pointer-events-none z-20"></div>
+
+                        {/* Liquid/Wave Background Layers */}
+                        {/* Wave Layers */}
+                        {/* Layer 1 - Back - Lightest - Slow */}
+                        <div className="wave-layer" style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23fce7f3' fill-opacity='1' d='M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
+                            animationDuration: '20s',
+                            opacity: 1,
+                            height: '110%',
+                            zIndex: 1
+                        }}></div>
+
+                        {/* Layer 2 - Middle - Medium Pink - Medium Speed */}
+                        <div className="wave-layer" style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23f472b6' fill-opacity='0.8' d='M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
+                            animationDuration: '15s',
+                            animationDirection: 'reverse',
+                            opacity: 1,
+                            height: '100%',
+                            zIndex: 2
+                        }}></div>
+
+                        {/* Layer 3 - Front - Bold Pink - Fast */}
+                        <div className="wave-layer" style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23db2777' fill-opacity='1' d='M0,128L48,144C96,160,192,192,288,192C384,192,480,160,576,138.7C672,117,768,107,864,122.7C960,139,1056,181,1152,186.7C1248,192,1344,160,1392,144L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
+                            animationDuration: '10s',
+                            opacity: 1,
+                            height: '90%',
+                            zIndex: 3
+                        }}></div>
+
+                        {/* Rising Bubbles */}
+                        <div className="bubble w-4 h-4 left-[20%]" style={{ animation: 'rise 4s infinite ease-in', animationDelay: '0s' }}></div>
+                        <div className="bubble w-6 h-6 left-[50%]" style={{ animation: 'rise 6s infinite ease-in', animationDelay: '1s' }}></div>
+                        <div className="bubble w-3 h-3 left-[70%]" style={{ animation: 'rise 5s infinite ease-in', animationDelay: '2.5s' }}></div>
+                        <div className="bubble w-5 h-5 left-[35%]" style={{ animation: 'rise 7s infinite ease-in', animationDelay: '4s' }}></div>
+                        <div className="bubble w-4 h-4 left-[80%]" style={{ animation: 'rise 5s infinite ease-in', animationDelay: '0.5s' }}></div>
+
+                        {/* Texture Overlay (Subtle on white) */}
+                        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cartographer.png')] opacity-[0.03] z-0 pointer-events-none"></div>
+
+                        <div className="relative z-10">
+                            <h2 className="text-4xl md:text-5xl font-black text-slate-800 mb-6 tracking-tight">
+                                Ready to <span className="text-pink-600">Collaborate?</span>
+                            </h2>
+                            <p className="text-slate-500 font-bold text-xl mb-8 max-w-lg mx-auto leading-relaxed">
+                                Available for freelance projects and full-time opportunities. Let's create something extraordinary together!
+                            </p>
+                            <PlasticButton color="yellow" className="text-lg px-10 py-4 shadow-xl ring-4 ring-white/50" onClick={() => window.location.href = '/contact'}>
+                                GET IN TOUCH
+                            </PlasticButton>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </MainLayout>
+    );
+};
+
+export default LandingPage;

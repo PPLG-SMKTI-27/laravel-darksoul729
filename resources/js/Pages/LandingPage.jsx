@@ -1,9 +1,13 @@
-import React, { useLayoutEffect, useRef, Suspense, useState, useEffect } from 'react';
+import React, { useLayoutEffect, useRef, Suspense, useState, useEffect, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, Html, useProgress } from '@react-three/drei';
+import { OrbitControls, Html, useProgress } from '@react-three/drei';
+import { motion, useAnimation, useMotionValue, useInView, useReducedMotion } from 'framer-motion';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
+import FeaturedProjects from '../components/FeaturedProjects';
+import PanzekHome from '../components/UI/PanzekHome';
+import IntroOverlay from '../components/IntroOverlay';
 // Lazy load Robocop3D
 const Robocop3D = React.lazy(() => import('../components/3D/Robocop3D'));
 
@@ -12,13 +16,236 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
+// ─── SCREEN 1: PanzekOS Splash (simple, shown during isBooting) ───────────────
+const PanzekOSSplash = () => {
+    return (
+        <div className="absolute inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center p-4 z-10">
+            <style>{`
+                @keyframes pz-scaleX { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+                @keyframes pz-fadein { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+                @keyframes pz-blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+                .pz-line { animation: pz-fadein 0.3s ease-out both; }
+                .pz-line:nth-child(1){animation-delay:0.3s}
+                .pz-line:nth-child(2){animation-delay:0.8s}
+                .pz-line:nth-child(3){animation-delay:1.3s}
+                .pz-line:nth-child(4){animation-delay:1.8s; animation: pz-fadein 0.3s 1.8s both, pz-blink 1s 2.1s ease-in-out infinite;}
+            `}</style>
+
+            {/* Logo */}
+            <div className="mb-4 text-center">
+                <div className="flex items-end justify-center gap-[2px] font-black" style={{ lineHeight: 1 }}>
+                    <span style={{ color: '#34d399', fontSize: 28, letterSpacing: '0.02em', textShadow: '0 0 20px #34d399, 0 0 40px #34d39960' }}>Panzek</span>
+                    <span style={{ color: '#60a5fa', fontSize: 28, letterSpacing: '0.02em', textShadow: '0 0 20px #60a5fa, 0 0 40px #60a5fa60' }}>OS</span>
+                </div>
+                <div style={{ color: '#fbbf24', fontSize: 9, letterSpacing: '0.25em', marginTop: 2, opacity: 0.8 }}>VERSION 1.0.0</div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full max-w-[160px] mb-3">
+                <div className="w-full h-[4px] bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-[#34d399] to-[#60a5fa] rounded-full"
+                        style={{ animation: 'pz-scaleX 2.4s ease-out forwards', transformOrigin: 'left', transform: 'scaleX(0)' }}
+                    />
+                </div>
+            </div>
+
+            {/* Status lines */}
+            <div className="w-full max-w-[180px] font-mono text-left" style={{ fontSize: 7 }}>
+                <div className="pz-line" style={{ color: '#34d399' }}>✓ System RAM OK</div>
+                <div className="pz-line" style={{ color: '#34d399' }}>✓ Display Initialized</div>
+                <div className="pz-line" style={{ color: '#fbbf24' }}>✓ Loading Profile...</div>
+                <div className="pz-line" style={{ color: '#60a5fa' }}>Starting PanzekOS_</div>
+            </div>
+        </div>
+    );
+};
+
+// ─── SCREEN 2: PanzekCLI Terminal (shown after boot, showImage state) ─────────
+const HOLO_FACE = [
+    "  \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u256e  ",
+    " \u2502 \u25c9  \u25c9 \u2502 ",
+    " \u2502  \u25bf\u25bf  \u2502 ",
+    " \u2502 \u2570\u2500\u2500\u256f \u2502 ",
+    "  \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u256f  ",
+    " \u2571\u2593\u2593\u2593\u2593\u2593\u2593\u2593\u2572 ",
+    "\u2571\u2593\u2593\u2593\u2593\u2593\u2593\u2593\u2593\u2593\u2572",
+];
+
+const CLI_LINES = [
+    { text: 'Booting PanzekOS v1.0...', delay: 150, color: '#34d399' },
+    { text: '[ OK ] Starting kernel...', delay: 420, color: '#34d399' },
+    { text: '[ OK ] Mounting filesystems', delay: 680, color: '#34d399' },
+    { text: '[ OK ] Starting network', delay: 920, color: '#34d399' },
+    { text: '[ .. ] Loading user profile', delay: 1150, color: '#fbbf24' },
+    { text: '> user: KEVIN HERMANSYAH', delay: 1450, color: '#60a5fa', typing: true },
+    { text: '> role: Frontend Developer', delay: 1780, color: '#60a5fa', typing: true },
+    { text: '> loc : Bogor, ID', delay: 2060, color: '#60a5fa', typing: true },
+    { text: '[ OK ] PanzekOS ready  \u25cf', delay: 2380, color: '#34d399', blink: true },
+];
+
+const TypedText = ({ text, color }) => {
+    const [displayed, setDisplayed] = useState('');
+    const [done, setDone] = useState(false);
+    useEffect(() => {
+        let i = 0;
+        setDisplayed('');
+        setDone(false);
+        const iv = setInterval(() => {
+            i++;
+            setDisplayed(text.slice(0, i));
+            if (i >= text.length) { clearInterval(iv); setDone(true); }
+        }, 28);
+        return () => clearInterval(iv);
+    }, [text]);
+    return (
+        <span style={{ color }}>
+            {displayed}
+            {!done && <span style={{ color: '#34d399', animation: 'blink 0.7s step-end infinite' }}>\u258c</span>}
+        </span>
+    );
+};
+
+const PanzekCLI = () => {
+    const [visibleLines, setVisibleLines] = useState([]);
+    const [holoPhase, setHoloPhase] = useState(0);
+
+    useEffect(() => {
+        const t1 = setTimeout(() => setHoloPhase(1), 100);
+        const t2 = setTimeout(() => setHoloPhase(2), 600);
+        const timers = CLI_LINES.map((line, i) =>
+            setTimeout(() => {
+                setVisibleLines(prev => [...prev, i]);
+            }, line.delay)
+        );
+        return () => { clearTimeout(t1); clearTimeout(t2); timers.forEach(clearTimeout); };
+    }, []);
+
+    return (
+        <div className="absolute inset-0 bg-[#020c04] flex flex-col p-2 z-10 overflow-hidden font-mono">
+            <style>{`
+                @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+                @keyframes crt-flicker { 0%,100%{opacity:1} 50%{opacity:0.85} 25%{opacity:0.92} 75%{opacity:0.88} }
+                @keyframes holo-flicker { 0%,100%{opacity:0.85;filter:blur(0px)} 20%{opacity:0.3;filter:blur(1px)} 40%{opacity:0.9} 60%{opacity:0.4;filter:blur(0.5px)} 80%{opacity:1} }
+                @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+                @keyframes glow-pulse { 0%,100%{text-shadow:0 0 6px #34d399,0 0 12px #34d399} 50%{text-shadow:0 0 2px #34d399} }
+                .cli-line { animation: fadein 0.15s ease-out; }
+                @keyframes fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+                .holo-stable { animation: crt-flicker 4s ease-in-out infinite; }
+                .holo-flicker { animation: holo-flicker 0.4s steps(3, end) infinite; }
+                .scanline-bar { animation: scanline 3s linear infinite; }
+                .status-blink span { animation: glow-pulse 1.2s ease-in-out infinite; }
+            `}</style>
+
+            {/* Scanline overlay */}
+            <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden opacity-20">
+                <div className="scanline-bar absolute left-0 right-0 h-[2px] bg-[#34d399]/40" style={{ top: 0 }} />
+            </div>
+            {/* CRT grid overlay */}
+            <div className="absolute inset-0 pointer-events-none z-20 opacity-[0.04]"
+                style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(52,211,153,0.8) 3px,rgba(52,211,153,0.8) 4px)' }}
+            />
+
+            {/* Header */}
+            <div className="flex items-center gap-1 mb-1 pb-1 border-b border-[#34d399]/30">
+                <span style={{ color: '#34d399', fontSize: 8, letterSpacing: '0.1em', fontWeight: 900 }}>Panzek</span>
+                <span style={{ color: '#60a5fa', fontSize: 8, letterSpacing: '0.08em', fontWeight: 900 }}>OS</span>
+                <span style={{ color: '#fbbf24', fontSize: 6, letterSpacing: '0.12em', marginLeft: 2 }}>v1.0</span>
+                <span className="ml-auto" style={{ color: '#34d399', fontSize: 6, animation: 'blink 1s step-end infinite' }}>▌</span>
+            </div>
+
+            {/* Main 2-column layout */}
+            <div className="flex gap-1 flex-1 overflow-hidden">
+                {/* LEFT: Holographic Face */}
+                <div className="flex-shrink-0 flex flex-col items-center justify-start pt-1" style={{ width: 64 }}>
+                    <div
+                        className={holoPhase === 0 ? 'opacity-0' : holoPhase === 1 ? 'holo-flicker' : 'holo-stable'}
+                        style={{ transition: 'opacity 0.2s' }}
+                    >
+                        {HOLO_FACE.map((row, i) => (
+                            <div key={i} style={{
+                                fontSize: 5.5, lineHeight: 1.55,
+                                color: i === 5 || i === 6 ? '#1a6b45' : '#34d399',
+                                textShadow: '0 0 8px #34d399, 0 0 16px #34d39960',
+                                letterSpacing: 0, whiteSpace: 'nowrap'
+                            }}>{row}</div>
+                        ))}
+                        <div style={{ color: '#34d399', fontSize: 5.5, textAlign: 'center', marginTop: 2, textShadow: '0 0 6px #34d399', animation: 'blink 1s step-end infinite' }}>
+                            ◈ HOLO ◈
+                        </div>
+                    </div>
+                    <div className="mt-1 flex flex-col gap-[2px] items-center">
+                        {[40, 70, 55, 90, 30, 65].map((h, i) => (
+                            <div key={i} style={{
+                                width: 3, height: h * 0.18,
+                                background: `rgba(52,211,153,${0.3 + h * 0.005})`,
+                                borderRadius: 1, boxShadow: '0 0 3px #34d399'
+                            }} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* RIGHT: CLI Output */}
+                <div className="flex-1 flex flex-col overflow-hidden" style={{ gap: 0 }}>
+                    {CLI_LINES.map((line, i) => (
+                        visibleLines.includes(i) && (
+                            <div key={i} className={`cli-line ${line.blink ? 'status-blink' : ''}`}
+                                style={{ fontSize: 7, lineHeight: 1.7, letterSpacing: '0.03em' }}
+                            >
+                                {line.typing
+                                    ? <TypedText text={line.text} color={line.color} />
+                                    : <span style={{ color: line.color }}>{line.text}</span>
+                                }
+                            </div>
+                        )
+                    ))}
+                </div>
+            </div>
+
+            {/* Bottom bar */}
+            <div className="mt-1 pt-1 border-t border-[#34d399]/30">
+                <div style={{ color: '#34d399', fontSize: 5.5, opacity: 0.6, letterSpacing: '0.1em' }}>PanzekOS — profile session active</div>
+            </div>
+        </div>
+    );
+};
+
+class ModelErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <Html center>
+                    <div className="flex flex-col items-center justify-center p-6 bg-white/70 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-56 text-center">
+                        <div className="text-slate-700 font-black uppercase tracking-widest text-[10px]">
+                            3D Model Error
+                        </div>
+                        <div className="mt-2 text-xs font-semibold text-slate-600">
+                            Model belum bisa dimuat. Cek koneksi atau file 3D.
+                        </div>
+                    </div>
+                </Html>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 // Helper to pause rendering when offscreen
 const PerformanceOptimizer = () => {
     const { gl, setFrameloop } = useThree();
     useEffect(() => {
         const observer = new IntersectionObserver(([entry]) => {
             // When visible, run animation loop. When hidden, stop it.
-            setFrameloop(entry.isIntersecting ? 'always' : 'never');
+            setFrameloop(entry.isIntersecting ? 'demand' : 'never');
         }, { threshold: 0.1 });
 
         if (gl.domElement.parentElement) {
@@ -30,37 +257,26 @@ const PerformanceOptimizer = () => {
     return null;
 };
 
-// --- NEW FIX: Floating Background Shapes for empty side spaces ---
-const FloatingShapesBackground = () => {
-    return (
-        <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: -10 }}>
-            {/* Left Side Shapes */}
-            <div className="absolute top-[10%] left-[-2%] md:left-[5%] w-32 h-32 bg-pink-400 rounded-2xl rotate-12 opacity-40 blur-[2px] shadow-[inset_10px_10px_20px_rgba(255,255,255,0.8),_inset_-10px_-10px_20px_rgba(0,0,0,0.1),_10px_10px_20px_rgba(0,0,0,0.05)] animate-[float_8s_ease-in-out_infinite]"></div>
 
-            <div className="absolute top-[40%] left-[-5%] md:left-[2%] w-48 h-48 bg-blue-300 rounded-full opacity-30 blur-[4px] shadow-[inset_15px_15px_30px_rgba(255,255,255,0.7),_inset_-15px_-15px_30px_rgba(0,0,0,0.1),_15px_15px_30px_rgba(0,0,0,0.05)] animate-[float_12s_ease-in-out_infinite_reverse]"></div>
-
-            <div className="absolute top-[80%] left-[1%] md:left-[8%] w-24 h-24 bg-yellow-300 rounded-[2rem] rotate-45 opacity-50 blur-[1px] shadow-[inset_8px_8px_16px_rgba(255,255,255,0.9),_inset_-8px_-8px_16px_rgba(0,0,0,0.15)] animate-[float_9s_ease-in-out_infinite_1s]"></div>
-
-            {/* Right Side Shapes */}
-            <div className="absolute top-[20%] right-[-5%] md:right-[2%] w-40 h-40 bg-green-300 rounded-full opacity-30 blur-[3px] shadow-[inset_12px_12px_24px_rgba(255,255,255,0.7),_inset_-12px_-12px_24px_rgba(0,0,0,0.1)] animate-[float_10s_ease-in-out_infinite_0.5s]"></div>
-
-            <div className="absolute top-[60%] right-[-2%] md:right-[6%] w-28 h-28 bg-orange-300 rounded-3xl -rotate-12 opacity-40 blur-[2px] shadow-[inset_10px_10px_20px_rgba(255,255,255,0.8),_inset_-10px_-10px_20px_rgba(0,0,0,0.1)] animate-[float_7s_ease-in-out_infinite_reverse_2s]"></div>
-
-            <div className="absolute top-[90%] right-[0%] md:right-[4%] w-36 h-36 bg-purple-300 rounded-[2.5rem] rotate-[30deg] opacity-20 blur-[5px] shadow-[inset_15px_15px_30px_rgba(255,255,255,0.6)] animate-[float_11s_ease-in-out_infinite]"></div>
-
-            <style>{`
-                @keyframes float {
-                    0%, 100% { transform: translateY(0) rotate(0deg); }
-                    50% { transform: translateY(-30px) rotate(10deg); }
-                }
-            `}</style>
-        </div>
-    );
-};
 
 // Custom Loader component with progress bar
 const CanvasLoader = () => {
-    const { progress } = useProgress();
+    const { progress, active } = useProgress();
+    const [showSlowNetwork, setShowSlowNetwork] = useState(false);
+
+    useEffect(() => {
+        if (!active) {
+            setShowSlowNetwork(false);
+            return undefined;
+        }
+
+        const timer = setTimeout(() => {
+            setShowSlowNetwork(true);
+        }, 2500);
+
+        return () => clearTimeout(timer);
+    }, [active]);
+
     return (
         <Html center>
             <div className="flex flex-col items-center justify-center p-6 bg-white/60 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-48 transition-all duration-300">
@@ -78,15 +294,345 @@ const CanvasLoader = () => {
                 <div className="text-orange-500 font-bold uppercase tracking-widest text-[10px] mt-1 text-center">
                     Setting up Camp...
                 </div>
+                {showSlowNetwork && (
+                    <div className="mt-2 text-[10px] font-semibold text-slate-600 text-center">
+                        Koneksi lambat, model 3D masih loading.
+                    </div>
+                )}
             </div>
         </Html>
+    );
+};
+
+const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDisconnect, portsRef, index }) => {
+    const controls = useAnimation();
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+    const [pathD, setPathD] = useState('');
+    const [nearPort, setNearPort] = useState(false);
+    const snappedRef = useRef(false); // guard to prevent spring-back after snap
+    const plugRef = useRef(null);
+    const magnetRadius = 240;
+    const snapRadius = 200;
+
+    const colorHex = {
+        red: '#ef4444',
+        yellow: '#eab308',
+        green: '#22c55e',
+        blue: '#3b82f6'
+    }[color];
+
+    const shadowHex = {
+        red: '#b91c1c',
+        yellow: '#ca8a04',
+        green: '#15803d',
+        blue: '#1d4ed8'
+    }[color];
+
+    const highlightHex = {
+        red: '#fca5a5',
+        yellow: '#fdf08a',
+        green: '#86efac',
+        blue: '#93c5fd'
+    }[color];
+
+    // Starting x position for the cable off-screen
+    const startX = -1000;
+
+    // Fixed disconnected resting positions
+    const restingPositions = {
+        red: { x: -180, y: 0 },
+        yellow: { x: -220, y: 0 },
+        green: { x: -200, y: 0 },
+        blue: { x: -160, y: 0 }
+    };
+
+    // Extreme off-screen start heights and droop/rise offsets to force crossing/tangling
+    const leftTangle = {
+        red: { startY: 1200, cp1y: 800, cp2y: -600 },
+        yellow: { startY: -800, cp1y: 400, cp2y: 900 },
+        green: { startY: 600, cp1y: -1200, cp2y: 800 },
+        blue: { startY: -1000, cp1y: 200, cp2y: 400 }
+    }[color];
+
+    // Calculate dynamic bezier curve path based on motion value state or resting state
+    const updatePath = () => {
+        const curX = isConnected ? 0 : x.get();
+        const curY = isConnected ? 0 : y.get();
+
+        const targetX = 0;
+        const targetY = 0;
+
+        // Fixed start position far left relative to world, plus unique vertical offset
+        const svgStartX = -1500 - (restingPositions[color].x + curX);
+        const svgStartY = -curY + leftTangle.startY;
+
+        // Chaotic overlapping control points
+        const cp1x = svgStartX + (targetX - svgStartX) * 0.35;
+        const cp1y = svgStartY + leftTangle.cp1y;
+        const cp2x = targetX - Math.abs(targetX - svgStartX) * 0.45;
+        const cp2y = targetY + leftTangle.cp2y;
+
+        // SVG Path String
+        setPathD(`M ${svgStartX} ${svgStartY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${targetX} ${targetY}`);
+    };
+
+    useEffect(() => {
+        // Initial path setup
+        updatePath();
+
+        // Subscribe to framer-motion values to update SVG real-time during drag
+        const unsubscribeX = x.on('change', updatePath);
+        const unsubscribeY = y.on('change', updatePath);
+        return () => { unsubscribeX(); unsubscribeY(); };
+    }, [isConnected, colorHex]); // re-run if connection state changes
+
+
+    const getPortDistance = (fallbackPoint) => {
+        const portEl = portsRef.current[color];
+        if (!portEl) {
+            return null;
+        }
+
+        const portRect = portEl.getBoundingClientRect();
+        const portCx = portRect.left + portRect.width / 2;
+        const portCy = portRect.top + portRect.height / 2;
+
+        const plugRect = plugRef.current?.getBoundingClientRect();
+        const plugCx = plugRect ? plugRect.left + plugRect.width / 2 : fallbackPoint?.x;
+        const plugCy = plugRect ? plugRect.top + plugRect.height / 2 : fallbackPoint?.y;
+
+        if (plugCx == null || plugCy == null) {
+            return null;
+        }
+
+        return Math.hypot(portCx - plugCx, portCy - plugCy);
+    };
+
+    const handleDrag = (event, info) => {
+        const portEl = portsRef.current[color];
+        if (!portEl) {
+            return;
+        }
+
+        const dist = getPortDistance(info.point);
+        if (dist == null) {
+            return;
+        }
+
+        // Proximity glow feedback when within magnet range
+        setNearPort(dist < magnetRadius);
+
+        // Auto snap when within magnetic snap range
+        if (dist < snapRadius && !snappedRef.current) {
+            snappedRef.current = true; // Mark snapped so dragEnd doesn't spring back
+            setNearPort(false);
+            controls.stop();
+            x.set(0);
+            y.set(0);
+            onConnect(color);
+        }
+    };
+
+    const handleDragEnd = (event, info) => {
+        const dist = getPortDistance(info.point);
+        if (dist != null && dist < snapRadius && !snappedRef.current) {
+            snappedRef.current = true;
+            setNearPort(false);
+            controls.stop();
+            x.set(0);
+            y.set(0);
+            onConnect(color);
+            return;
+        }
+
+        // Only spring back to resting if we did NOT snap into the port
+        if (!snappedRef.current) {
+            controls.start({ x: 0, y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
+        }
+        snappedRef.current = false;
+        setNearPort(false);
+    };
+
+    // Shared Plug UI
+    const plugHead = (
+        <div ref={plugRef} className="w-9 h-7 bg-slate-200 rounded-[8px] border-[2px] border-slate-400 shadow-xl flex items-center justify-end pr-[1px] relative group overflow-visible"
+            style={{
+                background: 'linear-gradient(to bottom, #f8fafc 0%, #cbd5e1 50%, #94a3b8 100%)',
+                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), -4px 6px 12px rgba(0,0,0,0.3)'
+            }}>
+            {/* Grip indentations */}
+            <div className="flex flex-col gap-[2px] mr-1 opacity-70">
+                <div className="w-1 h-[2px] bg-slate-600 rounded-full shadow-[inset_0_1px_1px_rgba(0,0,0,0.5)]" />
+                <div className="w-1 h-[2px] bg-slate-600 rounded-full shadow-[inset_0_1px_1px_rgba(0,0,0,0.5)]" />
+                <div className="w-1 h-[2px] bg-slate-600 rounded-full shadow-[inset_0_1px_1px_rgba(0,0,0,0.5)]" />
+            </div>
+            {/* The metal connector pin */}
+            <div className="absolute -right-[6px] w-[5px] h-3.5 bg-zinc-300 border border-zinc-500 rounded-r-[2px] pointer-events-none"
+                style={{ background: 'linear-gradient(to bottom, #e4e4e7 0%, #a1a1aa 100%)', boxShadow: 'inset -1px 0 2px rgba(255,255,255,0.8)' }} />
+        </div>
+    );
+
+    // Dynamic Cable Rendering (Layered strokes for 3D effect)
+    const renderCable = (containerTop, containerLeft) => (
+        <svg className="absolute overflow-visible pointer-events-none" style={{ top: 0, left: 0, width: 1, height: 1, zIndex: -1 }}>
+            {/* Drop Shadow */}
+            <path d={pathD} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="18" strokeLinecap="round" transform="translate(0, 10)" filter="blur(6px)" />
+            {/* Bottom Dark Stroke (3D shadow) */}
+            <path d={pathD} fill="none" stroke={shadowHex} strokeWidth="16" strokeLinecap="round" transform="translate(0, 2)" />
+            {/* Base Color Stroke */}
+            <path d={pathD} fill="none" stroke={colorHex} strokeWidth="14" strokeLinecap="round" />
+            {/* Top Highlight Stroke for Gloss */}
+            <path d={pathD} fill="none" stroke={highlightHex} strokeWidth="4" strokeLinecap="round" transform="translate(0, -4)" opacity="0.6" />
+        </svg>
+    );
+
+    if (isConnected) {
+        return (
+            <div className="absolute hidden md:flex items-center z-10 cursor-pointer hover:brightness-110 group transition-transform hover:translate-x-1"
+                style={{ top: portY, transform: 'translateY(-50%)', left: -42, height: 20 }}
+                onClick={() => onDisconnect(color)}
+                title="Click to disconnect"
+            >
+                {/* SVG curves rendered exactly to (0,0) of this connected container */}
+                <div className="absolute top-1/2 left-[5px]">{renderCable()}</div>
+
+                {plugHead}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-md pointer-events-none flex items-center gap-1 shadow-lg border border-red-500">
+                    <span className="mb-[2px]">&times;</span> UNPLUG
+                </div>
+            </div>
+        );
+    }
+
+    const colorHexMap = { red: '#ef4444', yellow: '#eab308', green: '#22c55e', blue: '#3b82f6' };
+
+    return (
+        <motion.div
+            drag
+            dragMomentum={false}
+            dragElastic={0.15}
+            animate={controls}
+            style={{ x, y, top: startY, left: restingPositions[color].x }}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
+            whileHover={{ scale: 1.05 }}
+            whileDrag={{ scale: 1.15, zIndex: 50, cursor: 'grabbing' }}
+            className="absolute z-40 hidden md:flex items-center cursor-grab group mt-[-14px]"
+        >
+            {/* Anchor point for SVGs inside the motion div at the left edge of the plug */}
+            <div className="absolute top-1/2 left-[5px]">{renderCable()}</div>
+
+            {/* Plug with proximity glow ring when near port */}
+            <div style={nearPort ? { filter: `drop-shadow(0 0 8px ${colorHexMap[color]}) drop-shadow(0 0 16px ${colorHexMap[color]})`, transition: 'filter 0.15s ease' } : { filter: 'none', transition: 'filter 0.2s ease' }}>
+                {plugHead}
+            </div>
+
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-[10px] font-black px-3 py-1 rounded-md pointer-events-none whitespace-nowrap shadow-lg">
+                {nearPort ? '⚡ AUTO CONNECT' : 'DRAG INTO PORT'}
+            </div>
+        </motion.div>
+    );
+};
+
+const RightCable = ({ color, top }) => {
+    const colorHex = { red: '#ef4444', yellow: '#eab308', green: '#22c55e', blue: '#3b82f6' }[color];
+    const shadowHex = { red: '#b91c1c', yellow: '#ca8a04', green: '#15803d', blue: '#1d4ed8' }[color];
+    const highlightHex = { red: '#fca5a5', yellow: '#fdf08a', green: '#86efac', blue: '#93c5fd' }[color];
+
+    const rightTangle = {
+        red: { endY: 700, cp1y: -400, cp2y: 900 },
+        yellow: { endY: -600, cp1y: 600, cp2y: -300 },
+        green: { endY: 300, cp1y: 1000, cp2y: -500 },
+        blue: { endY: -900, cp1y: -200, cp2y: 800 }
+    }[color];
+
+    const startX = -20;
+    const endX = 2500;
+
+    const cp1x = 700;
+    const cp1y = rightTangle.cp1y;
+    const cp2x = 1500;
+    const cp2y = rightTangle.cp2y;
+
+    const pathD = `M ${startX} 0 C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${rightTangle.endY}`;
+
+    return (
+        <div className="absolute right-0 hidden md:block pointer-events-none" style={{ top, width: 0, height: 0, zIndex: -1 }}>
+            <svg className="absolute overflow-visible" style={{ top: 0, left: 0, width: 1, height: 1 }}>
+                <path d={pathD} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="18" strokeLinecap="round" transform="translate(0, 10)" filter="blur(6px)" />
+                <path d={pathD} fill="none" stroke={shadowHex} strokeWidth="16" strokeLinecap="round" transform="translate(0, 2)" />
+                <path d={pathD} fill="none" stroke={colorHex} strokeWidth="14" strokeLinecap="round" />
+                <path d={pathD} fill="none" stroke={highlightHex} strokeWidth="4" strokeLinecap="round" transform="translate(0, -4)" opacity="0.6" />
+            </svg>
+        </div>
     );
 };
 
 const LandingPage = ({ page, props }) => {
     const { repos = [] } = props;
     const comp = useRef();
+    const heroRobotRef = useRef(null);
+    const portsRef = useRef({});
     const [isMobile, setIsMobile] = useState(false);
+    const prefersReducedMotion = useReducedMotion();
+    const [isLowPower, setIsLowPower] = useState(false);
+    const isHeroRobotInView = useInView(heroRobotRef, { once: true, margin: "200px" });
+    const [gameboyStatus, setGameboyStatus] = useState('READY');
+    const [pressedButton, setPressedButton] = useState(null);
+    const pressTimeoutRef = useRef(null);
+
+    // Cables State
+    const [connectedCables, setConnectedCables] = useState({ red: false, yellow: false, green: false, blue: false });
+    const [isBooting, setIsBooting] = useState(false);
+    const [showImage, setShowImage] = useState(false);
+    const [showHome, setShowHome] = useState(false);
+
+    const allConnected = connectedCables.red && connectedCables.yellow && connectedCables.green && connectedCables.blue;
+
+    const bootTimerRef = useRef(null);
+    const homeTimerRef = useRef(null);
+
+    useEffect(() => {
+        if (allConnected) {
+            // Only start boot if not already booting and image not showing
+            if (!showImage && !showHome && !isBooting) {
+                setIsBooting(true);
+                bootTimerRef.current = setTimeout(() => {
+                    setIsBooting(false);
+                    setShowImage(true);
+
+                    // Wait for CLI animation to finish then go to Home OS
+                    homeTimerRef.current = setTimeout(() => {
+                        setShowImage(false);
+                        setShowHome(true);
+                    }, 3500);
+                }, 2800);
+            }
+        } else {
+            // INSTANT OFF: Unplugging kills everything immediately.
+            if (bootTimerRef.current) {
+                clearTimeout(bootTimerRef.current);
+                bootTimerRef.current = null;
+            }
+            if (homeTimerRef.current) {
+                clearTimeout(homeTimerRef.current);
+                homeTimerRef.current = null;
+            }
+            setIsBooting(false);
+            setShowImage(false);
+            setShowHome(false);
+        }
+    }, [allConnected]); // ← only depend on allConnected, not isBooting/showImage/showHome
+
+
+    const handleConnect = (color) => {
+        setConnectedCables(prev => ({ ...prev, [color]: true }));
+    };
+
+    const handleDisconnect = (color) => {
+        setConnectedCables(prev => ({ ...prev, [color]: false }));
+    };
 
     useEffect(() => {
         const checkMobile = () => {
@@ -98,17 +644,55 @@ const LandingPage = ({ page, props }) => {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const cores = navigator.hardwareConcurrency ?? 4;
+        const memory = navigator.deviceMemory ?? 4;
+        const saveData = navigator.connection?.saveData ?? false;
+        const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+        const lowPower = prefersReducedMotion || saveData || isCoarsePointer || cores <= 6 || memory <= 6;
+
+        setIsLowPower(lowPower);
+    }, [prefersReducedMotion]);
+
+    const heroRenderSettings = useMemo(() => {
+        const lowPower = isLowPower || isMobile;
+
+        return {
+            dpr: lowPower ? [0.7, 0.95] : [0.9, 1.25],
+            antialias: !lowPower,
+            powerPreference: lowPower ? 'low-power' : 'high-performance'
+        };
+    }, [isLowPower, isMobile]);
+
+    useEffect(() => {
+        return () => {
+            if (pressTimeoutRef.current) {
+                clearTimeout(pressTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    const handleGameboyPress = (label) => {
+        setGameboyStatus(label);
+        setPressedButton(label);
+
+        if (pressTimeoutRef.current) {
+            clearTimeout(pressTimeoutRef.current);
+        }
+
+        pressTimeoutRef.current = setTimeout(() => {
+            setPressedButton(null);
+        }, 160);
+    };
+
+    const dpadPressed = ['UP', 'DOWN', 'LEFT', 'RIGHT'].includes(pressedButton);
+
     useLayoutEffect(() => {
         let ctx = gsap.context(() => {
-            // Hero Text Animation
-            gsap.from('.hero-text', {
-                y: 50,
-                opacity: 0,
-                duration: 1,
-                stagger: 0.2,
-                ease: 'back.out(1.7)'
-            });
-
             // Robot Entrance (Scale up)
             gsap.from('.hero-robot', {
                 scale: 0,
@@ -118,16 +702,15 @@ const LandingPage = ({ page, props }) => {
                 delay: 0.2
             });
 
-            // Feature Cards Animation
-            gsap.from('.feature-card', {
+            // Profile Card Animation
+            gsap.from('.profile-card', {
                 scrollTrigger: {
-                    trigger: '.features-section',
+                    trigger: '.profile-section',
                     start: 'top 80%',
                 },
                 y: 50,
                 opacity: 0,
                 duration: 0.8,
-                stagger: 0.2,
                 ease: 'power2.out'
             });
 
@@ -147,311 +730,730 @@ const LandingPage = ({ page, props }) => {
         return () => ctx.revert();
     }, []);
 
-    const features = [
-        {
-            title: "JavaScript",
-            desc: "Modern ES6+, React, Node.js, and TypeScript for dynamic web applications.",
-            icon: "/images/javascript_toy.webp",
-            color: "blue"
-        },
-        {
-            title: "PHP",
-            desc: "Laravel, MySQL, RESTful APIs, and backend development expertise.",
-            icon: "/images/php_toy.webp",
-            color: "pink"
-        },
-        {
-            title: "Python",
-            desc: "Data processing, automation, scripting, and backend development.",
-            icon: "/images/python_toy.webp",
-            color: "green"
-        },
-        {
-            title: "SQL",
-            desc: "Database design, complex queries, and data integrity optimization.",
-            icon: "/images/sql_toy.webp",
-            color: "yellow"
-        },
-        {
-            title: "Git",
-            desc: "Version control, team collaboration, and repository management.",
-            icon: "/images/git_toy.webp",
-            color: "orange"
-        }
-    ];
-
     return (
         <MainLayout page={page}>
-            <div ref={comp} className="flex flex-col gap-12 md:gap-16 pb-12">
+            {/* ── Intro Overlay: only on `/`, throttled 1h via localStorage ── */}
+            <IntroOverlay />
+            <div className="fixed inset-0 pointer-events-none -z-40 bg-gradient-to-b from-[#4a9ad4] via-[#7cbbed] to-[#d8ecf8] overflow-hidden">
+                {/* Soft blended clouds integrated into background gradient */}
+                <div className="absolute top-[45%] left-[5%] w-[50%] h-[180px] bg-white/30 rounded-full blur-[60px]"></div>
+                <div className="absolute top-[55%] right-[0%] w-[45%] h-[160px] bg-white/35 rounded-full blur-[50px]"></div>
+                <div className="absolute top-[65%] left-[20%] w-[70%] h-[200px] bg-white/40 rounded-full blur-[70px]"></div>
+                <div className="absolute top-[75%] left-[0%] w-full h-[300px] bg-white/50 rounded-full blur-[80px]"></div>
+                {/* Subtle upper cloud wisps */}
+                <div className="absolute top-[20%] right-[25%] w-[250px] h-[80px] bg-white/20 rounded-full blur-[40px]"></div>
+                <div className="absolute top-[15%] left-[60%] w-[200px] h-[60px] bg-white/15 rounded-full blur-[35px]"></div>
+            </div>
 
+            <div ref={comp} className="flex flex-col gap-12 md:gap-16 pb-12 relative w-full">
                 {/* HERO SECTION: 2-Column Layout */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-6 md:pt-12 max-w-7xl mx-auto w-full px-4">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-8 pt-2 md:pt-16 max-w-7xl mx-auto w-full px-4 overflow-visible">
 
                     {/* Left: Text Content */}
-                    {/* Left: Text Content */}
-                    <div className="flex flex-col items-center md:items-start text-center md:text-left z-10 w-full md:w-1/2">
-                        <span className="hero-text inline-block px-4 py-1 mb-4 bg-yellow-300 text-yellow-800 font-black rounded-full text-xs md:text-sm uppercase tracking-widest border-2 border-yellow-400 transform -rotate-2">
-                            Available for Hire 2026
-                        </span>
-                        <h1 className="hero-text font-black tracking-tighter mb-6 leading-[0.85] select-none">
-                            <span className="block text-[3.5rem] sm:text-[4rem] md:text-[6.5rem] lg:text-[7.5rem] text-white drop-shadow-xl"
-                                style={{ textShadow: "0 4px 0 #cbd5e1, 0 8px 0 #94a3b8, 0 12px 0 #64748b, 0 16px 0 #475569, 0 20px 20px rgba(0,0,0,0.2)" }}>
-                                KEVIN
+                    <div className="flex flex-col items-center md:items-start text-center md:text-left z-10 w-full md:w-[45%] md:pl-16">
+                        <h1 className="hero-text font-black tracking-tighter mb-4 leading-[0.9] select-none flex flex-col gap-2 min-h-[100px] sm:min-h-[140px] md:min-h-[180px] lg:min-h-[220px]">
+                            {/* KEVIN - Multi-colored floating text */}
+                            <span className="flex justify-center md:justify-start text-[3.5rem] sm:text-[5rem] md:text-[7rem] lg:text-[8.5rem] drop-shadow-xl relative z-10 -space-x-1 md:-space-x-3">
+                                {[
+                                    { char: 'K', color: '#ef4444', shadow: '#b91c1c', shadow2: '#991b1b', delay: 0 },
+                                    { char: 'E', color: '#eab308', shadow: '#ca8a04', shadow2: '#a16207', delay: 0.1 },
+                                    { char: 'V', color: '#22c55e', shadow: '#16a34a', shadow2: '#15803d', delay: 0.15 },
+                                    { char: 'I', color: '#3b82f6', shadow: '#2563eb', shadow2: '#1d4ed8', delay: 0.25 },
+                                    { char: 'N', color: '#f97316', shadow: '#ea580c', shadow2: '#c2410c', delay: 0.2 }
+                                ].map((item, i) => (
+                                    <motion.span
+                                        key={i}
+                                        initial={{ opacity: 0, y: 40, rotateX: 45, scale: 0.5 }}
+                                        animate={{
+                                            opacity: 1,
+                                            y: prefersReducedMotion ? 0 : [0, -16, -6, -14, 0],
+                                            x: prefersReducedMotion ? 0 : [0, 2, -2, 1, 0],
+                                            rotateX: 0,
+                                            rotateZ: prefersReducedMotion ? 0 : [0, -3, 3, -2, 0],
+                                            scale: prefersReducedMotion ? 1 : [1, 1.1, 0.95, 1.08, 1],
+                                            scaleX: prefersReducedMotion ? 1 : [1, 1.12, 0.92, 1.05, 1],
+                                            scaleY: prefersReducedMotion ? 1 : [1, 0.98, 1.08, 0.98, 1],
+                                        }}
+                                        transition={{
+                                            opacity: { duration: 0.4, delay: item.delay },
+                                            y: [
+                                                { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
+                                                { duration: 2.4 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + item.delay }
+                                            ],
+                                            x: prefersReducedMotion ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1 + item.delay },
+                                            rotateX: { duration: 0.8, type: 'spring', stiffness: 200, delay: item.delay },
+                                            rotateZ: prefersReducedMotion ? undefined : { duration: 2.6 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.12 },
+                                            scale: [
+                                                { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
+                                                { duration: 2.8 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.2 }
+                                            ],
+                                            scaleX: prefersReducedMotion ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.3 + i * 0.2 },
+                                            scaleY: prefersReducedMotion ? undefined : { duration: 2.1 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.25 + i * 0.2 }
+                                        }}
+                                        className="origin-bottom"
+                                        style={{
+                                            color: item.color,
+                                            textShadow: `0 2px 0 ${item.shadow}, 0 4px 0 ${item.shadow2}, 0 8px 10px rgba(0,0,0,0.2)`,
+                                            willChange: 'transform'
+                                        }}
+                                    >
+                                        {item.char}
+                                    </motion.span>
+                                ))}
                             </span>
-                            <span className="block text-[2.5rem] sm:text-[3rem] md:text-[5rem] lg:text-[6rem] text-yellow-400 drop-shadow-xl scale-y-95 origin-top"
-                                style={{ textShadow: "0 4px 0 #fcd34d, 0 8px 0 #fbbf24, 0 12px 0 #d97706, 0 16px 0 #b45309, 0 20px 20px rgba(0,0,0,0.2)" }}>
-                                HERMANSYAH
-                            </span>
-                        </h1>
-                        <p className="hero-text text-lg sm:text-xl md:text-2xl font-bold text-slate-400 mb-10 max-w-lg leading-relaxed">
-                            Full-stack developer crafting exceptional digital experiences.
-                            <span className="block text-slate-500 mt-2">Let's build something amazing together!</span>
-                        </p>
-                        <div className="hero-text flex flex-wrap justify-center md:justify-start gap-4 scale-100 md:scale-110 origin-top-left">
-                            <PlasticButton color="blue" onClick={() => window.location.href = '/projects'}>
-                                View Projects
-                            </PlasticButton>
-                            <PlasticButton color="yellow" onClick={() => window.location.href = '/contact'}>
-                                Hire Creator
-                            </PlasticButton>
-                        </div>
-                    </div>
-
-                    {/* Right: 3D Robot Showcase */}
-                    <div ref={comp} className="hero-robot order-first md:order-none relative w-[280px] h-[280px] sm:w-[350px] sm:h-[350px] md:w-[550px] md:h-[550px] flex-shrink-0 z-20">
-                        {/* Glow Effect */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-400/30 rounded-full blur-[80px] pointer-events-none"></div>
-
-                        <Canvas
-                            camera={{ position: [0, 1.5, 7], fov: 45 }}
-                            dpr={[1, 1.5]} // Performance: Dynamic dpr, capped at 1.5 for sharper look on mobile without killing battery
-                            frameloop="always" // We'll rely on the fact that when this component unmounts/is hidden, it stops. 
-                        >
-                            <PerformanceOptimizer />
-                            <Suspense fallback={<CanvasLoader />}>
-                                <ambientLight intensity={1.4} />
-                                <directionalLight position={[5, 10, 5]} intensity={2.5} />
-                                <pointLight position={[-5, 5, -5]} intensity={1.2} color="#ff6b9d" />
-
-                                <group position={isMobile ? [0, 0, 0] : [0, 0, 0]}>
-                                    <Robocop3D
-                                        scale={isMobile ? 1.6 : 1.8}
-                                        position={isMobile ? [0, -0.6, 0] : [0.2, -0.6, 0]}
-                                    />
-                                </group>
-
-                                <OrbitControls
-                                    enableZoom={false}
-                                    enablePan={false}
-                                    enableRotate={false}
-                                />
-                            </Suspense>
-                        </Canvas>
-                    </div>
-                </div>
-
-                {/* FEATURES / TOY SPECS SECTION */}
-                <div className="features-section max-w-6xl mx-auto w-full px-4 mt-4">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="h-1 flex-grow bg-slate-200 rounded-full"></div>
-                        <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest">Languages & Tech</h2>
-                        <div className="h-1 flex-grow bg-slate-200 rounded-full"></div>
-                    </div>
-
-                    <div className="flex flex-wrap justify-center gap-8">
-                        {features.map((feat, i) => (
-                            <div key={i} className="feature-card w-full md:w-[30%] h-full">
-                                <PlasticCard color={feat.color} title={feat.title} isNew={i >= 3} className="h-full">
-                                    <div className="p-6 text-center flex flex-col items-center h-full">
-                                        <div className="mb-6 bg-white/50 w-32 h-32 flex items-center justify-center rounded-2xl border-4 border-white/40 shadow-sm overflow-hidden transform hover:scale-110 transition-transform duration-300">
-                                            <img src={feat.icon} alt={feat.title} className="w-28 h-28 object-contain drop-shadow-sm" />
-                                        </div>
-                                        <p className="font-bold text-slate-500 leading-snug flex-grow">
-                                            {feat.desc}
-                                        </p>
-                                    </div>
-                                </PlasticCard>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* NEW ARRIVALS PREVIEW */}
-                <div className="projects-section max-w-6xl mx-auto w-full px-4 mt-8">
-                    <div className="flex justify-between items-end mb-8 px-2">
-                        <div className="relative">
-                            <h2 className="text-5xl md:text-6xl font-black text-slate-800 tracking-tight leading-none">
-                                Featured <br />
-                                <span className="
-                                    text-pink-500 inline-block mt-2
-                                " style={{
-                                        textShadow: `
-                                        0 1px 0 #db2777,
-                                        0 2px 0 #db2777,
-                                        0 3px 0 #db2777,
-                                        0 4px 0 #be185d,
-                                        0 5px 0 #be185d,
-                                        0 6px 0 #be185d,
-                                        0 7px 12px rgba(0,0,0,0.2)
-                                    `,
-                                        WebkitTextStroke: '2px white',
-                                        paintOrder: 'stroke fill'
-                                    }}>PROJECTS</span>
-                            </h2>
-                            <div className="absolute -top-6 -right-12 rotate-12 bg-yellow-400 text-yellow-900 text-xs font-black px-3 py-1 rounded-full shadow-md uppercase tracking-wide border-2 border-white">
-                                Collectors Edition
-                            </div>
-                        </div>
-                        <a href="/projects" className="hidden md:block text-pink-500 font-black hover:underline decoration-4 underline-offset-4 text-lg">
-                            See Collection &rarr;
-                        </a>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-                        {repos.slice(0, 3).map((repo, index) => (
-                            <div
-                                key={repo.id || index}
-                                onClick={() => window.location.href = `/project?id=${repo.id}`}
-                                className="project-card cursor-pointer group relative"
+                            {/* HERMANSYAH - White block text */}
+                            <motion.span
+                                initial={{ opacity: 0, scaleY: 0, originY: 0 }}
+                                animate={{
+                                    opacity: 1,
+                                    scaleY: prefersReducedMotion ? 1 : [1, 1.06, 0.98, 1.04, 1],
+                                    y: prefersReducedMotion ? 0 : [0, -5, -1, -7, 0],
+                                    x: prefersReducedMotion ? 0 : [0, 1.5, -1, 1, 0],
+                                    rotateZ: prefersReducedMotion ? 0 : [0, -1.5, 1, -1, 0]
+                                }}
+                                transition={{
+                                    opacity: { duration: 0.5, delay: 0.5 },
+                                    y: prefersReducedMotion ? undefined : { duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 1.2 },
+                                    x: prefersReducedMotion ? undefined : { duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 },
+                                    rotateZ: prefersReducedMotion ? undefined : { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay: 1.3 },
+                                    scaleY: prefersReducedMotion
+                                        ? { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 }
+                                        : [
+                                            { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 },
+                                            { duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }
+                                        ]
+                                }}
+                                className="block text-[2.2rem] sm:text-[3.5rem] md:text-[5rem] lg:text-[5.5rem] text-white drop-shadow-2xl origin-top relative z-0 mt-[-8px] md:mt-[-20px] font-black tracking-normal"
+                                style={{
+                                    textShadow: "0 1px 0 #f1f5f9, 0 2px 0 #e2e8f0, 0 3px 0 #cbd5e1, 0 4px 0 #94a3b8, 0 5px 0 #64748b, 0 6px 0 #475569, 0 10px 15px rgba(0,0,0,0.3)",
+                                    willChange: 'transform'
+                                }}
                             >
-                                <div className="absolute -inset-2 bg-gradient-to-r from-blue-200 to-pink-200 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition duration-500 blur-xl"></div>
-                                <PlasticCard
-                                    color={['blue', 'pink', 'green'][index % 3]}
-                                    title={repo.title || 'Mystery Box'}
-                                    className="transform transition-all duration-300 group-hover:-translate-y-4 group-hover:rotate-1"
-                                >
-                                    <div className="relative aspect-[4/5] bg-gradient-to-b from-slate-50 to-white rounded-lg flex items-center justify-center p-6 overflow-hidden">
-                                        {/* Background Pattern */}
-                                        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#4a5568_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                                HERMANSYAH
+                            </motion.span>
+                        </h1>
 
-                                        {repo.image_url ? (
-                                            <img
-                                                src={repo.image_url.startsWith('http') ? repo.image_url : `/storage/${repo.image_url}`}
-                                                className="w-full h-full object-contain drop-shadow-xl transform transition-transform duration-500 group-hover:scale-110"
-                                                alt={repo.title}
+                        {/* First Subtitle */}
+                        <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.7 }}
+                            className="hero-text text-sm sm:text-lg md:text-xl font-bold text-white mb-4 md:mb-8 max-w-lg leading-relaxed tracking-wide"
+                            style={{ textShadow: "0 2px 4px rgba(0,0,0,0.2)" }}
+                        >
+                            3D Designer &bull; Frontend &bull; Illustrator
+                        </motion.p>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.8 }}
+                            className="hero-text flex flex-wrap justify-center md:justify-start gap-3 md:gap-4 mb-4 md:mb-10"
+                        >
+                            {/* exact button styles matching reference */}
+                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                <PlasticButton color="blue" onClick={() => window.location.href = '/projects'} className="capitalize !text-[13px] md:!text-[15px] !py-2.5 md:!py-3 !px-6 md:!px-8 !rounded-[1.2rem] !bg-[#1c7ed6] !border-[#1864ab] !shadow-[0_6px_0_#1864ab,_0_10px_20px_rgba(0,0,0,0.2)] hover:!brightness-110 !font-bold">
+                                    View Projects
+                                </PlasticButton>
+                            </motion.div>
+                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                <PlasticButton color="yellow" onClick={() => window.location.href = '/contact'} className="capitalize !text-[13px] md:!text-[15px] !py-2.5 md:!py-3 !px-6 md:!px-8 !rounded-[1.2rem] !text-white !bg-[#f59f00] !border-[#e67700] !shadow-[0_6px_0_#d97706,_0_10px_20px_rgba(0,0,0,0.2)] hover:!brightness-110 !font-bold">
+                                    Hire Creator
+                                </PlasticButton>
+                            </motion.div>
+                        </motion.div>
+
+                        {/* Second Subtitle */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.9 }}
+                            className="flex gap-3 md:gap-4 text-white text-xs sm:text-sm font-black tracking-widest drop-shadow-sm"
+                        >
+                            <span>5+ Years</span>
+                            <span className="opacity-60">&bull;</span>
+                            <span>20+ Projects</span>
+                            <span className="opacity-60">&bull;</span>
+                            <span>Fast Delivery</span>
+                        </motion.div>
+                    </div>
+
+                    {/* Right: 3D Robot Showcase — responsive container */}
+                    <div ref={heroRobotRef} className="hero-robot order-first md:order-none relative w-full h-[300px] sm:h-[380px] md:h-[580px] md:w-[50%] md:aspect-auto flex-shrink-0 z-20">
+
+                        {isHeroRobotInView && (
+                            <Canvas
+                                camera={{ position: [0, 0.5, 7], fov: 50 }}
+                                dpr={heroRenderSettings.dpr}
+                                frameloop="demand"
+                                gl={{
+                                    powerPreference: heroRenderSettings.powerPreference,
+                                    antialias: heroRenderSettings.antialias
+                                }}
+                            >
+                                <PerformanceOptimizer />
+                                <Suspense fallback={<CanvasLoader />}>
+                                    <ambientLight intensity={1.6} />
+                                    <directionalLight position={[5, 10, 5]} intensity={2.8} castShadow />
+                                    <pointLight position={[-5, 5, -5]} intensity={1.0} color="#ffffff" />
+                                    <pointLight position={[3, 2, 3]} intensity={0.6} color="#ffeedd" />
+
+                                    <group position={isMobile ? [0, -0.5, 0] : [0.6, -0.3, 0]}>
+                                        <ModelErrorBoundary>
+                                            <Robocop3D
+                                                scale={isMobile ? 2.8 : 3.0}
+                                                position={[0, 0, 0]}
+                                                rotation={[0, Math.PI / 5, 0]}
                                             />
-                                        ) : (
-                                            <span className="text-7xl animate-bounce">🎁</span>
+                                        </ModelErrorBoundary>
+                                    </group>
+
+                                    <OrbitControls
+                                        enableZoom={false}
+                                        enablePan={false}
+                                        enableRotate={false}
+                                    />
+                                </Suspense>
+                            </Canvas>
+                        )}
+
+                        {/* CSS radial gradient shadow under the car */}
+                        <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2 w-[65%] h-[25px] rounded-full bg-[radial-gradient(ellipse,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0.06)_40%,transparent_70%)] blur-[2px] pointer-events-none"></div>
+                    </div>
+                </div>
+
+                {/* Animated Smog/Cloud Blobs (Smoky Effect) */}
+                <div className="w-full relative mt-[-2rem] md:mt-[-4rem] h-[150px] md:h-[200px] z-0 pointer-events-none select-none overflow-visible">
+                    {/* Blob 1 */}
+                    <motion.div
+                        animate={{ x: ['-2%', '4%', '-2%'], y: ['0%', '-8%', '0%'] }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute bottom-[20px] left-[-10%] w-[60%] h-[150px] md:h-[200px] bg-white/40 rounded-[100%] blur-[40px] md:blur-[70px]"
+                    />
+                    {/* Blob 2 */}
+                    <motion.div
+                        animate={{ x: ['4%', '-4%', '4%'], y: ['-4%', '6%', '-4%'] }}
+                        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute bottom-[-10px] right-[-10%] w-[70%] h-[180px] md:h-[220px] bg-white/30 rounded-[100%] blur-[50px] md:blur-[80px]"
+                    />
+                    {/* Blob 3 */}
+                    <motion.div
+                        animate={{ x: ['-5%', '5%', '-5%'], y: ['5%', '-5%', '5%'] }}
+                        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute bottom-[40px] left-[15%] w-[80%] h-[140px] md:h-[180px] bg-[#bae6fd]/30 rounded-[100%] blur-[60px] md:blur-[90px]"
+                    />
+                    {/* Blob 4 */}
+                    <motion.div
+                        animate={{ x: ['2%', '-3%', '2%'], y: ['-2%', '3%', '-2%'] }}
+                        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute bottom-[-30px] left-[10%] w-[100%] h-[120px] md:h-[160px] bg-white/40 rounded-[100%] blur-[45px] md:blur-[60px]"
+                    />
+                </div>
+
+                {/* PROFILE SECTION */}
+                <div className="profile-section max-w-6xl mx-auto w-full px-4 mt-8 md:mt-16 mb-20 z-10 relative">
+                    <div className="flex flex-col gap-6 items-center">
+
+                        {/* Title Header */}
+                        <div className="flex flex-col items-center gap-1 z-10 relative px-4">
+                            <span className="text-xs font-black uppercase tracking-[0.25em] text-slate-700/80 drop-shadow-sm">— SECTION SEPARATOR —</span>
+                            <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mt-1">
+                                <h2 className="text-5xl md:text-7xl font-black tracking-[0.12em] flex gap-[2px] md:gap-1 relative z-10">
+                                    <span className="inline-block" style={{ color: '#ff5b6b', textShadow: '0 4px 0 #d94152, 0 8px 0 #b52a3c, 0 12px 14px rgba(0,0,0,0.25)' }}>P</span>
+                                    <span className="inline-block" style={{ color: '#ff8a3c', textShadow: '0 4px 0 #db6f2a, 0 8px 0 #b95516, 0 12px 14px rgba(0,0,0,0.25)' }}>R</span>
+                                    <span className="inline-block" style={{ color: '#ffd54a', textShadow: '0 4px 0 #e2b42f, 0 8px 0 #c19418, 0 12px 14px rgba(0,0,0,0.25)' }}>O</span>
+                                    <span className="inline-block" style={{ color: '#5ccf68', textShadow: '0 4px 0 #3faf4a, 0 8px 0 #2d8d38, 0 12px 14px rgba(0,0,0,0.25)' }}>F</span>
+                                    <span className="inline-block" style={{ color: '#58a9ff', textShadow: '0 4px 0 #2d82e6, 0 8px 0 #1c62c0, 0 12px 14px rgba(0,0,0,0.25)' }}>I</span>
+                                    <span className="inline-block" style={{ color: '#b784ff', textShadow: '0 4px 0 #8e5ee6, 0 8px 0 #6c3ec4, 0 12px 14px rgba(0,0,0,0.25)' }}>L</span>
+                                    <span className="inline-block" style={{ color: '#ff6fb4', textShadow: '0 4px 0 #d95695, 0 8px 0 #b8407a, 0 12px 14px rgba(0,0,0,0.25)' }}>E</span>
+                                </h2>
+                            </div>
+                        </div>
+
+                        {/* Horizontal Gameboy Layout */}
+                        <div className="profile-card relative w-full mt-4 md:mt-10 flex flex-col md:flex-row items-center justify-center drop-shadow-2xl">
+
+                            {/* LEFT: Gameboy Console */}
+                            <div className="relative w-full max-w-[400px] md:max-w-none md:w-[420px] flex-shrink-0 z-20"
+                                style={{
+                                    background: 'linear-gradient(145deg, #e5e7eb 0%, #d1d5db 40%, #c8cdd5 100%)',
+                                    borderRadius: '28px',
+                                    padding: '20px',
+                                    border: '2px solid #fff',
+                                    borderBottom: '8px solid #9ca3af',
+                                    borderRight: '8px solid #9ca3af',
+                                    boxShadow: '6px 6px 0 rgba(0,0,0,0.12), inset 0 2px 0 rgba(255,255,255,0.9)'
+                                }}
+                            >
+                                {/* Ports and Cables - rendered on left edge of Gameboy */}
+                                {Object.entries({ red: '25%', yellow: '45%', green: '65%', blue: '85%' }).map(([color, top]) => {
+                                    const isConn = connectedCables[color];
+                                    const hexes = { red: '#ef4444', yellow: '#eab308', green: '#22c55e', blue: '#3b82f6' };
+                                    return (
+                                        <React.Fragment key={color}>
+                                            <div
+                                                className={`absolute -left-[14px] w-4 h-6 rounded-l-md border-y-[2px] border-l-[2px] transition-colors cursor-pointer flex items-center justify-center z-10 md:z-10 bg-slate-800 border-slate-700 hover:bg-slate-600 shadow-[-2px_0_5px_rgba(0,0,0,0.5)]`}
+                                                style={{ top, transform: 'translateY(-50%)' }}
+                                                onClick={() => !isConn && handleConnect(color)}
+                                                title={isConn ? "" : "Click to connect (or drag cable on Desktop)"}
+                                            >
+                                                <div ref={el => portsRef.current[color] = el} className="w-[6px] h-[10px] bg-black rounded-[1px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] relative overflow-hidden flex items-center justify-center">
+                                                    {isConn && <div className="w-full h-full opacity-80" style={{ backgroundColor: hexes[color] }}></div>}
+                                                    {!isConn && <div className="absolute top-1/2 left-0 w-full h-[1px] bg-zinc-700"></div>}
+                                                </div>
+                                            </div>
+
+                                            <DraggableCable
+                                                color={color}
+                                                startY={top}
+                                                portY={top}
+                                                isConnected={isConn}
+                                                onConnect={handleConnect}
+                                                onDisconnect={handleDisconnect}
+                                                portsRef={portsRef}
+                                            />
+                                        </React.Fragment>
+                                    );
+                                })}
+
+                                {/* Top nub */}
+                                <div className="absolute -top-3 left-10 h-[14px] w-28 rounded-full hidden md:block"
+                                    style={{ background: 'linear-gradient(180deg, #e5e7eb, #c8cdd5)', border: '1px solid #9ca3af', boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.8)' }}
+                                ></div>
+                                {/* Bottom nub */}
+                                <div className="absolute -bottom-3 right-14 h-[14px] w-24 rounded-full hidden md:block"
+                                    style={{ background: 'linear-gradient(180deg, #e5e7eb, #c8cdd5)', border: '1px solid #9ca3af', boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.8)' }}
+                                ></div>
+
+                                {/* Screen Bezel */}
+                                <div className="rounded-[18px] p-3 mb-5"
+                                    style={{
+                                        background: '#475569',
+                                        boxShadow: 'inset 0 4px 10px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.5)'
+                                    }}
+                                >
+                                    {/* Power LED */}
+                                    <div className="flex items-center gap-1.5 mb-2 ml-1">
+                                        <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.9)]"></div>
+                                    </div>
+
+                                    {/* Screen */}
+                                    <div className="relative w-full rounded-lg overflow-hidden flex items-center justify-center p-2"
+                                        style={{
+                                            aspectRatio: '4/3',
+                                            background: '#0a0a0a',
+                                            border: '4px solid #1e293b',
+                                            boxShadow: 'inset 0 0 24px rgba(0,0,0,0.85)'
+                                        }}
+                                    >
+                                        {!isBooting && !showImage && !showHome && (
+                                            <div className="flex flex-col items-center justify-center opacity-40">
+                                                <div className="text-white/30 font-black text-2xl uppercase tracking-[0.2em] animate-pulse">NO SIGNAL</div>
+                                                <div className="text-white/20 text-[8px] font-bold mt-2 uppercase tracking-widest hidden md:block">Connect 4 Cables</div>
+                                            </div>
                                         )}
 
-                                        {/* Overlay Button */}
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            <div className="bg-white text-slate-900 font-black px-6 py-2 rounded-full shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 border-2 border-slate-100">
-                                                OPEN BOX
-                                            </div>
+                                        {isBooting && <PanzekOSSplash />}
+
+                                        {showImage && <PanzekCLI />}
+
+                                        {showHome && <PanzekHome onNavigate={(path) => window.location.href = path} />}
+
+                                        {/* Glare overlay */}
+                                        <div className="absolute inset-0 pointer-events-none z-20"
+                                            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%)' }}
+                                        ></div>
+                                        {/* HUD labels */}
+                                        <div className="absolute bottom-2 left-3 right-3 flex justify-between text-[9px] font-black uppercase tracking-[0.3em] z-20"
+                                            style={{ color: (showImage || showHome) ? 'rgba(167, 243, 208, 0.9)' : 'rgba(255,255,255,0.3)' }}
+                                        >
+                                            <span>{(showImage || showHome) ? 'IMG_01' : 'INPUT'}</span>
+                                            <span>{showHome ? 'HOME' : showImage ? 'OK' : gameboyStatus === 'READY' ? 'WAITING' : gameboyStatus}</span>
                                         </div>
                                     </div>
-                                    <div className="mt-4 flex justify-between items-center px-2">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Series 0{index + 1}</span>
-                                        <div className="flex gap-1">
-                                            {[...Array(5)].map((_, i) => (
-                                                <div key={i} className={`w-2 h-2 rounded-full ${i < 4 ? 'bg-yellow-400' : 'bg-slate-200'}`}></div>
-                                            ))}
+                                </div>
+
+                                {/* Controls Row */}
+                                <div className="flex items-center justify-between px-3">
+                                    {/* D-Pad — PS style: 4 separate buttons */}
+                                    <div className="relative w-[88px] h-[88px]">
+                                        {/* UP */}
+                                        <button type="button" aria-label="D-pad up"
+                                            onClick={() => handleGameboyPress('UP')}
+                                            className={`absolute left-1/2 top-0 -translate-x-1/2 w-[28px] h-[28px] rounded-t-[6px] rounded-b-[2px] transition-all active:translate-y-[2px] ${pressedButton === 'UP' ? 'translate-y-[2px]' : ''}`}
+                                            style={{
+                                                background: pressedButton === 'UP' ? '#0f172a' : 'linear-gradient(180deg,#2d3f55 0%,#1e293b 100%)',
+                                                boxShadow: pressedButton === 'UP' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
+                                            }}
+                                        />
+                                        {/* DOWN */}
+                                        <button type="button" aria-label="D-pad down"
+                                            onClick={() => handleGameboyPress('DOWN')}
+                                            className={`absolute left-1/2 bottom-0 -translate-x-1/2 w-[28px] h-[28px] rounded-b-[6px] rounded-t-[2px] transition-all ${pressedButton === 'DOWN' ? 'translate-y-[-2px]' : ''}`}
+                                            style={{
+                                                background: pressedButton === 'DOWN' ? '#0f172a' : 'linear-gradient(180deg,#1e293b 0%,#2d3f55 100%)',
+                                                boxShadow: pressedButton === 'DOWN' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
+                                            }}
+                                        />
+                                        {/* LEFT */}
+                                        <button type="button" aria-label="D-pad left"
+                                            onClick={() => handleGameboyPress('LEFT')}
+                                            className={`absolute left-0 top-1/2 -translate-y-1/2 w-[28px] h-[28px] rounded-l-[6px] rounded-r-[2px] transition-all ${pressedButton === 'LEFT' ? 'translate-x-[2px]' : ''}`}
+                                            style={{
+                                                background: pressedButton === 'LEFT' ? '#0f172a' : 'linear-gradient(90deg,#2d3f55 0%,#1e293b 100%)',
+                                                boxShadow: pressedButton === 'LEFT' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
+                                            }}
+                                        />
+                                        {/* RIGHT */}
+                                        <button type="button" aria-label="D-pad right"
+                                            onClick={() => handleGameboyPress('RIGHT')}
+                                            className={`absolute right-0 top-1/2 -translate-y-1/2 w-[28px] h-[28px] rounded-r-[6px] rounded-l-[2px] transition-all ${pressedButton === 'RIGHT' ? 'translate-x-[-2px]' : ''}`}
+                                            style={{
+                                                background: pressedButton === 'RIGHT' ? '#0f172a' : 'linear-gradient(90deg,#1e293b 0%,#2d3f55 100%)',
+                                                boxShadow: pressedButton === 'RIGHT' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
+                                            }}
+                                        />
+                                        {/* Center gap (dark square) */}
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28px] h-[28px]"
+                                            style={{ background: '#131f2e', borderRadius: 2 }}
+                                        />
+                                    </div>
+
+
+                                    {/* Select / Start */}
+                                    <div className="flex gap-3 transform -rotate-12 self-center">
+                                        <button type="button" aria-label="Select" onClick={() => handleGameboyPress('SELECT')}
+                                            className={`w-10 h-3 rounded-full transition-all ${pressedButton === 'SELECT' ? 'translate-y-[2px]' : ''}`}
+                                            style={{ background: '#475569', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.4)' }}
+                                        />
+                                        <button type="button" aria-label="Start" onClick={() => handleGameboyPress('START')}
+                                            className={`w-10 h-3 rounded-full transition-all ${pressedButton === 'START' ? 'translate-y-[2px]' : ''}`}
+                                            style={{ background: '#475569', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.4)' }}
+                                        />
+                                    </div>
+
+                                    {/* A / B Buttons */}
+                                    <div className="flex gap-3 transform -rotate-12 mt-3">
+                                        <button type="button" aria-label="Button B" onClick={() => handleGameboyPress('B')}
+                                            className={`w-11 h-11 rounded-full transition-all ${pressedButton === 'B' ? 'translate-y-1' : ''}`}
+                                            style={{
+                                                background: 'radial-gradient(circle at 35% 35%, #fb7185, #e11d48)',
+                                                border: '2px solid rgba(255,255,255,0.3)',
+                                                borderBottom: pressedButton === 'B' ? '2px solid rgba(255,255,255,0.3)' : '5px solid #9f1239',
+                                                boxShadow: pressedButton === 'B'
+                                                    ? 'inset 0 3px 6px rgba(0,0,0,0.4)'
+                                                    : '0 4px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.35)'
+                                            }}
+                                        />
+                                        <button type="button" aria-label="Button A" onClick={() => handleGameboyPress('A')}
+                                            className={`w-11 h-11 rounded-full transition-all -mt-5 ${pressedButton === 'A' ? 'translate-y-1' : ''}`}
+                                            style={{
+                                                background: 'radial-gradient(circle at 35% 35%, #fb7185, #e11d48)',
+                                                border: '2px solid rgba(255,255,255,0.3)',
+                                                borderBottom: pressedButton === 'A' ? '2px solid rgba(255,255,255,0.3)' : '5px solid #9f1239',
+                                                boxShadow: pressedButton === 'A'
+                                                    ? 'inset 0 3px 6px rgba(0,0,0,0.4)'
+                                                    : '0 4px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.35)'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Speaker dots — bottom right */}
+                                <div className="absolute bottom-5 right-5 grid grid-cols-3 gap-[5px] rotate-12">
+                                    {Array.from({ length: 9 }).map((_, i) => (
+                                        <div key={`dot-${i}`} className="w-[7px] h-[7px] rounded-full"
+                                            style={{ background: '#6b7280', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)' }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* RIGHT: Info Card — slides out from Gameboy */}
+                            <div className="relative w-full max-w-[400px] md:max-w-none md:w-[480px] flex-shrink-0 z-10 md:-ml-5 mt-6 md:mt-0 md:self-stretch flex flex-col"
+                                style={{
+                                    background: 'linear-gradient(145deg, #e5e7eb 0%, #d1d5db 40%, #c8cdd5 100%)',
+                                    borderRadius: '28px',
+                                    borderTopLeftRadius: isMobile ? '28px' : '0',
+                                    borderBottomLeftRadius: isMobile ? '28px' : '0',
+                                    padding: '20px 20px 20px 28px',
+                                    border: '2px solid #fff',
+                                    borderBottom: '8px solid #9ca3af',
+                                    borderRight: '8px solid #9ca3af',
+                                    borderLeft: isMobile ? '2px solid #fff' : '0',
+                                    boxShadow: '6px 6px 0 rgba(0,0,0,0.10)'
+                                }}
+                            >
+                                {/* Decorative Right Cables escaping the Info Card */}
+                                <RightCable color="red" top="25%" />
+                                <RightCable color="yellow" top="45%" />
+                                <RightCable color="green" top="65%" />
+                                <RightCable color="blue" top="85%" />
+
+                                {/* Inner white info panel */}
+                                <div className="flex-1 flex flex-col justify-center rounded-[18px] overflow-hidden p-7 md:p-10"
+                                    style={{
+                                        background: '#f8fafc',
+                                        border: '5px solid #cbd5e1',
+                                        boxShadow: 'inset 4px 4px 12px rgba(0,0,0,0.08), 0 2px 0 white'
+                                    }}
+                                >
+                                    {/* Label */}
+                                    <p className="text-[10px] font-black uppercase tracking-[0.55em] text-slate-500 mb-4">TENTANG SAYA</p>
+
+                                    {/* Name */}
+                                    <div className="mb-6">
+                                        {/* KEVIN */}
+                                        <div className="flex items-center gap-[2px] mb-1"
+                                            style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 900, lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                                        >
+                                            <span style={{ color: '#ef4444', textShadow: '0 3px 0 #b91c1c, 0 6px 8px rgba(0,0,0,0.2)' }}>K</span>
+                                            <span style={{ color: '#eab308', textShadow: '0 3px 0 #a16207, 0 6px 8px rgba(0,0,0,0.2)' }}>E</span>
+                                            <span style={{ color: '#22c55e', textShadow: '0 3px 0 #15803d, 0 6px 8px rgba(0,0,0,0.2)' }}>V</span>
+                                            <span style={{ color: '#3b82f6', textShadow: '0 3px 0 #1d4ed8, 0 6px 8px rgba(0,0,0,0.2)' }}>I</span>
+                                            <span style={{ color: '#f97316', textShadow: '0 3px 0 #c2410c, 0 6px 8px rgba(0,0,0,0.2)' }}>N</span>
+                                        </div>
+                                        {/* HERMANSYAH */}
+                                        <div style={{
+                                            fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)',
+                                            fontWeight: 900,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.08em',
+                                            color: 'white',
+                                            textShadow: '0 2px 0 #7dd3fc, 0 4px 0 #38bdf8, 0 7px 0 #0284c7, 0 10px 12px rgba(0,0,0,0.3)'
+                                        }}>
+                                            HERMANSYAH
                                         </div>
                                     </div>
-                                </PlasticCard>
+
+                                    {/* Info Items */}
+                                    <ul className="flex flex-col gap-4">
+                                        <li className="flex items-center gap-4">
+                                            <img src="https://img.icons8.com/3d-fluency/94/marker.png" alt="Location" className="w-9 h-9 drop-shadow flex-shrink-0" loading="lazy" />
+                                            <span className="font-bold text-slate-700 text-sm leading-snug">Samarinda, Indonesia</span>
+                                        </li>
+                                        <li className="flex items-center gap-4">
+                                            <img src="https://img.icons8.com/3d-fluency/94/goal.png" alt="Focus" className="w-9 h-9 drop-shadow flex-shrink-0" loading="lazy" />
+                                            <span className="font-bold text-slate-700 text-sm leading-snug">Web Development &amp; 3D Interaksi</span>
+                                        </li>
+                                        <li className="flex items-center gap-4">
+                                            <img src="https://img.icons8.com/3d-fluency/94/graduation-cap.png" alt="Education" className="w-9 h-9 drop-shadow flex-shrink-0" loading="lazy" />
+                                            <span className="font-bold text-slate-700 text-sm leading-snug">SMKTI Airlangga<br />B.S. in Computer Science</span>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
-                        ))}
-                        {repos.length === 0 && (
-                            <div className="col-span-3 text-center py-20 bg-white/50 rounded-[3rem] border-4 border-dashed border-slate-300 flex flex-col items-center justify-center gap-4">
-                                <span className="text-6xl">🚧</span>
-                                <p className="font-bold text-slate-400 text-2xl">New projects being manufactured...</p>
-                            </div>
-                        )}
-                    </div>
-                    <div className="md:hidden mt-8 text-center">
-                        <a href="/projects" className="text-pink-500 font-black hover:underline decoration-4 underline-offset-4 text-lg">
-                            See All Collection &rarr;
-                        </a>
+
+                        </div>
                     </div>
                 </div>
 
+
+                {/* NEW ARRIVALS PREVIEW (3D Cartridge Shelf) */}
+                <FeaturedProjects repos={repos} />
+
                 {/* CALL TO ACTION BANNER */}
-                <div className="max-w-4xl mx-auto w-full px-4 mb-20">
+                <div className="w-full relative py-32 mt-24 mb-32 flex items-center justify-center pointer-events-none">
                     <style>{`
-                        @keyframes wave {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(-50%); }
-                        }
-                        @keyframes rise {
-                            0% { bottom: -20px; transform: translateX(0) scale(0.5); opacity: 0; }
-                            50% { opacity: 1; }
-                            100% { bottom: 100%; transform: translateX(20px) scale(1); opacity: 0; }
-                        }
-                        .wave-layer {
-                            position: absolute;
-                            bottom: 0;
-                            left: 0;
-                            width: 200%;
-                            height: 100%;
-                            background-repeat: repeat-x;
-                            background-position: bottom;
-                            background-size: 50% auto;
-                            animation: wave linear infinite;
-                            z-index: 0;
-                        }
-                        .bubble {
-                            position: absolute;
-                            background: rgba(255,255,255,0.4);
-                            border-radius: 50%;
-                            z-index: 5;
-                        }
+                        @keyframes toy-float { 0%,100% { transform: translate3d(0,0,0) rotate(0deg); } 50% { transform: translate3d(0,-6px,0) rotate(1.5deg); } }
+                        @keyframes toy-bounce { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
+                        @keyframes toy-pop { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.06) rotate(-1deg); } }
                     `}</style>
-                    <div className="relative bg-white rounded-[3rem] p-12 text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden group border-4 border-slate-100 ring-4 ring-slate-50 ring-offset-4 ring-offset-white">
 
-                        {/* Glass Container Inner Shadow */}
-                        <div className="absolute inset-0 rounded-[3rem] shadow-[inset_0_10px_20px_rgba(0,0,0,0.05)] pointer-events-none z-20"></div>
+                    {/* Background SVGs for Cables stretching edge-to-edge */}
+                    {/* Left Cables (Crossing) */}
+                    <svg className="absolute top-1/2 left-1/2 -translate-x-[100%] w-[50vw] h-full -translate-y-1/2 -z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        {/* Shadows for depth */}
+                        <path d="M-50,30 C10,30 40,70 100,70" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
+                        <path d="M-50,50 C20,50 50,50 100,50" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
+                        <path d="M-50,70 C30,70 60,30 100,30" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
 
-                        {/* Liquid/Wave Background Layers */}
-                        {/* Wave Layers */}
-                        {/* Layer 1 - Back - Lightest - Slow */}
-                        <div className="wave-layer" style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23fce7f3' fill-opacity='1' d='M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
-                            animationDuration: '20s',
-                            opacity: 1,
-                            height: '110%',
-                            zIndex: 1
-                        }}></div>
+                        {/* Red Wire (Top Left slanting down to Bottom Port) */}
+                        <path d="M-50,70 C30,70 60,30 100,30" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+                        <path d="M-50,70 C30,70 60,30 100,30" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
 
-                        {/* Layer 2 - Middle - Medium Pink - Medium Speed */}
-                        <div className="wave-layer" style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23f472b6' fill-opacity='0.8' d='M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
-                            animationDuration: '15s',
-                            animationDirection: 'reverse',
-                            opacity: 1,
-                            height: '100%',
-                            zIndex: 2
-                        }}></div>
+                        {/* Yellow Wire (Middle to Middle) */}
+                        <path d="M-50,50 C20,50 50,50 100,50" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
+                        <path d="M-50,50 C20,50 50,50 100,50" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
 
-                        {/* Layer 3 - Front - Bold Pink - Fast */}
-                        <div className="wave-layer" style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23db2777' fill-opacity='1' d='M0,128L48,144C96,160,192,192,288,192C384,192,480,160,576,138.7C672,117,768,107,864,122.7C960,139,1056,181,1152,186.7C1248,192,1344,160,1392,144L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
-                            animationDuration: '10s',
-                            opacity: 1,
-                            height: '90%',
-                            zIndex: 3
-                        }}></div>
+                        {/* Green Wire (Bottom Left slanting up to Top Port) */}
+                        <path d="M-50,30 C10,30 40,70 100,70" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" />
+                        <path d="M-50,30 C10,30 40,70 100,70" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
+                    </svg>
 
-                        {/* Rising Bubbles */}
-                        <div className="bubble w-4 h-4 left-[20%]" style={{ animation: 'rise 4s infinite ease-in', animationDelay: '0s' }}></div>
-                        <div className="bubble w-6 h-6 left-[50%]" style={{ animation: 'rise 6s infinite ease-in', animationDelay: '1s' }}></div>
-                        <div className="bubble w-3 h-3 left-[70%]" style={{ animation: 'rise 5s infinite ease-in', animationDelay: '2.5s' }}></div>
-                        <div className="bubble w-5 h-5 left-[35%]" style={{ animation: 'rise 7s infinite ease-in', animationDelay: '4s' }}></div>
-                        <div className="bubble w-4 h-4 left-[80%]" style={{ animation: 'rise 5s infinite ease-in', animationDelay: '0.5s' }}></div>
+                    {/* Right Cables (Crossing) */}
+                    <svg className="absolute top-1/2 left-1/2 w-[50vw] h-full -translate-y-1/2 -z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        {/* Shadows for depth */}
+                        <path d="M0,70 C40,70 80,30 150,30" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
+                        <path d="M0,50 C50,50 80,50 150,50" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
+                        <path d="M0,30 C60,30 90,70 150,70" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
 
-                        {/* Texture Overlay (Subtle on white) */}
-                        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cartographer.png')] opacity-[0.03] z-0 pointer-events-none"></div>
+                        {/* Green Wire (Bottom Port slanting up to Top Right) */}
+                        <path d="M0,30 C60,30 90,70 150,70" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" />
+                        <path d="M0,30 C60,30 90,70 150,70" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
 
-                        <div className="relative z-10">
-                            <h2 className="text-4xl md:text-5xl font-black text-slate-800 mb-6 tracking-tight">
-                                Ready to <span className="text-pink-600">Collaborate?</span>
-                            </h2>
-                            <p className="text-slate-500 font-bold text-xl mb-8 max-w-lg mx-auto leading-relaxed">
-                                Available for freelance projects and full-time opportunities. Let's create something extraordinary together!
-                            </p>
-                            <PlasticButton color="yellow" className="text-lg px-10 py-4 shadow-xl ring-4 ring-white/50" onClick={() => window.location.href = '/contact'}>
-                                GET IN TOUCH
-                            </PlasticButton>
+                        {/* Yellow Wire (Middle to Middle) */}
+                        <path d="M0,50 C50,50 80,50 150,50" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
+                        <path d="M0,50 C50,50 80,50 150,50" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
+
+                        {/* Blue Wire (Top Port slanting down to Bottom Right) */}
+                        <path d="M0,70 C40,70 80,30 150,30" fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" />
+                        <path d="M0,70 C40,70 80,30 150,30" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
+                    </svg>
+
+                    <div className="absolute inset-0 pointer-events-none z-0">
+                        <div className="absolute left-[6%] top-[18%] w-3 h-3 rounded-full bg-[#facc15] shadow-[0_3px_6px_rgba(0,0,0,0.2)] motion-safe:animate-[toy-float_5s_ease-in-out_infinite]" />
+                        <div className="absolute left-[14%] top-[65%] w-2.5 h-2.5 rounded-[4px] bg-[#34d399] rotate-12 shadow-[0_3px_6px_rgba(0,0,0,0.2)] motion-safe:animate-[toy-float_4.6s_ease-in-out_infinite]" />
+                        <div className="absolute right-[10%] top-[22%] w-3.5 h-3.5 rounded-full bg-[#f472b6] shadow-[0_3px_6px_rgba(0,0,0,0.2)] motion-safe:animate-[toy-float_5.4s_ease-in-out_infinite]" />
+                        <div className="absolute right-[16%] bottom-[20%] w-2.5 h-2.5 bg-[#60a5fa] rotate-45 shadow-[0_3px_6px_rgba(0,0,0,0.2)] motion-safe:animate-[toy-float_4.2s_ease-in-out_infinite]" />
+                        <div className="absolute left-[35%] top-[12%] w-2 h-2 rounded-full bg-[#fb7185] shadow-[0_2px_4px_rgba(0,0,0,0.2)] motion-safe:animate-[toy-float_4.8s_ease-in-out_infinite]" />
+                        <div className="absolute right-[32%] bottom-[12%] w-2 h-2 rounded-full bg-[#a78bfa] shadow-[0_2px_4px_rgba(0,0,0,0.2)] motion-safe:animate-[toy-float_4.9s_ease-in-out_infinite]" />
+                    </div>
+
+                    <div className="absolute inset-0 pointer-events-none z-20">
+                        <div className="absolute left-[4%] top-[16%] hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#fef3c7] border-2 border-[#fbbf24] text-[#92400e] text-[10px] font-black tracking-[0.2em] shadow-[0_6px_0_#f59e0b,0_10px_20px_rgba(0,0,0,0.2)] rotate-[-6deg] motion-safe:animate-[toy-pop_3.6s_ease-in-out_infinite]">
+                            READY TO PLAY
+                        </div>
+                        <div className="absolute right-[6%] top-[12%] hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#e0f2fe] border-2 border-[#38bdf8] text-[#075985] text-[10px] font-black tracking-[0.2em] shadow-[0_6px_0_#0ea5e9,0_10px_20px_rgba(0,0,0,0.2)] rotate-[5deg] motion-safe:animate-[toy-pop_4s_ease-in-out_infinite]">
+                            FAST DELIVERY
+                        </div>
+                        <div className="absolute left-[10%] bottom-[12%] hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#dcfce7] border-2 border-[#22c55e] text-[#166534] text-[10px] font-black tracking-[0.2em] shadow-[0_6px_0_#16a34a,0_10px_20px_rgba(0,0,0,0.2)] rotate-[4deg] motion-safe:animate-[toy-bounce_3.2s_ease-in-out_infinite]">
+                            SLOTS 2 LEFT
+                        </div>
+                    </div>
+
+                    {/* Main Panel Box - Increased Shadow for Ambient Occlusion */}
+                    <div className="relative w-full max-w-[650px] bg-[#f8fafc] rounded-[2rem] md:rounded-[2.5rem] border-[3px] md:border-[4px] border-white z-10 pointer-events-auto mx-6 md:mx-auto"
+                        style={{
+                            // Deep ambient occlusion and soft inset rim light
+                            boxShadow: 'inset 0 4px 6px rgba(255,255,255,0.9), inset 0 -5px 10px rgba(0,0,0,0.05), 0 40px 80px -20px rgba(0,0,0,0.35), 0 20px 40px -10px rgba(0,0,0,0.2)'
+                        }}>
+
+                        {/* Left Cylinder Connectors */}
+                        <div className="absolute left-[-16px] md:left-[-18px] top-1/2 -translate-y-1/2 flex flex-col gap-8 md:gap-11">
+                            {/* Connector 1 */}
+                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-l-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),-2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
+                                <div className="absolute right-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
+                            </div>
+                            {/* Connector 2 */}
+                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-l-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),-2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
+                                <div className="absolute right-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
+                            </div>
+                            {/* Connector 3 */}
+                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-l-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),-2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
+                                <div className="absolute right-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
+                            </div>
+                        </div>
+
+                        {/* Right Cylinder Connectors */}
+                        <div className="absolute right-[-16px] md:right-[-18px] top-1/2 -translate-y-1/2 flex flex-col gap-8 md:gap-11">
+                            {/* Connector 1 */}
+                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-r-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
+                                <div className="absolute left-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
+                            </div>
+                            {/* Connector 2 */}
+                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-r-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
+                                <div className="absolute left-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
+                            </div>
+                            {/* Connector 3 */}
+                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-r-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
+                                <div className="absolute left-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
+                            </div>
+                        </div>
+
+                        {/* Top Indicator Bulbs */}
+                        <div className="flex gap-3 justify-start ml-10 pt-4 pb-1">
+                            {/* Pink/Red Bulb */}
+                            <div className="w-3.5 h-3.5 rounded-full bg-rose-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]"></div>
+                            {/* Yellow Bulb */}
+                            <div className="w-3.5 h-3.5 rounded-full bg-yellow-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]"></div>
+                            {/* Cyan Bulb */}
+                            <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]"></div>
+                        </div>
+
+                        {/* Inner Recessed Screen - Deeper Inset Shadow */}
+                        <div className="m-3 mt-1 md:m-4 md:mt-1 bg-[#f1f5f9] rounded-[1.5rem] border-[1px] border-slate-200 relative overflow-hidden"
+                            style={{
+                                boxShadow: 'inset 0 8px 20px rgba(0,0,0,0.08), inset 0 2px 6px rgba(0,0,0,0.04), 0 2px 0 rgba(255,255,255,0.9)'
+                            }}>
+
+                            {/* Red Liquid Fill Background - Refined for premium look */}
+                            <div className="absolute inset-x-0 bottom-0 h-full z-0 pointer-events-none flex flex-col justify-end">
+                                <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-red-600 to-red-500 shadow-[inset_0_2px_10px_rgba(255,255,255,0.2)]" />
+                                {/* Wave Background Layer - Darker for depth */}
+                                <motion.div
+                                    animate={{ x: ['-50%', '0%'] }}
+                                    transition={{ repeat: Infinity, ease: 'linear', duration: 4.5 }}
+                                    className="absolute bottom-[60%] left-0 w-[200%] h-[35px] pointer-events-none text-red-700/40"
+                                >
+                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[35px] left-0 fill-current block">
+                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
+                                    </svg>
+                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[35px] left-[50%] fill-current block">
+                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
+                                    </svg>
+                                </motion.div>
+                                {/* Wave Foreground Layer - Lighter/Vibrant */}
+                                <motion.div
+                                    animate={{ x: ['0%', '-50%'] }}
+                                    transition={{ repeat: Infinity, ease: 'linear', duration: 3.2 }}
+                                    className="absolute bottom-[60%] left-0 w-[200%] h-[24px] pointer-events-none text-red-500"
+                                >
+                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[24px] left-0 fill-current block">
+                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
+                                    </svg>
+                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[24px] left-[50%] fill-current block">
+                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
+                                    </svg>
+                                </motion.div>
+                                {/* Bubbles - Organic movement */}
+                                <motion.div animate={{ y: ['0%', '-500%'], x: [0, 8, -4, 0], opacity: [0, 0.6, 0] }} transition={{ repeat: Infinity, ease: 'linear', duration: 3 }} className="absolute left-[25%] bottom-[10%] w-2.5 h-2.5 bg-white/40 blur-[1px] rounded-full" />
+                                <motion.div animate={{ y: ['0%', '-400%'], x: [0, -12, 8, 0], opacity: [0, 0.7, 0] }} transition={{ repeat: Infinity, ease: 'linear', duration: 4.5, delay: 1 }} className="absolute left-[55%] bottom-[15%] w-3.5 h-3.5 bg-white/30 blur-[1px] rounded-full" />
+                                <motion.div animate={{ y: ['0%', '-600%'], x: [0, 4, -8, 0], opacity: [0, 0.5, 0] }} transition={{ repeat: Infinity, ease: 'linear', duration: 4, delay: 2.5 }} className="absolute w-1.5 h-1.5 left-[75%] bottom-[5%] bg-white/50 blur-[0.5px] rounded-full" />
+                            </div>
+
+                            <div className="p-8 pb-12 md:p-12 md:pb-16 flex flex-col items-center justify-center text-center relative z-10">
+                                {/* Title - Adjusted Typography to match reference */}
+                                <h3 className="text-4xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-md flex flex-col items-center gap-1" style={{ lineHeight: 1.1 }}>
+                                    <span>Ready to</span>
+                                    <span className="text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">Collaborate?</span>
+                                </h3>
+                                {/* Subtitle - Fixed typo and improved readability */}
+                                <p className="text-slate-100 font-bold text-sm md:text-base leading-relaxed max-w-sm drop-shadow-md px-2 mt-2">
+                                    Available for freelance projects and full-<br />time opportunities. Let's create something<br />extraordinary!
+                                </p>
+                            </div>
+
+                            {/* Inner Screen Corner Accent (Top Right) */}
+                            <div className="absolute top-4 right-4 w-3 h-2 bg-slate-300 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)] opacity-80 z-10"></div>
+
+                            {/* Inner Screen Dots (Bottom Right) */}
+                            <div className="absolute bottom-5 right-5 flex gap-[3px] opacity-70 z-10">
+                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
+                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
+                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
+                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
+                            </div>
+                        </div>
+
+                        {/* Floating Button Overlapping Inner and Outer Box - Centered Position */}
+                        <div className="absolute bottom-[-18px] md:bottom-[-22px] left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+                            <div className="relative flex items-center justify-center">
+                                <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-[190px] h-[20px] bg-[#e2e8f0] rounded-full border border-white shadow-[inset_0_3px_6px_rgba(255,255,255,0.9),0_8px_20px_rgba(0,0,0,0.2)]" />
+                                <div className="absolute left-1/2 -translate-x-1/2 top-2 w-[140px] h-[6px] bg-[#cbd5e1] rounded-full shadow-[inset_0_2px_3px_rgba(0,0,0,0.15)]" />
+                                <PlasticButton color="yellow" className="relative z-10 text-xs md:text-[13px] px-6 py-2 md:px-8 md:py-2.5 shadow-xl hover:translate-y-[2px] w-max" onClick={() => window.location.href = '/contact'}
+                                    style={{
+                                        border: '2px solid #eab308',
+                                        borderRadius: '10px',
+                                        fontWeight: 900,
+                                        color: '#78350f',
+                                        background: 'linear-gradient(to bottom, #fde047, #facc15)',
+                                        boxShadow: 'inset 0 2px 2px rgba(255,255,255,0.8), 0 8px 15px rgba(0,0,0,0.25), 0 5px 0 #ca8a04',
+                                        letterSpacing: '0.05em'
+                                    }}>
+                                    GET IN TOUCH
+                                </PlasticButton>
+                            </div>
                         </div>
                     </div>
                 </div>

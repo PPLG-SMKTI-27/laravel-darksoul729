@@ -5,7 +5,12 @@ const OverlayUI = ({
     phase,
     debug,
     onJumpWide,
+    onStepUp,
+    onStepDown,
     navLocked = false,
+    wideControlsEnabled = false,
+    canStepUp = false,
+    canStepDown = false,
     smoothedProgress,
     targetProgress,
 }) => {
@@ -33,15 +38,30 @@ const OverlayUI = ({
                 </div>
             )}
 
-            {phase === 'transition' && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full border border-white/40 bg-white/45 px-4 py-2 text-xs font-semibold text-slate-700 backdrop-blur">
-                    Entering room...
+            {inTour && wideControlsEnabled && (
+                <div className="pointer-events-auto absolute right-5 top-1/2 flex -translate-y-1/2 flex-col gap-3">
+                    <button
+                        type="button"
+                        onClick={onStepUp}
+                        disabled={navLocked || !canStepUp}
+                        className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/45 bg-slate-900/60 text-2xl font-black text-white shadow-xl backdrop-blur transition disabled:cursor-not-allowed disabled:opacity-35"
+                    >
+                        ↑
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onStepDown}
+                        disabled={navLocked || !canStepDown}
+                        className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/45 bg-slate-900/60 text-2xl font-black text-white shadow-xl backdrop-blur transition disabled:cursor-not-allowed disabled:opacity-35"
+                    >
+                        ↓
+                    </button>
                 </div>
             )}
 
             {inTour && (
                 <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full border border-white/35 bg-slate-900/50 px-4 py-2 text-xs text-white/95 backdrop-blur">
-                    Scroll untuk camera tour
+                    {wideControlsEnabled ? 'Pakai tombol atas bawah untuk camera tour' : 'Camera settling ke posisi wide...'}
                 </div>
             )}
 

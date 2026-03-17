@@ -42,10 +42,46 @@ const PlasticCard = ({ children, title, subtitle, color = 'pink', className = ''
             shadow: 'shadow-[0_10px_20px_rgba(234,88,12,0.3),inset_0_0_0_1px_rgba(255,255,255,0.2)]',
             text: 'text-white',
             accent: 'bg-orange-700'
+        },
+        clear: {
+            bg: 'bg-white/10 backdrop-blur-md',
+            border: 'border-white/20',
+            shadow: 'shadow-[0_10px_30px_rgba(0,0,0,0.15),inset_0_0_0_1px_rgba(255,255,255,0.1)]',
+            text: 'text-slate-800',
+            accent: 'bg-white/20'
+        },
+        earth: {
+            bg: 'bg-gradient-to-br from-[#714E36] to-[#4A2F1D]',
+            border: 'border-[#8B5A2B]',
+            shadow: 'shadow-[0_10px_20px_rgba(74,47,29,0.5),inset_0_0_0_2px_rgba(255,160,100,0.1)]',
+            text: 'text-[#FDBA74]',
+            accent: 'bg-[#3E2723]'
+        },
+        sand: {
+            bg: 'bg-gradient-to-br from-[#D4A373] to-[#A98467]',
+            border: 'border-[#E3D5CA]',
+            shadow: 'shadow-[0_10px_20px_rgba(169,132,103,0.4),inset_0_0_0_1px_rgba(255,255,255,0.3)]',
+            text: 'text-[#4A3000]',
+            accent: 'bg-[#8B6E4A]'
+        },
+        amber: {
+            bg: 'bg-gradient-to-br from-[#D97706] to-[#92400E]',
+            border: 'border-[#FBBF24]',
+            shadow: 'shadow-[0_10px_20px_rgba(146,64,14,0.4),inset_0_0_0_1px_rgba(255,255,255,0.2)]',
+            text: 'text-[#FEF3C7]',
+            accent: 'bg-[#78350F]'
+        },
+        stone: {
+            bg: 'bg-gradient-to-br from-[#78716C] to-[#44403C]',
+            border: 'border-[#A8A29E]',
+            shadow: 'shadow-[0_10px_20px_rgba(68,64,60,0.4),inset_0_0_0_1px_rgba(255,255,255,0.1)]',
+            text: 'text-[#E7E5E4]',
+            accent: 'bg-[#292524]'
         }
     };
 
     const theme = colors[color] || colors.pink;
+    const isEarthyTheme = ['earth', 'sand', 'amber', 'stone'].includes(color);
 
     useLayoutEffect(() => {
         const card = cardRef.current;
@@ -86,6 +122,91 @@ const PlasticCard = ({ children, title, subtitle, color = 'pink', className = ''
         return () => ctx.revert();
     }, [color]);
 
+    if (isEarthyTheme) {
+        return (
+            <div
+                ref={cardRef}
+                className={`
+                    relative 
+                    w-full h-full
+                    rounded-[16px] 
+                    ${theme.bg}
+                    border-[6px] border-b-[12px] border-r-[8px] ${theme.border}
+                    ${theme.shadow}
+                    pb-6 pt-12 px-6
+                    flex flex-col
+                    will-change-transform
+                    group
+                    transform-gpu
+                    perspective-1000
+                    ${className}
+                `}
+                style={{
+                    boxShadow: 'inset 0 10px 20px rgba(0,0,0,0.5), inset 0 -2px 5px rgba(255,255,255,0.1), 0 15px 25px rgba(0,0,0,0.9)'
+                }}
+            >
+                {/* --- STONE TEXTURE OVERLAY --- */}
+                <div className="absolute inset-0 rounded-[10px] bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] opacity-[0.15] mix-blend-multiply pointer-events-none"></div>
+                <div className="absolute inset-0 rounded-[10px] bg-[radial-gradient(ellipse_at_top_left,rgba(255,255,255,0.1)_0%,transparent_50%)] pointer-events-none"></div>
+
+                {/* --- CHISELED TITLE GROOVE --- */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-0 w-[80%] h-2 bg-black/40 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8),_0_1px_0_rgba(255,255,255,0.1)]"></div>
+
+                <div className="text-center mb-4 z-10 relative">
+                    <h3 className={`font-black uppercase tracking-widest text-xl md:text-2xl drop-shadow-xl ${theme.text}`}
+                        style={{ textShadow: '0 -2px 2px rgba(0,0,0,0.7), 0 2px 0 rgba(255,255,255,0.1)' }}>
+                        {title}
+                    </h3>
+                    {subtitle && <p className={`text-[10px] font-bold tracking-[0.2em] mt-2 text-stone-400 opacity-80 uppercase`}>{subtitle}</p>}
+                </div>
+
+                {/* --- EXCAVATED HOLE DOME --- */}
+                <div
+                    ref={blisterRef}
+                    className="
+                        relative 
+                        bg-[#0a0502]/80
+                        rounded-[10px]
+                        border-t-4 border-l-4 border-black/60
+                        border-b-[1px] border-r-[1px] border-white/10
+                        shadow-[inset_0_15px_30px_rgba(0,0,0,0.9),0_2px_1px_rgba(255,255,255,0.15)]
+                        p-2 lg:p-4
+                        flex-grow
+                        flex flex-col
+                        overflow-hidden
+                        z-20
+                    "
+                >
+                    {/* Inner glowing gem lighting */}
+                    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#d97706] rounded-full blur-[40px] opacity-20 pointer-events-none mix-blend-screen"></div>
+
+                    {/* --- CONTENT INSIDE THE CAVERN --- */}
+                    <div className="relative z-10 h-full flex flex-col items-center justify-center transform transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1">
+                        <div className={`w-full h-full flex flex-col filter drop-shadow-[0_15px_15px_rgba(0,0,0,0.6)]`}>
+                            {children}
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- "NEW" STICKER (Relic Plate) --- */}
+                {isNew && (
+                    <div className="absolute -top-4 -right-2 rotate-[-10deg] bg-amber-600 text-[#FEF3C7] border-[2px] border-[#92400E] border-t-[#FCD34D] border-l-[#FCD34D] shadow-[0_10px_10px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.3)] font-black text-[10px] tracking-widest px-3 py-1 z-30 flex items-center gap-1">
+                        <div className="w-1 h-1 rounded-full bg-black/50 shadow-[0_1px_0_rgba(255,255,255,0.3)]" />
+                        RELIC
+                        <div className="w-1 h-1 rounded-full bg-black/50 shadow-[0_1px_0_rgba(255,255,255,0.3)]" />
+                    </div>
+                )}
+
+                {/* --- BOTTOM BRANDING AREA --- */}
+                <div className="mt-4 text-center opacity-70">
+                    <span className={`text-[8px] uppercase tracking-[0.3em] font-black ${theme.text}`} style={{ textShadow: '0 -1px 1px rgba(0,0,0,0.8)' }}>
+                        EXCAVATION SECTOR B
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             ref={cardRef}
@@ -116,13 +237,12 @@ const PlasticCard = ({ children, title, subtitle, color = 'pink', className = ''
             {/* --- BACKGROUND GRAPHICS (Subtle Pattern on Cardboard) --- */}
             <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] [background-size:10px_10px] rounded-[18px]"></div>
 
-            {/* --- LABEL AREA (Top Name) --- */}
             <div className="text-center mb-3 z-10 relative">
                 <h3 className={`font-black uppercase tracking-tighter text-2xl md:text-3xl drop-shadow-lg ${theme.text}`}
                     style={{ textShadow: '0 3px 0 rgba(0,0,0,0.15)' }}>
                     {title}
                 </h3>
-                {subtitle && <p className="text-xs font-bold text-white/90 tracking-wide">{subtitle}</p>}
+                {subtitle && <p className={`text-xs font-bold tracking-wide ${color === 'clear' ? 'text-slate-800' : 'text-white/90'}`}>{subtitle}</p>}
             </div>
 
             {/* --- THE BLISTER PACK (Plastic Bubble) --- */}
@@ -159,7 +279,7 @@ const PlasticCard = ({ children, title, subtitle, color = 'pink', className = ''
                 {/* --- CONTENT INSIDE THE BUBBLE --- */}
                 <div className="relative z-10 h-full flex flex-col items-center justify-center transform transition-transform duration-300 group-hover:scale-105">
                     {/* Shadow for the content itself to lift it off the backing */}
-                    <div className="filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.2)] w-full h-full flex flex-col">
+                    <div className={`w-full h-full flex flex-col ${color === 'clear' ? '' : 'filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.2)]'}`}>
                         {children}
                     </div>
                 </div>

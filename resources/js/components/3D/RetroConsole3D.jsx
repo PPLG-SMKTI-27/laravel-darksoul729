@@ -20,12 +20,12 @@ const RetroConsole3D = (props) => {
 
     const [isOpen, setIsOpen] = useState(false);
 
-    // Theme Colors
-    const CASE_COLOR = "#f8fafc"; // White/Light Gray case
-    const SCREEN_BEZEL = "#334155"; // Dark Slate
-    const ACCENT_BTN_1 = "#db2777"; // Pink Action Button A
-    const ACCENT_BTN_2 = "#3b82f6"; // Blue Action Button B
-    const DPAD_COLOR = "#1e293b"; // Dark D-Pad
+    // Theme Colors - "Unearthed / Soil Theme"
+    const CASE_COLOR = "#8d6e63"; // Muddy brown case
+    const SCREEN_BEZEL = "#3e2723"; // Darker brown dirt
+    const ACCENT_BTN_1 = "#d84315"; // Burnt orange Button A
+    const ACCENT_BTN_2 = "#fbc02d"; // Earthy yellow Button B
+    const DPAD_COLOR = "#212121"; // Dark stone D-Pad
 
     useFrame((state) => {
         const t = state.clock.getElapsedTime();
@@ -73,21 +73,21 @@ const RetroConsole3D = (props) => {
             {/* --- CARDBOARD PACKAGING --- */}
             <group position={[0, -0.2, -0.6]}>
                 <RoundedBox args={[3.2, 4.5, 0.05]} radius={0.15} smoothness={2}>
-                    {/* Blue Cardboard */}
-                    <meshStandardMaterial color="#3b82f6" roughness={0.8} />
+                    {/* Dirt Cardboard */}
+                    <meshStandardMaterial color="#5d4037" roughness={0.9} />
                 </RoundedBox>
                 {/* Backing Inner Accent */}
                 <RoundedBox args={[3.0, 4.3, 0.06]} radius={0.1} smoothness={2} position={[0, 0, 0.01]}>
-                    <meshStandardMaterial color="#bfdbfe" roughness={0.9} />
+                    <meshStandardMaterial color="#795548" roughness={0.9} />
                 </RoundedBox>
 
                 {/* Simulated Graphics/Text Boxes */}
                 <group position={[0, 1.7, 0.05]}>
-                    <Text fontSize={0.35} color="#1d4ed8" anchorX="center" anchorY="middle" letterSpacing={0.05}>
-                        DEVBOY
+                    <Text fontSize={0.35} color="#212121" anchorX="center" anchorY="middle" letterSpacing={0.05}>
+                        DIRT-BOY
                     </Text>
-                    <Text position={[0, -0.35, 0]} fontSize={0.14} color="#2563eb" anchorX="center" anchorY="middle" letterSpacing={0.1}>
-                        PORTABLE DEV ENVIRONMENT
+                    <Text position={[0, -0.35, 0]} fontSize={0.14} color="#3e2723" anchorX="center" anchorY="middle" letterSpacing={0.1}>
+                        UNEARTHED ARTIFACT
                     </Text>
                 </group>
 
@@ -159,26 +159,26 @@ const RetroConsole3D = (props) => {
                 <mesh position={[0, 0.6, 0.23]}>
                     <planeGeometry args={[0.9, 0.7]} />
                     {isOpen ? (
-                        <meshBasicMaterial color="#4ade80" /> // Bright green when active
+                        <meshBasicMaterial color="#d4d4aa" /> // Old gameboy green/yellow
                     ) : (
-                        <meshStandardMaterial color="#022c22" roughness={0.1} /> // Dark when off
+                        <meshStandardMaterial color="#2c2c20" roughness={0.1} /> // Dark mossy off
                     )}
                 </mesh>
 
                 {/* Content on Screen (Only visible when active) */}
                 {isOpen && (
                     <group position={[0, 0.6, 0.24]}>
-                        <Text fontSize={0.1} color="#064e3b" position={[-0.35, 0.2, 0]} anchorX="left" anchorY="center">
-                            {">"} npm start
+                        <Text fontSize={0.1} color="#1b4d3e" position={[-0.35, 0.2, 0]} anchorX="left" anchorY="center">
+                            {">"} fossil init
                         </Text>
-                        <Text fontSize={0.1} color="#064e3b" position={[-0.35, 0.0, 0]} anchorX="left" anchorY="center">
-                            READY...
+                        <Text fontSize={0.1} color="#1b4d3e" position={[-0.35, 0.0, 0]} anchorX="left" anchorY="center">
+                            DIGGING...
                         </Text>
                         <mesh position={[-0.1, -0.01, 0]}>
                             <planeGeometry args={[0.06, 0.1]} />
-                            <meshBasicMaterial color="#064e3b">
+                            <meshBasicMaterial color="#1b4d3e">
                                 {/* Simple blink animation without complex materials for performance */}
-                                <primitive object={new THREE.MeshBasicMaterial({ color: "#064e3b" })} attach="material" />
+                                <primitive object={new THREE.MeshBasicMaterial({ color: "#1b4d3e" })} attach="material" />
                             </meshBasicMaterial>
                         </mesh>
                     </group>
