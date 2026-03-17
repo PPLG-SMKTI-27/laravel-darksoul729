@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use Faker\Factory as FakerFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,12 +17,14 @@ class ProjectFactory extends Factory
      */
     public function definition(): array
     {
+        $faker = FakerFactory::create();
+
         return [
-            'title' => fake()->sentence(3),
-            'description' => fake()->paragraph(),
-            'image' => fake()->imageUrl(640, 480, 'business', true),
-            'link' => fake()->url(),
-            'status' => fake()->randomElement(['draft', 'published']),
+            'title' => $faker->sentence(3),
+            'description' => $faker->paragraph(),
+            'image' => $faker->imageUrl(640, 480, 'business', true),
+            'link' => $faker->url(),
+            'status' => $faker->randomElement(['draft', 'published']),
         ];
     }
 }
