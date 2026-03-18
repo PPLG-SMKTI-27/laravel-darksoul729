@@ -21,7 +21,9 @@ Route::get('/test-image', function () {
 });
 Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
 Route::get('/project', [ProjectController::class, 'index']);
-Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
+Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])
+    ->middleware('throttle:contact-submissions')
+    ->name('contact.store');
 
 // ==================== AUTHENTICATED ROUTES ====================
 Route::middleware('auth')->group(function () {

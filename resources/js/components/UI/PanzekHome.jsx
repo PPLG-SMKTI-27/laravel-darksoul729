@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wifi,
@@ -277,6 +277,8 @@ const PanzekHome = ({ onNavigate }) => {
     const [time, setTime] = useState('');
     const [activeApp, setActiveApp] = useState(null);
     const [performanceMode, setPerformanceMode] = useState(120);
+    const screenRef = useRef(null);
+    const [isCompactScreen, setIsCompactScreen] = useState(false);
 
     useEffect(() => {
         const updateTime = () => {
@@ -292,25 +294,41 @@ const PanzekHome = ({ onNavigate }) => {
         return () => clearInterval(interval);
     }, []);
 
-    const apps = [
-        { id: 1, name: 'Projects', icon: <FolderDot size={18} strokeWidth={2.5} />, color: 'from-blue-400 to-blue-600', action: () => onNavigate?.('/projects') },
-        { id: 2, name: 'Profile', icon: <UserIcon size={18} strokeWidth={2.5} />, color: 'from-purple-400 to-purple-600', action: () => onNavigate?.('/about') },
-        { id: 3, name: 'Contact', icon: <Mail size={18} strokeWidth={2.5} />, color: 'from-green-400 to-green-600', action: () => onNavigate?.('/contact') },
-        { id: 4, name: 'Settings', icon: <Settings size={18} strokeWidth={2.5} />, color: 'from-gray-500 to-gray-700', action: () => setActiveApp('Settings') },
-        { id: 5, name: 'Terminal', icon: <TerminalIcon size={18} strokeWidth={2.5} />, color: 'from-slate-700 to-slate-900', action: () => setActiveApp('Terminal') },
-        { id: 6, name: 'Camera', icon: <CameraIcon size={18} strokeWidth={2.5} />, color: 'from-yellow-400 to-yellow-600', action: () => setActiveApp('Camera') },
-        { id: 7, name: 'Messages', icon: <MessageCircle size={18} strokeWidth={2.5} />, color: 'from-emerald-400 to-emerald-600', action: () => setActiveApp('Messages') },
-        { id: 8, name: 'Music', icon: <MusicIcon size={18} strokeWidth={2.5} />, color: 'from-rose-400 to-rose-600', action: () => setActiveApp('Music') }
-    ];
+    useEffect(() => {
+        if (typeof window === 'undefined' || !screenRef.current || typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        const observer = new ResizeObserver(([entry]) => {
+            setIsCompactScreen(entry.contentRect.width < 270);
+        });
+
+        observer.observe(screenRef.current);
+
+        return () => observer.disconnect();
+    }, []);
+
+    const apps = useMemo(() => ([
+        { id: 1, name: 'Projects', icon: <FolderDot size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-blue-400 to-blue-600', action: () => onNavigate?.('/projects') },
+        { id: 2, name: 'Profile', icon: <UserIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-purple-400 to-purple-600', action: () => onNavigate?.('/about') },
+        { id: 3, name: 'Contact', icon: <Mail size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-green-400 to-green-600', action: () => onNavigate?.('/contact') },
+        { id: 4, name: 'Settings', icon: <Settings size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-gray-500 to-gray-700', action: () => setActiveApp('Settings') },
+        { id: 5, name: 'Terminal', icon: <TerminalIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-slate-700 to-slate-900', action: () => setActiveApp('Terminal') },
+        { id: 6, name: 'Camera', icon: <CameraIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-yellow-400 to-yellow-600', action: () => setActiveApp('Camera') },
+        { id: 7, name: 'Messages', icon: <MessageCircle size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-emerald-400 to-emerald-600', action: () => setActiveApp('Messages') },
+        { id: 8, name: 'Music', icon: <MusicIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-rose-400 to-rose-600', action: () => setActiveApp('Music') }
+    ]), [isCompactScreen, onNavigate]);
 
     const transitionProps = {
         type: 'spring',
         stiffness: performanceMode === 120 ? 400 : 260,
         damping: performanceMode === 120 ? 30 : 20
     };
+    const closeActiveApp = () => setActiveApp(null);
 
     return (
         <motion.div
+            ref={screenRef}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: performanceMode === 120 ? 0.3 : 0.5, ease: 'easeOut' }}
@@ -324,7 +342,7 @@ const PanzekHome = ({ onNavigate }) => {
             <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
             {/* STATUS BAR */}
-            <div className="flex justify-between items-center px-3 py-1.5 z-20 text-white text-[8px] font-medium drop-shadow-md relative">
+            <div className={`relative z-20 flex items-center justify-between text-white drop-shadow-md ${isCompactScreen ? 'px-2.5 py-1 text-[7px]' : 'px-3 py-1.5 text-[8px]'} font-medium`}>
                 <span className="ml-1 tracking-wider">{time}</span>
                 <div className="flex items-center gap-1.5 opacity-90">
                     <Signal size={9} strokeWidth={3} />
@@ -346,13 +364,13 @@ const PanzekHome = ({ onNavigate }) => {
                             className="flex flex-col flex-1"
                         >
                             {/* CLOCK WIDGET */}
-                            <div className="flex flex-col items-center justify-center mt-1 mb-3 text-white drop-shadow-lg">
-                                <div className="text-[28px] font-light tracking-widest">{time}</div>
-                                <div className="text-[7px] font-medium tracking-widest uppercase opacity-80 mt-0.5">Wed, Mar 11</div>
+                            <div className={`flex flex-col items-center justify-center text-white drop-shadow-lg ${isCompactScreen ? 'mt-0.5 mb-2' : 'mt-1 mb-3'}`}>
+                                <div className={isCompactScreen ? 'text-[22px] font-light tracking-[0.2em]' : 'text-[28px] font-light tracking-widest'}>{time}</div>
+                                <div className={isCompactScreen ? 'mt-0.5 text-[6px] font-medium uppercase tracking-[0.28em] opacity-80' : 'mt-0.5 text-[7px] font-medium tracking-widest uppercase opacity-80'}>Wed, Mar 11</div>
                             </div>
 
                             {/* HOME GRID */}
-                            <div className="grid grid-cols-4 gap-y-3 gap-x-3 px-8 flex-1 content-start">
+                            <div className={`grid grid-cols-4 flex-1 content-start ${isCompactScreen ? 'gap-x-2 gap-y-2 px-4' : 'gap-x-3 gap-y-3 px-8'}`}>
                                 {apps.map((app, index) => (
                                     <motion.div
                                         key={app.id}
@@ -362,17 +380,23 @@ const PanzekHome = ({ onNavigate }) => {
                                         className="flex flex-col items-center gap-1 cursor-pointer group"
                                         onClick={app.action}
                                     >
-                                        <div className={`w-[36px] h-[36px] rounded-xl flex items-center justify-center text-white bg-gradient-to-br ${app.color} shadow-lg shadow-black/30 group-hover:scale-105 active:scale-95 transition-transform border border-white/20`}
+                                        <div className={`flex items-center justify-center rounded-xl border border-white/20 text-white bg-gradient-to-br ${app.color} shadow-lg shadow-black/30 transition-transform group-hover:scale-105 active:scale-95 ${isCompactScreen ? 'h-[30px] w-[30px]' : 'h-[36px] w-[36px]'}`}
                                             style={{
                                                 boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.4)'
                                             }}>
                                             {app.icon}
                                         </div>
-                                        <span className="text-white text-[7px] font-semibold tracking-wide drop-shadow-md">
+                                        <span className={`text-white font-semibold tracking-wide drop-shadow-md ${isCompactScreen ? 'text-[6px]' : 'text-[7px]'}`}>
                                             {app.name}
                                         </span>
                                     </motion.div>
                                 ))}
+                            </div>
+
+                            <div className={`px-3 pb-1 ${isCompactScreen ? 'pt-1' : 'pt-2'}`}>
+                                <div className={`rounded-full border border-white/15 bg-black/28 text-white/90 backdrop-blur-sm ${isCompactScreen ? 'px-2.5 py-1 text-[6px]' : 'px-3 py-1 text-[7px]'} text-center font-bold uppercase tracking-[0.22em]`}>
+                                    Tap app icon to open
+                                </div>
                             </div>
                         </motion.div>
                     ) : (
@@ -385,7 +409,7 @@ const PanzekHome = ({ onNavigate }) => {
                             className="flex-1 overflow-hidden relative flex flex-col"
                         >
                             {/* APP HEADER (Subtle floating) */}
-                            <div className="absolute top-0 left-0 right-0 h-6 flex items-center px-3 z-30 pointer-events-none">
+                            <div className={`absolute left-0 right-0 top-0 z-30 flex items-center pointer-events-none ${isCompactScreen ? 'h-5 px-2' : 'h-6 px-3'}`}>
                                 <span className="text-[8px] font-black text-white/50 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm mt-1">{activeApp}</span>
                             </div>
 
@@ -403,27 +427,42 @@ const PanzekHome = ({ onNavigate }) => {
             </div>
 
             {/* FLOATING ACTION BAR & HUD (Minimalist) */}
-            <div className="absolute bottom-1 left-0 right-0 z-40 px-2 pointer-events-none flex justify-between items-end">
+            <div className={`absolute left-0 right-0 z-40 flex items-end justify-between px-2 pointer-events-none ${isCompactScreen ? 'bottom-0.5' : 'bottom-1'}`}>
                 {/* Left HUD */}
                 <span className="text-white/20 text-[6px] font-black tracking-[0.2em] mb-1">IMG_01</span>
 
                 {/* Center Navigation Content */}
-                <div className="pointer-events-auto flex flex-col items-center gap-1.5 pb-1">
+                <div className={`pointer-events-auto flex flex-col items-center ${isCompactScreen ? 'gap-1 pb-0.5' : 'gap-1.5 pb-1'}`}>
                     {activeApp && (
-                        <div className="flex gap-4 items-center bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 opacity-60 hover:opacity-100 transition-opacity">
-                            <button onClick={() => setActiveApp(null)} className="text-white/80 hover:text-white active:scale-90 transition-transform">
-                                <ChevronLeft size={12} strokeWidth={3} />
+                        <div className={`flex items-center rounded-full border border-white/15 bg-black/45 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition-opacity ${isCompactScreen ? 'gap-1 px-1.5 py-1' : 'gap-1.5 px-2 py-1.5'}`}>
+                            <button
+                                type="button"
+                                aria-label="Back"
+                                onClick={closeActiveApp}
+                                className={`flex items-center justify-center rounded-full bg-white/6 text-white/90 transition hover:bg-white/12 hover:text-white active:scale-95 touch-manipulation ${isCompactScreen ? 'h-8 w-8' : 'h-9 w-9'}`}
+                            >
+                                <ChevronLeft size={isCompactScreen ? 14 : 15} strokeWidth={3} />
                             </button>
-                            <button onClick={() => setActiveApp(null)} className="text-white/80 hover:text-white active:scale-90 transition-transform">
-                                <Circle size={10} fill="currentColor" />
+                            <button
+                                type="button"
+                                aria-label="Home"
+                                onClick={closeActiveApp}
+                                className={`flex items-center justify-center rounded-full bg-white/6 text-white/90 transition hover:bg-white/12 hover:text-white active:scale-95 touch-manipulation ${isCompactScreen ? 'h-8 w-8' : 'h-9 w-9'}`}
+                            >
+                                <Circle size={isCompactScreen ? 10 : 11} fill="currentColor" />
                             </button>
-                            <button className="text-white/80 hover:text-white active:scale-90 transition-transform">
-                                <Square size={10} fill="currentColor" />
+                            <button
+                                type="button"
+                                aria-label="Close app"
+                                onClick={closeActiveApp}
+                                className={`flex items-center justify-center rounded-full bg-white/6 text-white/90 transition hover:bg-white/12 hover:text-white active:scale-95 touch-manipulation ${isCompactScreen ? 'h-8 w-8' : 'h-9 w-9'}`}
+                            >
+                                <Square size={isCompactScreen ? 10 : 11} fill="currentColor" />
                             </button>
                         </div>
                     )}
                     {/* Gesture Pill */}
-                    <div className="w-16 h-1 bg-white/40 rounded-full" />
+                    <div className={`${isCompactScreen ? 'h-[3px] w-12' : 'h-1 w-16'} rounded-full bg-white/40`} />
                 </div>
 
                 {/* Right HUD */}
