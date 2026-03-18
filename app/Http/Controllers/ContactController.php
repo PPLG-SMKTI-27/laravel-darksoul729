@@ -2,21 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ContactMessageRequest;
 use App\Models\Message;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 
 class ContactController extends Controller
 {
-    public function store(Request $request)
+    public function store(ContactMessageRequest $request): JsonResponse|RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'message' => 'required|string',
-        ]);
+        Message::create($request->safe()->only([
+            'name',
+            'email',
+            'message',
+        ]));
 
-        Message::create($request->all());
+        $message = 'Pesan berhasil dikirim. Saya akan balas secepatnya.';
 
-        return redirect()->back()->with('success', 'Transmission received. Vandal initialized.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => $message,
+            ], 201);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 }

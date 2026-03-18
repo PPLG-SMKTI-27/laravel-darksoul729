@@ -12,6 +12,7 @@ import {
 } from '@react-three/drei';
 import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
+import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
 
 // --------------- HELPER COMPONENTS ---------------
 
@@ -40,33 +41,47 @@ const SceneTicker = ({ fps = 30, enabled = true }) => {
 };
 
 const StaggeredText = ({ text, color, delay = 0, className = "" }) => {
+    const prefersReducedMotion = useReducedMotion();
     const letters = text.split("");
+
     return (
         <span className={`inline-flex ${className}`}>
             {letters.map((letter, i) => (
                 <motion.span
                     key={i}
-                    initial={{ opacity: 0, y: 15, x: -10, filter: 'blur(4px)' }}
+                    initial={{ opacity: 0, y: 22, scale: 0.82, rotate: -4, filter: 'blur(6px)' }}
                     animate={{
                         opacity: 1,
-                        y: 0,
-                        x: 0,
+                        y: prefersReducedMotion ? 0 : [0, -7, 0, -3, 0],
+                        scale: prefersReducedMotion ? 1 : [1, 1.06, 0.97, 1.03, 1],
+                        rotate: prefersReducedMotion ? 0 : [0, -1.5, 1.3, -0.6, 0],
                         filter: 'blur(0px)'
                     }}
                     transition={{
-                        duration: 0.6,
-                        delay: delay + i * 0.04,
-                        ease: "easeOut"
+                        opacity: { duration: 0.28, delay: delay + i * 0.055, ease: 'easeOut' },
+                        y: prefersReducedMotion
+                            ? { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 }
+                            : [
+                                { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 },
+                                { duration: 3.6 + i * 0.15, repeat: Infinity, ease: 'easeInOut', delay: 0.95 + delay + i * 0.04 }
+                            ],
+                        scale: prefersReducedMotion
+                            ? { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 }
+                            : [
+                                { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 },
+                                { duration: 3.2 + i * 0.12, repeat: Infinity, ease: 'easeInOut', delay: 1 + delay + i * 0.04 }
+                            ],
+                        rotate: prefersReducedMotion ? undefined : { duration: 4 + i * 0.18, repeat: Infinity, ease: 'easeInOut', delay: 1.05 + delay + i * 0.04 },
                     }}
-                    style={{ display: 'inline-block' }}
+                    style={{ display: 'inline-block', transformOrigin: '50% 100%' }}
                 >
                     <motion.span
-                        animate={{ y: [0, -6, 0] }}
-                        transition={{
-                            duration: 3,
+                        animate={prefersReducedMotion ? undefined : { x: [0, 1.5, -1, 0] }}
+                        transition={prefersReducedMotion ? undefined : {
+                            duration: 4.4 + i * 0.15,
                             repeat: Infinity,
-                            ease: "easeInOut",
-                            delay: delay + i * 0.1
+                            ease: 'easeInOut',
+                            delay: 1.1 + delay + i * 0.05
                         }}
                         style={{ display: 'inline-block' }}
                     >
@@ -293,7 +308,7 @@ export default function FeaturedProjects({ repos = [] }) {
 
     // Set up intersection observer for lazy-loading the Canvas
     const containerRef = useRef(null);
-    const isInView = useInView(containerRef, { once: true, margin: "300px 0px" });
+    const isInView = useInView(containerRef, { margin: '200px 0px' });
 
     return (
         <section ref={containerRef} className="relative w-full py-12 mb-16 z-10 overflow-hidden">
@@ -302,9 +317,24 @@ export default function FeaturedProjects({ repos = [] }) {
                 <div className="flex flex-col md:flex-row justify-between items-end mb-4 md:mb-8 gap-4 px-4 overflow-visible relative">
                     <div className="flex flex-col gap-2 z-10">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                            initial={{ opacity: 0, scale: 0.7, y: 18, rotate: -4 }}
+                            animate={prefersReducedMotion ? { opacity: 1, scale: 1, y: 0, rotate: 0 } : {
+                                opacity: 1,
+                                scale: 1,
+                                y: [0, -4, 0],
+                                rotate: [0, -1.2, 0.8, 0],
+                            }}
+                            transition={prefersReducedMotion
+                                ? { type: 'spring', stiffness: 260, damping: 18 }
+                                : {
+                                    opacity: { duration: 0.3 },
+                                    scale: { type: 'spring', stiffness: 260, damping: 18 },
+                                    y: [
+                                        { type: 'spring', stiffness: 260, damping: 18 },
+                                        { duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }
+                                    ],
+                                    rotate: { duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 }
+                                }}
                             className="bg-[#fbbf24] text-[#78350f] text-[10px] md:text-[11px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg border border-white/60 self-start"
                         >
                             COLLECTORS EDITION
@@ -320,7 +350,7 @@ export default function FeaturedProjects({ repos = [] }) {
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => window.location.href = '/projects'}
+                            onClick={() => navigateWithCleanup('/projects')}
                             className="bg-slate-600 text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),_0_3px_6px_rgba(0,0,0,0.3)] border border-slate-700 uppercase tracking-wide text-xs md:text-sm"
                         >
                             See Collection <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" className="mb-[2px] opacity-90"><path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"></path></svg>
@@ -347,7 +377,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                 }}
                                 className="!overflow-visible"
                             >
-                                <SceneTicker fps={renderSettings.targetFps} enabled={renderSettings.enableTicker} />
+                                <SceneTicker fps={renderSettings.targetFps} enabled={renderSettings.enableTicker && isInView} />
                                 <PerspectiveCamera makeDefault position={[0, 0, 9]} fov={35} />
                                 <ambientLight intensity={0.7} />
                                 <directionalLight

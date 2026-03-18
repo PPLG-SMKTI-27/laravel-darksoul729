@@ -13,15 +13,6 @@ const loseCanvasContexts = () => {
     });
 };
 
-const clearCacheStorage = async () => {
-    if (!('caches' in window)) {
-        return;
-    }
-
-    const cacheKeys = await window.caches.keys();
-    await Promise.allSettled(cacheKeys.map((key) => window.caches.delete(key)));
-};
-
 export const cleanupPageRuntime = ({ lenis } = {}) => {
     if (typeof window === 'undefined') {
         return;
@@ -46,8 +37,6 @@ export const cleanupPageRuntime = ({ lenis } = {}) => {
 
     loseCanvasContexts();
     window.performance?.clearResourceTimings?.();
-
-    void clearCacheStorage();
 };
 
 export const navigateWithCleanup = (href, options = {}) => {
@@ -66,9 +55,22 @@ export const navigateWithCleanup = (href, options = {}) => {
         return;
     }
 
+    if (typeof window.__APP_NAVIGATE__ === 'function') {
+        void window.__APP_NAVIGATE__(targetUrl.toString(), options);
+        return;
+    }
+
     cleanupPageRuntime(options);
 
     window.setTimeout(() => {
         window.location.assign(targetUrl.toString());
     }, 40);
+};
+
+export const prefetchRoute = (href) => {
+    if (typeof window === 'undefined' || !href || typeof window.__APP_PREFETCH__ !== 'function') {
+        return;
+    }
+
+    void window.__APP_PREFETCH__(href);
 };

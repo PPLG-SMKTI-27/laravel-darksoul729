@@ -3,9 +3,11 @@ import { Canvas } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import gsap from 'gsap';
+import { useReducedMotion } from 'framer-motion';
 import OverlayUI from './OverlayUI';
 import RoomTour from './RoomTour';
 import PlasticButton from '../../resources/js/UI/PlasticButton';
+import { navigateWithCleanup } from '../../resources/js/lib/pageTransitionCleanup';
 
 const CAREER_SPOT = 0.35;
 const PROFILE_SPOT = 0.75;
@@ -38,7 +40,7 @@ const INTRO_FALL_CUTOFF = 0.65;
 const INTRO_FALL_DURATION = 1.6;
 const INTRO_LAND_DURATION = 1.0;
 
-const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress, roomReady, onStart, startDisabled }) => {
+const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress, roomReady, onStart, startDisabled, isTouchOptimized }) => {
     const inIntro = phase === 'intro';
     const inTransition = phase === 'transition';
 
@@ -55,6 +57,49 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
         ? clamp01(Math.sin(clamp01((fallProgress - 0.18) / 0.64) * Math.PI)) * 0.75
         : 0;
     const revealWindowOpacity = inTransition ? clamp01((fallProgress - 0.52) / 0.36) * 0.42 : 0;
+    const cloudLayers = isTouchOptimized
+        ? [{
+            key: 'left',
+            className: 'top-[10%] left-[-10%] h-[24rem] w-[24rem]',
+            color: 'rgba(255,255,255,0.34)',
+            speed: 14,
+            drift: -7,
+            blur: 12,
+        }, {
+            key: 'right',
+            className: 'top-[18%] right-[-8%] h-[20rem] w-[20rem]',
+            color: 'rgba(239,246,255,0.38)',
+            speed: 11,
+            drift: 6,
+            blur: 10,
+        }]
+        : [{
+            key: 'left',
+            className: 'top-[8%] left-[-12%] h-[38rem] w-[38rem]',
+            color: 'rgba(255,255,255,0.52)',
+            speed: 24,
+            drift: -12,
+            blur: 22,
+        }, {
+            key: 'right',
+            className: 'top-[14%] right-[-10%] h-[30rem] w-[30rem]',
+            color: 'rgba(239,246,255,0.62)',
+            speed: 18,
+            drift: 10,
+            blur: 18,
+        }, {
+            key: 'bottom',
+            className: 'bottom-[-22%] left-[16%] h-[28rem] w-[42rem]',
+            color: 'rgba(224,242,254,0.48)',
+            speed: 30,
+            drift: -18,
+            blur: 24,
+        }];
+    const effectiveNoiseOpacity = isTouchOptimized ? noiseOpacity * 0.45 : noiseOpacity;
+    const effectiveWindOpacity = isTouchOptimized ? windOpacity * 0.42 : windOpacity;
+    const effectiveHazeOpacity = isTouchOptimized ? hazeLayerOpacity * 0.72 : hazeLayerOpacity;
+    const effectiveBridgeGlowOpacity = isTouchOptimized ? bridgeGlowOpacity * 0.5 : bridgeGlowOpacity;
+    const effectiveRevealWindowOpacity = isTouchOptimized ? revealWindowOpacity * 0.65 : revealWindowOpacity;
 
     return (
         <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden bg-[#8ec5ff]">
@@ -77,7 +122,7 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
             <div
                 className="absolute inset-0"
                 style={{
-                    opacity: bridgeGlowOpacity,
+                    opacity: effectiveBridgeGlowOpacity,
                     background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.78) 22%, rgba(229,240,252,0.28) 55%, rgba(229,240,252,0) 100%)',
                 }}
             />
@@ -90,28 +135,7 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
                 }}
             />
 
-            {[{
-                key: 'left',
-                className: 'top-[8%] left-[-12%] h-[38rem] w-[38rem]',
-                color: 'rgba(255,255,255,0.52)',
-                speed: 24,
-                drift: -12,
-                blur: 22,
-            }, {
-                key: 'right',
-                className: 'top-[14%] right-[-10%] h-[30rem] w-[30rem]',
-                color: 'rgba(239,246,255,0.62)',
-                speed: 18,
-                drift: 10,
-                blur: 18,
-            }, {
-                key: 'bottom',
-                className: 'bottom-[-22%] left-[16%] h-[28rem] w-[42rem]',
-                color: 'rgba(224,242,254,0.48)',
-                speed: 30,
-                drift: -18,
-                blur: 24,
-            }].map((layer) => (
+            {cloudLayers.map((layer) => (
                 <div
                     key={layer.key}
                     className={`absolute rounded-full ${layer.className}`}
@@ -144,10 +168,10 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
                 style={{
                     opacity: cloudLayerOpacity * (inTransition ? Math.min(1, 0.6 + fallProgress * 0.4) : 0.8),
                     filter: 'url(#vapor-noise-back)',
-                    transform: `translate3d(0, ${inTransition ? -fallProgress * 60 : 0}%, 0) scale(${1 + fallProgress * 0.5})`,
+                    transform: `translate3d(0, ${inTransition ? -fallProgress * (isTouchOptimized ? 30 : 60) : 0}%, 0) scale(${1 + fallProgress * (isTouchOptimized ? 0.24 : 0.5)})`,
                     transformOrigin: '50% 50%',
-                    height: '240%',
-                    top: '-20%',
+                    height: isTouchOptimized ? '180%' : '240%',
+                    top: isTouchOptimized ? '-8%' : '-20%',
                 }}
             />
 
@@ -155,12 +179,12 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
             <div
                 className="absolute inset-0 mix-blend-screen"
                 style={{
-                    opacity: cloudLayerOpacity * (inTransition ? clamp01(fallProgress * 2.0) : 0),
+                    opacity: cloudLayerOpacity * (inTransition ? clamp01(fallProgress * (isTouchOptimized ? 1.15 : 2.0)) : 0),
                     filter: 'url(#vapor-noise-front)',
-                    transform: `translate3d(0, ${inTransition ? -fallProgress * 150 : 0}%, 0) scale(${1 + fallProgress * 1.5})`,
+                    transform: `translate3d(0, ${inTransition ? -fallProgress * (isTouchOptimized ? 74 : 150) : 0}%, 0) scale(${1 + fallProgress * (isTouchOptimized ? 0.58 : 1.5)})`,
                     transformOrigin: '50% 50%',
-                    height: '350%',
-                    top: '-50%',
+                    height: isTouchOptimized ? '230%' : '350%',
+                    top: isTouchOptimized ? '-35%' : '-50%',
                 }}
             />
 
@@ -168,19 +192,19 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
             <div
                 className="absolute inset-0 mix-blend-screen"
                 style={{
-                    opacity: windOpacity * 0.8 * cloudLayerOpacity,
-                    filter: 'url(#vapor-noise-back) blur(12px)',
-                    transform: `translate3d(0, ${inTransition ? -fallProgress * 300 : 0}%, 0) scaleY(4.0) scaleX(1.5)`,
+                    opacity: effectiveWindOpacity * 0.8 * cloudLayerOpacity,
+                    filter: `url(#vapor-noise-back) blur(${isTouchOptimized ? 7 : 12}px)`,
+                    transform: `translate3d(0, ${inTransition ? -fallProgress * (isTouchOptimized ? 120 : 300) : 0}%, 0) scaleY(${isTouchOptimized ? 2.4 : 4.0}) scaleX(${isTouchOptimized ? 1.15 : 1.5})`,
                     transformOrigin: '50% 50%',
-                    height: '500%',
-                    top: '-150%',
+                    height: isTouchOptimized ? '260%' : '500%',
+                    top: isTouchOptimized ? '-70%' : '-150%',
                 }}
             />
 
             <div
                 className="absolute inset-0"
                 style={{
-                    opacity: hazeLayerOpacity,
+                    opacity: effectiveHazeOpacity,
                     background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.95) 0%, rgba(235,245,255,0.9) 50%, rgba(190,215,240,0.8) 100%)',
                 }}
             />
@@ -188,7 +212,7 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
             <div
                 className="absolute inset-0"
                 style={{
-                    opacity: revealWindowOpacity,
+                    opacity: effectiveRevealWindowOpacity,
                     background: 'radial-gradient(circle at 52% 62%, rgba(146,168,196,0) 0%, rgba(146,168,196,0) 18%, rgba(177,198,221,0.18) 34%, rgba(225,237,249,0.55) 100%)',
                 }}
             />
@@ -196,29 +220,65 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
             <div
                 className="absolute inset-0"
                 style={{
-                    opacity: noiseOpacity,
+                    opacity: effectiveNoiseOpacity,
                     backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.7) 0 1px, transparent 1.5px), radial-gradient(circle at 70% 38%, rgba(255,255,255,0.45) 0 1px, transparent 1.5px), radial-gradient(circle at 42% 72%, rgba(255,255,255,0.35) 0 1px, transparent 1.5px)',
-                    backgroundSize: '180px 180px, 220px 220px, 260px 260px',
-                    transform: `translate3d(0, ${inTransition ? -fallProgress * 40 : 0}%, 0)`,
+                    backgroundSize: isTouchOptimized ? '240px 240px, 280px 280px, 320px 320px' : '180px 180px, 220px 220px, 260px 260px',
+                    transform: `translate3d(0, ${inTransition ? -fallProgress * (isTouchOptimized ? 16 : 40) : 0}%, 0)`,
                 }}
             />
 
             {inIntro && (
+                <div className="pointer-events-none absolute inset-x-0 top-[18%] z-50 flex justify-center px-6">
+                    <div className="w-full max-w-md rounded-[30px] border border-white/40 bg-white/14 px-5 py-5 text-center text-slate-900 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur-md">
+                        <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-white/55 bg-white/40 px-3 py-1 text-[10px] font-black uppercase tracking-[0.34em] text-slate-900/70">
+                            Workspace Gate
+                            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.55)]" />
+                        </div>
+                        <p className="mt-4 text-2xl font-black uppercase tracking-[0.18em] text-slate-950 sm:text-[2rem]">
+                            Sky Route
+                        </p>
+                        <p className="mt-2 text-sm font-medium leading-relaxed text-slate-900/78 sm:text-[15px]">
+                            Jalur masuk ke workspace dengan transisi descent yang ringan dan tetap imersif.
+                        </p>
+                        <div className="mt-4 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-[0.28em] text-slate-900/55 sm:text-[11px]">
+                            <span>Cloud</span>
+                            <span className="h-px w-8 bg-slate-900/20" />
+                            <span>Gate</span>
+                            <span className="h-px w-8 bg-slate-900/20" />
+                            <span>Workspace</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {inIntro && (
                 <div className="pointer-events-auto absolute inset-x-0 bottom-8 z-50 flex justify-center px-6">
-                    <div className="flex w-full max-w-lg items-center justify-between gap-4 rounded-full border border-white/35 bg-white/14 px-5 py-3 text-black shadow-[0_24px_80px_rgba(15,23,42,0.16)] backdrop-blur-xl">
-                        <div className="min-w-0">
+                    <div className="flex w-full max-w-xl flex-col items-stretch justify-between gap-4 rounded-[32px] border border-white/35 bg-white/14 px-5 py-4 text-black shadow-[0_24px_80px_rgba(15,23,42,0.16)] backdrop-blur-xl sm:flex-row sm:items-center">
+                        <div className="min-w-0 flex-1">
                             <p className="text-[10px] font-black uppercase tracking-[0.38em] text-black/70">About descent</p>
                             <p className="mt-1 text-sm font-medium leading-snug text-black">
                                 Turun dari langit, menembus kabut, lalu masuk ke workspace.
                             </p>
                         </div>
-                        <PlasticButton
-                            color="red"
-                            onClick={onStart}
-                            disabled={startDisabled}
-                        >
-                            Start
-                        </PlasticButton>
+                        <div className="flex items-center justify-end gap-3">
+                            <PlasticButton
+                                color="blue"
+                                onClick={() => {
+                                    navigateWithCleanup('/');
+                                }}
+                                className="px-6 py-3"
+                            >
+                                Home
+                            </PlasticButton>
+                            <PlasticButton
+                                color="red"
+                                onClick={onStart}
+                                disabled={startDisabled}
+                                className="px-6 py-3"
+                            >
+                                Start
+                            </PlasticButton>
+                        </div>
                     </div>
                 </div>
             )}
@@ -241,6 +301,7 @@ const CloudGateOverlay = ({ phase, cloudOpacity, hazeOpacity, transitionProgress
 
 
 const AboutExperience = ({ careerItems, debug = false }) => {
+    const prefersReducedMotion = useReducedMotion();
     const calibrationMode = useMemo(() => {
         if (typeof window === 'undefined') {
             return false;
@@ -270,6 +331,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
     const [requestedSpot, setRequestedSpot] = useState('wide');
     const [isAnimating, setIsAnimating] = useState(false);
     const [wideControlsEnabled, setWideControlsEnabled] = useState(calibrationMode);
+    const [isTouchOptimized, setIsTouchOptimized] = useState(false);
 
     const smoothedRef = useRef(0);
     const transitionTimelineRef = useRef(null);
@@ -312,6 +374,23 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         const clamped = clampTourProgress(nextValue);
         setTargetProgress(clamped);
     }, []);
+
+    useEffect(() => {
+        const updateTouchOptimization = () => {
+            const isMobileViewport = window.innerWidth < 768;
+            const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+            const saveData = navigator.connection?.saveData ?? false;
+
+            setIsTouchOptimized(prefersReducedMotion || isMobileViewport || isCoarsePointer || saveData);
+        };
+
+        updateTouchOptimization();
+        window.addEventListener('resize', updateTouchOptimization);
+
+        return () => {
+            window.removeEventListener('resize', updateTouchOptimization);
+        };
+    }, [prefersReducedMotion]);
 
     useEffect(() => {
         roomReadyRef.current = roomReady;
@@ -794,6 +873,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                     roomReady={roomReady}
                     onStart={handleStart}
                     startDisabled={phase !== 'intro'}
+                    isTouchOptimized={isTouchOptimized}
                 />
 
 

@@ -1,31 +1,32 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { Suspense, useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { BadgeInfo, BriefcaseBusiness, House, LogIn, LogOut, Mail, Menu, Sparkles, X } from 'lucide-react';
-import Footer from '../components/Footer';
-import SoilFooter from '../components/SoilFooter';
-import IntroOverlay from '../components/IntroOverlay';
 import PlasticToast from '../UI/PlasticToast';
 import PlasticModal from '../UI/PlasticModal';
 import { cleanupPageRuntime, navigateWithCleanup } from '../lib/pageTransitionCleanup';
+
+const Footer = React.lazy(() => import('../components/Footer'));
+const SoilFooter = React.lazy(() => import('../components/SoilFooter'));
+const IntroOverlay = React.lazy(() => import('../components/IntroOverlay'));
 
 gsap.registerPlugin(ScrollTrigger);
 
 const NAV_THEMES = {
     default: {
-        logo: 'bg-white text-[#7c3aed] border-slate-200',
+        logo: 'border-[#dbe4f0] bg-[#f7fafc] text-[#244a73] shadow-[0_10px_24px_rgba(15,23,42,0.08)] hover:bg-white',
         navShell: 'border-transparent bg-transparent shadow-none',
         navItem: 'text-white hover:text-white/85',
         navItemActive: 'bg-transparent text-white border-transparent',
-        action: 'bg-white text-[#16213d] border-slate-200 hover:bg-slate-50',
-        mobileButton: 'border-slate-200 bg-white text-[#16213d]',
-        sidebar: 'border-slate-200 bg-white',
-        sidebarItem: 'text-[#16213d] hover:bg-slate-50',
-        sidebarItemActive: 'bg-white text-[#16213d] border-slate-200',
-        sidebarAction: 'bg-white text-[#16213d] border-slate-200 hover:bg-slate-50',
-        backdrop: 'bg-[#0f172a]/26',
+        action: 'border-[#d8e0ea] bg-[#f8fafc] text-[#22324a] shadow-[0_10px_24px_rgba(15,23,42,0.08)] hover:bg-white',
+        mobileButton: 'border-[#d8e0ea] bg-[#f8fafc] text-[#22324a] shadow-[0_10px_24px_rgba(15,23,42,0.08)]',
+        sidebar: 'border-[#d8e0ea] bg-[rgba(249,251,255,0.98)] backdrop-blur-md',
+        sidebarItem: 'text-[#1d2d45] hover:bg-[#f4f7fb]',
+        sidebarItemActive: 'border-[#d8e0ea] bg-[#f7fafc] text-[#244a73] shadow-[0_8px_22px_rgba(15,23,42,0.06)]',
+        sidebarAction: 'border-[#d8e0ea] bg-[#f7fafc] text-[#22324a] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:bg-white',
+        backdrop: 'bg-[#0f172a]/20 backdrop-blur-[1px]',
         footer: 'text-[#23345f]/50',
         heading: 'text-[#16213d]',
     },
@@ -53,8 +54,8 @@ const NAV_ITEM_ACCENTS = {
         activeText: 'text-teal-700',
     },
     Login: {
-        chip: 'border-indigo-200/70 bg-indigo-100/90 text-indigo-700',
-        activeText: 'text-indigo-700',
+        chip: 'border-[#d7dff1] bg-[#eef3fb] text-[#4b5f87]',
+        activeText: 'text-[#32496b]',
     },
     Logout: {
         chip: 'border-fuchsia-200/70 bg-fuchsia-100/90 text-fuchsia-700',
@@ -69,11 +70,57 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
     // Notification & Modal State
     const [toast, setToast] = useState(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isTouchOptimized, setIsTouchOptimized] = useState(false);
+    const prefersReducedMotion = useReducedMotion();
 
     const lenisRef = useRef(null);
 
+    useEffect(() => {
+        const updateTouchOptimization = () => {
+            const isMobileViewport = window.innerWidth < 768;
+            const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+            const saveData = navigator.connection?.saveData ?? false;
+
+            setIsTouchOptimized(prefersReducedMotion || isMobileViewport || isCoarsePointer || saveData);
+        };
+
+        updateTouchOptimization();
+        window.addEventListener('resize', updateTouchOptimization);
+
+        return () => {
+            window.removeEventListener('resize', updateTouchOptimization);
+        };
+    }, [prefersReducedMotion]);
+
     // Initialize Lenis for Smooth Scrolling
     useLayoutEffect(() => {
+        const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+        const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+        const saveData = navigator.connection?.saveData ?? false;
+        const shouldDisableSmoothScroll = prefersReducedMotion || saveData || isCoarsePointer;
+
+        const lockScroll = () => {
+            lenisRef.current?.stop?.();
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+        };
+
+        const unlockScroll = () => {
+            lenisRef.current?.start?.();
+            document.body.style.overflow = 'unset';
+            document.documentElement.style.overflow = 'unset';
+        };
+
+        window.addEventListener('lock-scroll', lockScroll);
+        window.addEventListener('unlock-scroll', unlockScroll);
+
+        if (shouldDisableSmoothScroll) {
+            return () => {
+                window.removeEventListener('lock-scroll', lockScroll);
+                window.removeEventListener('unlock-scroll', unlockScroll);
+            };
+        }
+
         const lenis = new Lenis({
             duration: 1.2,
             easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -86,46 +133,33 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
         });
 
         lenisRef.current = lenis;
+        let rafId = 0;
 
-        function raf(time) {
+        const raf = (time) => {
             lenis.raf(time);
-            requestAnimationFrame(raf);
-        }
+            rafId = requestAnimationFrame(raf);
+        };
 
-        requestAnimationFrame(raf);
+        rafId = requestAnimationFrame(raf);
 
-        // Connect Lenis to GSAP ScrollTrigger
         lenis.on('scroll', ScrollTrigger.update);
-        gsap.ticker.add((time) => {
-            lenis.raf(time * 1000);
-        });
-        gsap.ticker.lagSmoothing(0);
-
-        // Global scroll lock listeners
-        const lockScroll = () => {
-            lenis.stop();
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-        };
-        const unlockScroll = () => {
-            lenis.start();
-            document.body.style.overflow = 'unset';
-            document.documentElement.style.overflow = 'unset';
-        };
-
-        window.addEventListener('lock-scroll', lockScroll);
-        window.addEventListener('unlock-scroll', unlockScroll);
 
         return () => {
+            cancelAnimationFrame(rafId);
             lenis.destroy();
-            gsap.ticker.remove(lenis.raf);
+            lenisRef.current = null;
             window.removeEventListener('lock-scroll', lockScroll);
             window.removeEventListener('unlock-scroll', unlockScroll);
         };
     }, []);
 
-    // Initial Checks (Intro & Flash Messages)
+    // Intro state is only needed on the landing page.
     useEffect(() => {
+        if (page !== 'LandingPage') {
+            setShowIntro(false);
+            return;
+        }
+
         // Intro
         const lastShown = localStorage.getItem('intro_last_shown');
         const now = new Date().getTime();
@@ -135,8 +169,9 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             setShowIntro(true);
             localStorage.setItem('intro_last_shown', now.toString());
         }
+    }, [page]);
 
-        // Flash Message Check
+    useEffect(() => {
         const flash = localStorage.getItem('plastic_flash');
         if (flash) {
             try {
@@ -219,6 +254,19 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
     const getNavAccent = (itemName) => {
         return NAV_ITEM_ACCENTS[itemName] || NAV_ITEM_ACCENTS.Home;
     };
+    const pageTransitionProps = isTouchOptimized
+        ? {
+            initial: false,
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 1, scale: 1 },
+            transition: { duration: 0 },
+        }
+        : {
+            initial: { opacity: 0, scale: 0.98 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.98 },
+            transition: { duration: 0.3, ease: 'easeOut' },
+        };
 
     const isItemActive = (item) => {
         if (page === item.name) {
@@ -246,7 +294,11 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
 
             {/* OVERLAYS */}
             <AnimatePresence>
-                {showIntro && <IntroOverlay onComplete={() => setShowIntro(false)} />}
+                {page === 'LandingPage' && showIntro && (
+                    <Suspense fallback={null}>
+                        <IntroOverlay onComplete={() => setShowIntro(false)} />
+                    </Suspense>
+                )}
                 {toast && <PlasticToast key="toast" message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
                 {showLogoutModal && (
                     <PlasticModal
@@ -375,7 +427,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                         <button
                             type="button"
                             onClick={() => handleNavigate('/')}
-                            className={`flex h-12 w-12 items-center justify-center rounded-[1.15rem] border text-base font-bold tracking-[0.08em] transition-colors md:h-14 md:w-14 ${currentTheme.logo}`}
+                            className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border text-[0.95rem] font-black tracking-[0.06em] transition-colors duration-150 md:h-14 md:w-14 ${currentTheme.logo}`}
                         >
                             KH
                         </button>
@@ -415,7 +467,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                         href={authItem.href}
                                         onClick={(event) => handleNavItemClick(event, authItem)}
                                         aria-current={isItemActive(authItem) ? 'page' : undefined}
-                                        className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.24em] transition-colors duration-150 ${currentTheme.action} ${accent.activeText}`}
+                                        className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.22em] transition-colors duration-150 ${currentTheme.action} ${accent.activeText}`}
                                     >
                                         <span className={`flex h-8 w-8 items-center justify-center rounded-full border ${accent.chip}`}>
                                             {React.createElement(authItem.icon, { className: 'h-[15px] w-[15px]', strokeWidth: 2.1 })}
@@ -432,7 +484,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                 event.preventDefault();
                                 handleNavigate('/contact');
                             }}
-                            className="flex items-center rounded-full border border-amber-200/70 bg-[linear-gradient(135deg,rgba(255,245,204,0.9),rgba(255,214,102,0.88))] px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.24em] text-amber-900 shadow-[0_8px_22px_rgba(245,158,11,0.14)] transition-colors duration-150 hover:bg-[linear-gradient(135deg,rgba(255,250,224,0.94),rgba(255,221,128,0.92))]"
+                            className="flex items-center rounded-full border border-[#1a324d] bg-[#223d5b] px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] transition-colors duration-150 hover:bg-[#29486b]"
                         >
                             Hire Me
                         </a>
@@ -465,13 +517,13 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             {/* Mobile Sidebar */}
             {!hideNavigation && (
                 <div
-                    className={`fixed inset-y-0 right-0 z-[55] flex w-72 max-w-[85vw] flex-col border-l px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out ${currentTheme.sidebar} ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    className={`fixed inset-y-0 right-0 z-[55] flex w-72 max-w-[85vw] flex-col border-l px-5 py-6 shadow-[0_22px_65px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out ${currentTheme.sidebar} ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
                     style={navFontStyle}
                 >
                     <div className="mb-8 flex items-center justify-between">
                         <div>
-                            <p className={`text-[10px] font-bold uppercase tracking-[0.3em] ${currentTheme.footer}`}>Navigation</p>
-                            <p className={`mt-1 text-[1.05rem] font-semibold ${currentTheme.heading}`}>Quick Links</p>
+                            <p className={`text-[10px] font-bold uppercase tracking-[0.32em] ${currentTheme.footer}`}>Navigation</p>
+                            <p className={`mt-1 text-[1.08rem] font-semibold tracking-[-0.01em] ${currentTheme.heading}`}>Quick Links</p>
                         </div>
                         <button
                             type="button"
@@ -495,16 +547,16 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                     href={item.href}
                                     onClick={(event) => handleNavItemClick(event, item)}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left text-[13px] font-semibold uppercase tracking-[0.24em] transition-colors duration-150 ${
+                                    className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left text-[13px] font-semibold uppercase tracking-[0.22em] transition-colors duration-150 ${
                                         isActive
                                             ? `${currentTheme.sidebarItemActive} ${accent.activeText}`
-                                            : item.isAction
-                                                ? `${currentTheme.sidebarAction} ${accent.activeText}`
-                                                : `border-transparent ${currentTheme.sidebarItem}`
+                                        : item.isAction
+                                            ? `${currentTheme.sidebarAction} ${accent.activeText}`
+                                            : `border-transparent ${currentTheme.sidebarItem}`
                                     }`}
                                 >
                                     <span className={`flex h-10 w-10 items-center justify-center rounded-full border ${
-                                        isActive || item.isAction ? accent.chip : `${accent.chip} bg-white/34`
+                                        isActive || item.isAction ? accent.chip : `${accent.chip} bg-white/60`
                                     }`}>
                                         <Icon className="h-4 w-4" strokeWidth={2.1} />
                                     </span>
@@ -522,19 +574,17 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
 
             {/* Main Content Area */}
             <main className={`${standalone ? 'relative z-10 w-full' : fullBleed || page === 'Skills' ? 'flex-grow relative z-10 w-full' : 'flex-grow container mx-auto px-4 py-8 relative z-10 w-full'}`}>
-                <motion.div
-                    key={page}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                >
+                <motion.div key={page} {...pageTransitionProps}>
                     {children}
                 </motion.div>
             </main>
 
             {/* Footer */}
-            {!standalone && !hideFooter && (page === 'Projects' ? <SoilFooter /> : <Footer page={page} />)}
+            {!standalone && !hideFooter && (
+                <Suspense fallback={null}>
+                    {page === 'Projects' ? <SoilFooter /> : <Footer page={page} />}
+                </Suspense>
+            )}
         </div>
     );
 };

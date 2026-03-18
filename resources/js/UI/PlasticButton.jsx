@@ -1,7 +1,7 @@
 import React, { useRef, useLayoutEffect } from 'react';
 import gsap from 'gsap';
 
-const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) => {
+const PlasticButton = ({ children, onClick, color = 'blue', className = '', disabled = false, type = 'button' }) => {
     const buttonRef = useRef(null);
     const contentRef = useRef(null);
 
@@ -18,31 +18,42 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
     useLayoutEffect(() => {
         const button = buttonRef.current;
 
-        let ctx = gsap.context(() => {
-            button.addEventListener('mouseenter', () => {
-                gsap.to(button, { y: -2, scale: 1.02, duration: 0.2, ease: "power1.out" });
-            });
+        if (!button || disabled) {
+            return undefined;
+        }
 
-            button.addEventListener('mouseleave', () => {
-                gsap.to(button, { y: 0, scale: 1, duration: 0.2, ease: "power1.out" });
-            });
+        const handleMouseEnter = () => {
+            gsap.to(button, { y: -2, scale: 1.02, duration: 0.2, ease: 'power1.out' });
+        };
+        const handleMouseLeave = () => {
+            gsap.to(button, { y: 0, scale: 1, duration: 0.2, ease: 'power1.out' });
+        };
+        const handleMouseDown = () => {
+            gsap.to(button, { y: 6, scale: 0.98, boxShadow: '0 0px 0 0 rgba(0,0,0,0)', duration: 0.1 });
+        };
+        const handleMouseUp = () => {
+            gsap.to(button, { y: -2, scale: 1.02, clearProps: 'boxShadow', duration: 0.1 });
+        };
 
-            button.addEventListener('mousedown', () => {
-                gsap.to(button, { y: 6, scale: 0.98, boxShadow: '0 0px 0 0 rgba(0,0,0,0)', duration: 0.1 });
-            });
+        button.addEventListener('mouseenter', handleMouseEnter);
+        button.addEventListener('mouseleave', handleMouseLeave);
+        button.addEventListener('mousedown', handleMouseDown);
+        button.addEventListener('mouseup', handleMouseUp);
 
-            button.addEventListener('mouseup', () => {
-                gsap.to(button, { y: -2, scale: 1.02, clearProps: 'boxShadow', duration: 0.1 });
-            });
-        }, buttonRef);
-
-        return () => ctx.revert();
-    }, []);
+        return () => {
+            button.removeEventListener('mouseenter', handleMouseEnter);
+            button.removeEventListener('mouseleave', handleMouseLeave);
+            button.removeEventListener('mousedown', handleMouseDown);
+            button.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [disabled]);
 
     return (
         <button
             ref={buttonRef}
             onClick={onClick}
+            disabled={disabled}
+            type={type}
             className={`
                 relative
                 py-3 px-8
@@ -51,6 +62,7 @@ const PlasticButton = ({ children, onClick, color = 'blue', className = '' }) =>
                 font-black uppercase tracking-wider text-sm md:text-base
                 transition-all duration-100 ease-out
                 will-change-transform
+                disabled:cursor-not-allowed disabled:opacity-70 disabled:grayscale-[0.12]
                 ${activeColor.main}
                 ${className}
             `}

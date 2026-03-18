@@ -1,5 +1,6 @@
 import React from 'react';
 import PlasticButton from '../../resources/js/UI/PlasticButton';
+import { navigateWithCleanup } from '../../resources/js/lib/pageTransitionCleanup';
 
 const OverlayUI = ({
     phase,
@@ -21,16 +22,9 @@ const OverlayUI = ({
             {inTour && (
                 <div className="pointer-events-auto absolute left-1/2 top-5 flex -translate-x-1/2 items-center gap-4">
                     <PlasticButton
-                        color="pink"
-                        disabled={!inTour || navLocked}
-                        onClick={onJumpWide}
-                    >
-                        Room Tour
-                    </PlasticButton>
-                    <PlasticButton
                         color="blue"
                         onClick={() => {
-                            window.location.href = '/';
+                            navigateWithCleanup('/');
                         }}
                     >
                         Home

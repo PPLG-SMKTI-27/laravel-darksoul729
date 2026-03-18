@@ -5,9 +5,9 @@ import { motion, useAnimation, useMotionValue, useInView, useReducedMotion } fro
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
-import FeaturedProjects from '../components/FeaturedProjects';
-import PanzekHome from '../components/UI/PanzekHome';
-import IntroOverlay from '../components/IntroOverlay';
+import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
+const FeaturedProjects = React.lazy(() => import('../components/FeaturedProjects'));
+const PanzekHome = React.lazy(() => import('../components/UI/PanzekHome'));
 // Lazy load Robocop3D
 const Robocop3D = React.lazy(() => import('../components/3D/Robocop3D'));
 
@@ -15,6 +15,28 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
+
+const PROFILE_TITLE_LETTERS = [
+    { char: 'P', color: '#ff5b6b', shadow: '0 4px 0 #d94152, 0 8px 0 #b52a3c, 0 12px 14px rgba(0,0,0,0.25)', delay: 0 },
+    { char: 'R', color: '#ff8a3c', shadow: '0 4px 0 #db6f2a, 0 8px 0 #b95516, 0 12px 14px rgba(0,0,0,0.25)', delay: 0.04 },
+    { char: 'O', color: '#ffd54a', shadow: '0 4px 0 #e2b42f, 0 8px 0 #c19418, 0 12px 14px rgba(0,0,0,0.25)', delay: 0.08 },
+    { char: 'F', color: '#5ccf68', shadow: '0 4px 0 #3faf4a, 0 8px 0 #2d8d38, 0 12px 14px rgba(0,0,0,0.25)', delay: 0.12 },
+    { char: 'I', color: '#58a9ff', shadow: '0 4px 0 #2d82e6, 0 8px 0 #1c62c0, 0 12px 14px rgba(0,0,0,0.25)', delay: 0.16 },
+    { char: 'L', color: '#b784ff', shadow: '0 4px 0 #8e5ee6, 0 8px 0 #6c3ec4, 0 12px 14px rgba(0,0,0,0.25)', delay: 0.2 },
+    { char: 'E', color: '#ff6fb4', shadow: '0 4px 0 #d95695, 0 8px 0 #b8407a, 0 12px 14px rgba(0,0,0,0.25)', delay: 0.24 },
+];
+
+const CTA_LEFT_CABLES = [
+    { id: 'red', color: '#ef4444', shadow: '#b91c1c', highlight: '#fca5a5', path: 'M -48 74 C 8 72, 42 46, 100 30' },
+    { id: 'yellow', color: '#facc15', shadow: '#ca8a04', highlight: '#fde68a', path: 'M -48 50 C 10 48, 44 50, 100 50' },
+    { id: 'green', color: '#34d399', shadow: '#15803d', highlight: '#a7f3d0', path: 'M -48 30 C 8 30, 42 66, 100 70' },
+];
+
+const CTA_RIGHT_CABLES = [
+    { id: 'green', color: '#34d399', shadow: '#15803d', highlight: '#a7f3d0', path: 'M 0 30 C 42 34, 82 68, 148 72' },
+    { id: 'yellow', color: '#facc15', shadow: '#ca8a04', highlight: '#fde68a', path: 'M 0 50 C 42 50, 82 50, 148 50' },
+    { id: 'blue', color: '#60a5fa', shadow: '#2563eb', highlight: '#bfdbfe', path: 'M 0 70 C 42 66, 82 34, 148 30' },
+];
 
 // ─── SCREEN 1: PanzekOS Splash (simple, shown during isBooting) ───────────────
 const PanzekOSSplash = () => {
@@ -304,6 +326,30 @@ const CanvasLoader = () => {
     );
 };
 
+const EmbeddedScreenFallback = () => (
+    <div className="absolute inset-0 flex items-center justify-center bg-[#020c04]">
+        <div className="text-center font-mono">
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300/90">
+                Loading Home
+            </div>
+            <div className="mt-2 text-[11px] font-semibold text-emerald-100/70">
+                Preparing PanzekOS...
+            </div>
+        </div>
+    </div>
+);
+
+const FeaturedProjectsFallback = () => (
+    <div className="w-full py-12 mb-16">
+        <div className="mx-auto max-w-7xl px-4 md:px-12">
+            <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/45 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+                <div className="h-4 w-40 animate-pulse rounded-full bg-slate-200/90" />
+                <div className="mt-5 h-[320px] animate-pulse rounded-[1.75rem] bg-slate-200/70" />
+            </div>
+        </div>
+    </div>
+);
+
 const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDisconnect, portsRef, index }) => {
     const controls = useAnimation();
     const x = useMotionValue(0);
@@ -573,14 +619,15 @@ const LandingPage = ({ page, props }) => {
     const { repos = [] } = props;
     const comp = useRef();
     const heroRobotRef = useRef(null);
+    const profileHeaderRef = useRef(null);
     const portsRef = useRef({});
     const [isMobile, setIsMobile] = useState(false);
     const prefersReducedMotion = useReducedMotion();
     const [isLowPower, setIsLowPower] = useState(false);
     const isHeroRobotInView = useInView(heroRobotRef, { once: true, margin: "200px" });
+    const isProfileHeaderInView = useInView(profileHeaderRef, { once: true, margin: '-15% 0px' });
     const [gameboyStatus, setGameboyStatus] = useState('READY');
-    const [pressedButton, setPressedButton] = useState(null);
-    const pressTimeoutRef = useRef(null);
+    const [showMobileGameboyGuide, setShowMobileGameboyGuide] = useState(true);
 
     // Cables State
     const [connectedCables, setConnectedCables] = useState({ red: false, yellow: false, green: false, blue: false });
@@ -595,17 +642,21 @@ const LandingPage = ({ page, props }) => {
 
     useEffect(() => {
         if (allConnected) {
+            setGameboyStatus('POWER ON');
             // Only start boot if not already booting and image not showing
             if (!showImage && !showHome && !isBooting) {
                 setIsBooting(true);
+                setGameboyStatus('BOOTING');
                 bootTimerRef.current = setTimeout(() => {
                     setIsBooting(false);
                     setShowImage(true);
+                    setGameboyStatus('CLI');
 
                     // Wait for CLI animation to finish then go to Home OS
                     homeTimerRef.current = setTimeout(() => {
                         setShowImage(false);
                         setShowHome(true);
+                        setGameboyStatus('HOME');
                     }, 3500);
                 }, 2800);
             }
@@ -622,6 +673,7 @@ const LandingPage = ({ page, props }) => {
             setIsBooting(false);
             setShowImage(false);
             setShowHome(false);
+            setGameboyStatus('OFFLINE');
         }
     }, [allConnected]); // ← only depend on allConnected, not isBooting/showImage/showHome
 
@@ -668,29 +720,6 @@ const LandingPage = ({ page, props }) => {
         };
     }, [isLowPower, isMobile]);
 
-    useEffect(() => {
-        return () => {
-            if (pressTimeoutRef.current) {
-                clearTimeout(pressTimeoutRef.current);
-            }
-        };
-    }, []);
-
-    const handleGameboyPress = (label) => {
-        setGameboyStatus(label);
-        setPressedButton(label);
-
-        if (pressTimeoutRef.current) {
-            clearTimeout(pressTimeoutRef.current);
-        }
-
-        pressTimeoutRef.current = setTimeout(() => {
-            setPressedButton(null);
-        }, 160);
-    };
-
-    const dpadPressed = ['UP', 'DOWN', 'LEFT', 'RIGHT'].includes(pressedButton);
-
     useLayoutEffect(() => {
         let ctx = gsap.context(() => {
             // Robot Entrance (Scale up)
@@ -732,8 +761,6 @@ const LandingPage = ({ page, props }) => {
 
     return (
         <MainLayout page={page}>
-            {/* ── Intro Overlay: only on `/`, throttled 1h via localStorage ── */}
-            <IntroOverlay />
             <div className="fixed inset-0 pointer-events-none -z-40 bg-gradient-to-b from-[#4a9ad4] via-[#7cbbed] to-[#d8ecf8] overflow-hidden">
                 {/* Soft blended clouds integrated into background gradient */}
                 <div className="absolute top-[45%] left-[5%] w-[50%] h-[180px] bg-white/30 rounded-full blur-[60px]"></div>
@@ -852,12 +879,12 @@ const LandingPage = ({ page, props }) => {
                         >
                             {/* exact button styles matching reference */}
                             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                <PlasticButton color="blue" onClick={() => window.location.href = '/projects'} className="capitalize !text-[13px] md:!text-[15px] !py-2.5 md:!py-3 !px-6 md:!px-8 !rounded-[1.2rem] !bg-[#1c7ed6] !border-[#1864ab] !shadow-[0_6px_0_#1864ab,_0_10px_20px_rgba(0,0,0,0.2)] hover:!brightness-110 !font-bold">
+                                <PlasticButton color="blue" onClick={() => navigateWithCleanup('/projects')} className="capitalize !text-[13px] md:!text-[15px] !py-2.5 md:!py-3 !px-6 md:!px-8 !rounded-[1.2rem] !bg-[#1c7ed6] !border-[#1864ab] !shadow-[0_6px_0_#1864ab,_0_10px_20px_rgba(0,0,0,0.2)] hover:!brightness-110 !font-bold">
                                     View Projects
                                 </PlasticButton>
                             </motion.div>
                             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                <PlasticButton color="yellow" onClick={() => window.location.href = '/contact'} className="capitalize !text-[13px] md:!text-[15px] !py-2.5 md:!py-3 !px-6 md:!px-8 !rounded-[1.2rem] !text-white !bg-[#f59f00] !border-[#e67700] !shadow-[0_6px_0_#d97706,_0_10px_20px_rgba(0,0,0,0.2)] hover:!brightness-110 !font-bold">
+                                <PlasticButton color="yellow" onClick={() => navigateWithCleanup('/contact')} className="capitalize !text-[13px] md:!text-[15px] !py-2.5 md:!py-3 !px-6 md:!px-8 !rounded-[1.2rem] !text-white !bg-[#f59f00] !border-[#e67700] !shadow-[0_6px_0_#d97706,_0_10px_20px_rgba(0,0,0,0.2)] hover:!brightness-110 !font-bold">
                                     Hire Creator
                                 </PlasticButton>
                             </motion.div>
@@ -955,17 +982,51 @@ const LandingPage = ({ page, props }) => {
                     <div className="flex flex-col gap-6 items-center">
 
                         {/* Title Header */}
-                        <div className="flex flex-col items-center gap-1 z-10 relative px-4">
-                            <span className="text-xs font-black uppercase tracking-[0.25em] text-slate-700/80 drop-shadow-sm">— SECTION SEPARATOR —</span>
+                        <div ref={profileHeaderRef} className="flex flex-col items-center gap-1 z-10 relative px-4">
+                            <motion.span
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={isProfileHeaderInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+                                transition={{ duration: 0.45, ease: 'easeOut' }}
+                                className="text-xs font-black uppercase tracking-[0.25em] text-slate-700/80 drop-shadow-sm"
+                            >
+                                — SECTION SEPARATOR —
+                            </motion.span>
                             <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mt-1">
                                 <h2 className="text-5xl md:text-7xl font-black tracking-[0.12em] flex gap-[2px] md:gap-1 relative z-10">
-                                    <span className="inline-block" style={{ color: '#ff5b6b', textShadow: '0 4px 0 #d94152, 0 8px 0 #b52a3c, 0 12px 14px rgba(0,0,0,0.25)' }}>P</span>
-                                    <span className="inline-block" style={{ color: '#ff8a3c', textShadow: '0 4px 0 #db6f2a, 0 8px 0 #b95516, 0 12px 14px rgba(0,0,0,0.25)' }}>R</span>
-                                    <span className="inline-block" style={{ color: '#ffd54a', textShadow: '0 4px 0 #e2b42f, 0 8px 0 #c19418, 0 12px 14px rgba(0,0,0,0.25)' }}>O</span>
-                                    <span className="inline-block" style={{ color: '#5ccf68', textShadow: '0 4px 0 #3faf4a, 0 8px 0 #2d8d38, 0 12px 14px rgba(0,0,0,0.25)' }}>F</span>
-                                    <span className="inline-block" style={{ color: '#58a9ff', textShadow: '0 4px 0 #2d82e6, 0 8px 0 #1c62c0, 0 12px 14px rgba(0,0,0,0.25)' }}>I</span>
-                                    <span className="inline-block" style={{ color: '#b784ff', textShadow: '0 4px 0 #8e5ee6, 0 8px 0 #6c3ec4, 0 12px 14px rgba(0,0,0,0.25)' }}>L</span>
-                                    <span className="inline-block" style={{ color: '#ff6fb4', textShadow: '0 4px 0 #d95695, 0 8px 0 #b8407a, 0 12px 14px rgba(0,0,0,0.25)' }}>E</span>
+                                    {PROFILE_TITLE_LETTERS.map((letter, index) => (
+                                        <motion.span
+                                            key={letter.char}
+                                            initial={{ opacity: 0, y: 26, rotateX: -26, scale: 0.84 }}
+                                            animate={isProfileHeaderInView ? {
+                                                opacity: 1,
+                                                y: prefersReducedMotion ? 0 : [0, -3, 0, -2, 0],
+                                                rotateX: 0,
+                                                rotateZ: prefersReducedMotion ? 0 : [0, -1.2, 1.1, -0.6, 0],
+                                                scale: prefersReducedMotion ? 1 : [1, 1.03, 1, 1.02, 1],
+                                            } : {
+                                                opacity: 0,
+                                                y: 26,
+                                                rotateX: -26,
+                                                scale: 0.84,
+                                            }}
+                                            transition={{
+                                                opacity: { duration: 0.34, delay: letter.delay },
+                                                y: prefersReducedMotion
+                                                    ? { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay }
+                                                    : [
+                                                        { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay },
+                                                        { duration: 3.1 + index * 0.16, repeat: Infinity, ease: 'easeInOut', delay: 0.75 + letter.delay }
+                                                    ],
+                                                rotateX: { duration: 0.48, ease: 'easeOut', delay: letter.delay },
+                                                rotateZ: prefersReducedMotion ? undefined : { duration: 3.5 + index * 0.15, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + letter.delay },
+                                                scale: prefersReducedMotion ? undefined : { duration: 3 + index * 0.14, repeat: Infinity, ease: 'easeInOut', delay: 0.82 + letter.delay },
+                                            }}
+                                            className="inline-block origin-bottom will-change-transform"
+                                            style={{ color: letter.color, textShadow: letter.shadow }}
+                                        >
+                                            {letter.char}
+                                        </motion.span>
+                                    ))}
                                 </h2>
                             </div>
                         </div>
@@ -973,12 +1034,39 @@ const LandingPage = ({ page, props }) => {
                         {/* Horizontal Gameboy Layout */}
                         <div className="profile-card relative w-full mt-4 md:mt-10 flex flex-col md:flex-row items-center justify-center drop-shadow-2xl">
 
+                            {isMobile && (
+                                <div className="mb-4 w-full max-w-[400px] rounded-[24px] border border-white/70 bg-white/78 p-4 text-slate-800 shadow-[0_20px_50px_rgba(15,23,42,0.12)] backdrop-blur-md">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-700/80">Mobile Guide</p>
+                                            <p className="mt-1 text-sm font-bold leading-snug">
+                                                Tap 4 port warna di kiri untuk menyalakan gameboy.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMobileGameboyGuide((value) => !value)}
+                                            className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-sky-700"
+                                        >
+                                            {showMobileGameboyGuide ? 'Hide' : 'Show'}
+                                        </button>
+                                    </div>
+                                    {showMobileGameboyGuide && (
+                                        <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] font-semibold leading-relaxed text-slate-700">
+                                            <div className="rounded-2xl bg-slate-900/[0.04] px-3 py-2">1. Nyalakan dengan tap port merah, kuning, hijau, dan biru.</div>
+                                            <div className="rounded-2xl bg-slate-900/[0.04] px-3 py-2">2. Setelah layar hidup, langsung tap ikon aplikasi di dalam screen.</div>
+                                            <div className="rounded-2xl bg-slate-900/[0.04] px-3 py-2">3. Gameboy sekarang full-screen tanpa tombol fisik supaya lebih clean dan stabil.</div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* LEFT: Gameboy Console */}
                             <div className="relative w-full max-w-[400px] md:max-w-none md:w-[420px] flex-shrink-0 z-20"
                                 style={{
                                     background: 'linear-gradient(145deg, #e5e7eb 0%, #d1d5db 40%, #c8cdd5 100%)',
                                     borderRadius: '28px',
-                                    padding: '20px',
+                                    padding: isMobile ? '18px 18px 14px' : '20px 20px 16px',
                                     border: '2px solid #fff',
                                     borderBottom: '8px solid #9ca3af',
                                     borderRight: '8px solid #9ca3af',
@@ -1026,7 +1114,7 @@ const LandingPage = ({ page, props }) => {
                                 ></div>
 
                                 {/* Screen Bezel */}
-                                <div className="rounded-[18px] p-3 mb-5"
+                                <div className="rounded-[18px] p-3"
                                     style={{
                                         background: '#475569',
                                         boxShadow: 'inset 0 4px 10px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.5)'
@@ -1040,7 +1128,7 @@ const LandingPage = ({ page, props }) => {
                                     {/* Screen */}
                                     <div className="relative w-full rounded-lg overflow-hidden flex items-center justify-center p-2"
                                         style={{
-                                            aspectRatio: '4/3',
+                                            aspectRatio: isMobile ? '4 / 4.85' : '4 / 4.45',
                                             background: '#0a0a0a',
                                             border: '4px solid #1e293b',
                                             boxShadow: 'inset 0 0 24px rgba(0,0,0,0.85)'
@@ -1050,6 +1138,9 @@ const LandingPage = ({ page, props }) => {
                                             <div className="flex flex-col items-center justify-center opacity-40">
                                                 <div className="text-white/30 font-black text-2xl uppercase tracking-[0.2em] animate-pulse">NO SIGNAL</div>
                                                 <div className="text-white/20 text-[8px] font-bold mt-2 uppercase tracking-widest hidden md:block">Connect 4 Cables</div>
+                                                <div className="mt-3 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-center text-[8px] font-black uppercase tracking-[0.22em] text-sky-100/80 md:hidden">
+                                                    Tap 4 port warna di kiri
+                                                </div>
                                             </div>
                                         )}
 
@@ -1057,7 +1148,11 @@ const LandingPage = ({ page, props }) => {
 
                                         {showImage && <PanzekCLI />}
 
-                                        {showHome && <PanzekHome onNavigate={(path) => window.location.href = path} />}
+                                        {showHome && (
+                                            <Suspense fallback={<EmbeddedScreenFallback />}>
+                                                <PanzekHome onNavigate={(path) => navigateWithCleanup(path)} />
+                                            </Suspense>
+                                        )}
 
                                         {/* Glare overlay */}
                                         <div className="absolute inset-0 pointer-events-none z-20"
@@ -1071,101 +1166,6 @@ const LandingPage = ({ page, props }) => {
                                             <span>{showHome ? 'HOME' : showImage ? 'OK' : gameboyStatus === 'READY' ? 'WAITING' : gameboyStatus}</span>
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* Controls Row */}
-                                <div className="flex items-center justify-between px-3">
-                                    {/* D-Pad — PS style: 4 separate buttons */}
-                                    <div className="relative w-[88px] h-[88px]">
-                                        {/* UP */}
-                                        <button type="button" aria-label="D-pad up"
-                                            onClick={() => handleGameboyPress('UP')}
-                                            className={`absolute left-1/2 top-0 -translate-x-1/2 w-[28px] h-[28px] rounded-t-[6px] rounded-b-[2px] transition-all active:translate-y-[2px] ${pressedButton === 'UP' ? 'translate-y-[2px]' : ''}`}
-                                            style={{
-                                                background: pressedButton === 'UP' ? '#0f172a' : 'linear-gradient(180deg,#2d3f55 0%,#1e293b 100%)',
-                                                boxShadow: pressedButton === 'UP' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
-                                            }}
-                                        />
-                                        {/* DOWN */}
-                                        <button type="button" aria-label="D-pad down"
-                                            onClick={() => handleGameboyPress('DOWN')}
-                                            className={`absolute left-1/2 bottom-0 -translate-x-1/2 w-[28px] h-[28px] rounded-b-[6px] rounded-t-[2px] transition-all ${pressedButton === 'DOWN' ? 'translate-y-[-2px]' : ''}`}
-                                            style={{
-                                                background: pressedButton === 'DOWN' ? '#0f172a' : 'linear-gradient(180deg,#1e293b 0%,#2d3f55 100%)',
-                                                boxShadow: pressedButton === 'DOWN' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
-                                            }}
-                                        />
-                                        {/* LEFT */}
-                                        <button type="button" aria-label="D-pad left"
-                                            onClick={() => handleGameboyPress('LEFT')}
-                                            className={`absolute left-0 top-1/2 -translate-y-1/2 w-[28px] h-[28px] rounded-l-[6px] rounded-r-[2px] transition-all ${pressedButton === 'LEFT' ? 'translate-x-[2px]' : ''}`}
-                                            style={{
-                                                background: pressedButton === 'LEFT' ? '#0f172a' : 'linear-gradient(90deg,#2d3f55 0%,#1e293b 100%)',
-                                                boxShadow: pressedButton === 'LEFT' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
-                                            }}
-                                        />
-                                        {/* RIGHT */}
-                                        <button type="button" aria-label="D-pad right"
-                                            onClick={() => handleGameboyPress('RIGHT')}
-                                            className={`absolute right-0 top-1/2 -translate-y-1/2 w-[28px] h-[28px] rounded-r-[6px] rounded-l-[2px] transition-all ${pressedButton === 'RIGHT' ? 'translate-x-[-2px]' : ''}`}
-                                            style={{
-                                                background: pressedButton === 'RIGHT' ? '#0f172a' : 'linear-gradient(90deg,#1e293b 0%,#2d3f55 100%)',
-                                                boxShadow: pressedButton === 'RIGHT' ? 'inset 0 3px 6px rgba(0,0,0,0.6)' : 'inset 0 2px 3px rgba(255,255,255,0.1), 0 3px 0 #0f172a',
-                                            }}
-                                        />
-                                        {/* Center gap (dark square) */}
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28px] h-[28px]"
-                                            style={{ background: '#131f2e', borderRadius: 2 }}
-                                        />
-                                    </div>
-
-
-                                    {/* Select / Start */}
-                                    <div className="flex gap-3 transform -rotate-12 self-center">
-                                        <button type="button" aria-label="Select" onClick={() => handleGameboyPress('SELECT')}
-                                            className={`w-10 h-3 rounded-full transition-all ${pressedButton === 'SELECT' ? 'translate-y-[2px]' : ''}`}
-                                            style={{ background: '#475569', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.4)' }}
-                                        />
-                                        <button type="button" aria-label="Start" onClick={() => handleGameboyPress('START')}
-                                            className={`w-10 h-3 rounded-full transition-all ${pressedButton === 'START' ? 'translate-y-[2px]' : ''}`}
-                                            style={{ background: '#475569', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.4)' }}
-                                        />
-                                    </div>
-
-                                    {/* A / B Buttons */}
-                                    <div className="flex gap-3 transform -rotate-12 mt-3">
-                                        <button type="button" aria-label="Button B" onClick={() => handleGameboyPress('B')}
-                                            className={`w-11 h-11 rounded-full transition-all ${pressedButton === 'B' ? 'translate-y-1' : ''}`}
-                                            style={{
-                                                background: 'radial-gradient(circle at 35% 35%, #fb7185, #e11d48)',
-                                                border: '2px solid rgba(255,255,255,0.3)',
-                                                borderBottom: pressedButton === 'B' ? '2px solid rgba(255,255,255,0.3)' : '5px solid #9f1239',
-                                                boxShadow: pressedButton === 'B'
-                                                    ? 'inset 0 3px 6px rgba(0,0,0,0.4)'
-                                                    : '0 4px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.35)'
-                                            }}
-                                        />
-                                        <button type="button" aria-label="Button A" onClick={() => handleGameboyPress('A')}
-                                            className={`w-11 h-11 rounded-full transition-all -mt-5 ${pressedButton === 'A' ? 'translate-y-1' : ''}`}
-                                            style={{
-                                                background: 'radial-gradient(circle at 35% 35%, #fb7185, #e11d48)',
-                                                border: '2px solid rgba(255,255,255,0.3)',
-                                                borderBottom: pressedButton === 'A' ? '2px solid rgba(255,255,255,0.3)' : '5px solid #9f1239',
-                                                boxShadow: pressedButton === 'A'
-                                                    ? 'inset 0 3px 6px rgba(0,0,0,0.4)'
-                                                    : '0 4px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.35)'
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Speaker dots — bottom right */}
-                                <div className="absolute bottom-5 right-5 grid grid-cols-3 gap-[5px] rotate-12">
-                                    {Array.from({ length: 9 }).map((_, i) => (
-                                        <div key={`dot-${i}`} className="w-[7px] h-[7px] rounded-full"
-                                            style={{ background: '#6b7280', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)' }}
-                                        />
-                                    ))}
                                 </div>
                             </div>
 
@@ -1250,7 +1250,9 @@ const LandingPage = ({ page, props }) => {
 
 
                 {/* NEW ARRIVALS PREVIEW (3D Cartridge Shelf) */}
-                <FeaturedProjects repos={repos} />
+                <Suspense fallback={<FeaturedProjectsFallback />}>
+                    <FeaturedProjects repos={repos} />
+                </Suspense>
 
                 {/* CALL TO ACTION BANNER */}
                 <div className="w-full relative py-32 mt-24 mb-32 flex items-center justify-center pointer-events-none">
@@ -1260,46 +1262,29 @@ const LandingPage = ({ page, props }) => {
                         @keyframes toy-pop { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.06) rotate(-1deg); } }
                     `}</style>
 
-                    {/* Background SVGs for Cables stretching edge-to-edge */}
-                    {/* Left Cables (Crossing) */}
-                    <svg className="absolute top-1/2 left-1/2 -translate-x-[100%] w-[50vw] h-full -translate-y-1/2 -z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
-                        {/* Shadows for depth */}
-                        <path d="M-50,30 C10,30 40,70 100,70" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
-                        <path d="M-50,50 C20,50 50,50 100,50" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
-                        <path d="M-50,70 C30,70 60,30 100,30" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
+                    <div className="absolute left-1/2 top-1/2 h-[clamp(18rem,34vw,24rem)] w-full -translate-x-1/2 -translate-y-1/2 -z-10 pointer-events-none">
+                        <svg className="absolute top-0 left-1/2 -translate-x-[100%] w-[50vw] h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                            {CTA_LEFT_CABLES.map((cable) => (
+                                <g key={cable.id}>
+                                    <path d={cable.path} fill="none" stroke="rgba(0,0,0,0.22)" strokeWidth="3.2" strokeLinecap="round" transform="translate(0,3)" filter="blur(2.5px)" />
+                                    <path d={cable.path} fill="none" stroke={cable.shadow} strokeWidth="2.85" strokeLinecap="round" transform="translate(0,1)" />
+                                    <path d={cable.path} fill="none" stroke={cable.color} strokeWidth="2.45" strokeLinecap="round" />
+                                    <path d={cable.path} fill="none" stroke={cable.highlight} strokeWidth="0.75" strokeLinecap="round" transform="translate(0,-0.55)" opacity="0.72" />
+                                </g>
+                            ))}
+                        </svg>
 
-                        {/* Red Wire (Top Left slanting down to Bottom Port) */}
-                        <path d="M-50,70 C30,70 60,30 100,30" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M-50,70 C30,70 60,30 100,30" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
-
-                        {/* Yellow Wire (Middle to Middle) */}
-                        <path d="M-50,50 C20,50 50,50 100,50" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M-50,50 C20,50 50,50 100,50" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
-
-                        {/* Green Wire (Bottom Left slanting up to Top Port) */}
-                        <path d="M-50,30 C10,30 40,70 100,70" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M-50,30 C10,30 40,70 100,70" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
-                    </svg>
-
-                    {/* Right Cables (Crossing) */}
-                    <svg className="absolute top-1/2 left-1/2 w-[50vw] h-full -translate-y-1/2 -z-10 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
-                        {/* Shadows for depth */}
-                        <path d="M0,70 C40,70 80,30 150,30" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
-                        <path d="M0,50 C50,50 80,50 150,50" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
-                        <path d="M0,30 C60,30 90,70 150,70" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="3" transform="translate(0,2)" />
-
-                        {/* Green Wire (Bottom Port slanting up to Top Right) */}
-                        <path d="M0,30 C60,30 90,70 150,70" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M0,30 C60,30 90,70 150,70" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
-
-                        {/* Yellow Wire (Middle to Middle) */}
-                        <path d="M0,50 C50,50 80,50 150,50" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M0,50 C50,50 80,50 150,50" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
-
-                        {/* Blue Wire (Top Port slanting down to Bottom Right) */}
-                        <path d="M0,70 C40,70 80,30 150,30" fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M0,70 C40,70 80,30 150,30" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" strokeLinecap="round" transform="translate(0,-0.5)" />
-                    </svg>
+                        <svg className="absolute top-0 left-1/2 w-[50vw] h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                            {CTA_RIGHT_CABLES.map((cable) => (
+                                <g key={cable.id}>
+                                    <path d={cable.path} fill="none" stroke="rgba(0,0,0,0.22)" strokeWidth="3.2" strokeLinecap="round" transform="translate(0,3)" filter="blur(2.5px)" />
+                                    <path d={cable.path} fill="none" stroke={cable.shadow} strokeWidth="2.85" strokeLinecap="round" transform="translate(0,1)" />
+                                    <path d={cable.path} fill="none" stroke={cable.color} strokeWidth="2.45" strokeLinecap="round" />
+                                    <path d={cable.path} fill="none" stroke={cable.highlight} strokeWidth="0.75" strokeLinecap="round" transform="translate(0,-0.55)" opacity="0.72" />
+                                </g>
+                            ))}
+                        </svg>
+                    </div>
 
                     <div className="absolute inset-0 pointer-events-none z-0">
                         <div className="absolute left-[6%] top-[18%] w-3 h-3 rounded-full bg-[#facc15] shadow-[0_3px_6px_rgba(0,0,0,0.2)] motion-safe:animate-[toy-float_5s_ease-in-out_infinite]" />
@@ -1441,7 +1426,7 @@ const LandingPage = ({ page, props }) => {
                             <div className="relative flex items-center justify-center">
                                 <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-[190px] h-[20px] bg-[#e2e8f0] rounded-full border border-white shadow-[inset_0_3px_6px_rgba(255,255,255,0.9),0_8px_20px_rgba(0,0,0,0.2)]" />
                                 <div className="absolute left-1/2 -translate-x-1/2 top-2 w-[140px] h-[6px] bg-[#cbd5e1] rounded-full shadow-[inset_0_2px_3px_rgba(0,0,0,0.15)]" />
-                                <PlasticButton color="yellow" className="relative z-10 text-xs md:text-[13px] px-6 py-2 md:px-8 md:py-2.5 shadow-xl hover:translate-y-[2px] w-max" onClick={() => window.location.href = '/contact'}
+                                <PlasticButton color="yellow" className="relative z-10 text-xs md:text-[13px] px-6 py-2 md:px-8 md:py-2.5 shadow-xl hover:translate-y-[2px] w-max" onClick={() => navigateWithCleanup('/contact')}
                                     style={{
                                         border: '2px solid #eab308',
                                         borderRadius: '10px',

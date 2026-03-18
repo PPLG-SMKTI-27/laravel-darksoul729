@@ -28,9 +28,11 @@ const NET_NODES = [
 const NET_EDGES = [[0, 1], [0, 3], [1, 2], [1, 4], [3, 4], [3, 5], [4, 5], [4, 6], [5, 7], [6, 7], [7, 8], [7, 9]];
 
 const SysControlBridge = ({ t }) => {
+    const bridgeRef = useRef(null);
     const [tick, setTick] = useState(0);
     const [radarAngle, setRadarAngle] = useState(0);
     const [isMapOpen, setIsMapOpen] = useState(false);
+    const [isBridgeVisible, setIsBridgeVisible] = useState(false);
     const blips = [
         { id: 0, r: 30, a: 40 },
         { id: 1, r: 52, a: 130 },
@@ -39,6 +41,28 @@ const SysControlBridge = ({ t }) => {
     ];
 
     useEffect(() => {
+        const element = bridgeRef.current;
+        if (!element) {
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsBridgeVisible(entry.isIntersecting);
+            },
+            { threshold: 0.1, rootMargin: '160px 0px' }
+        );
+
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        if (!isBridgeVisible) {
+            return undefined;
+        }
+
         let frame;
         let last = performance.now();
         const loop = (now) => {
@@ -49,7 +73,7 @@ const SysControlBridge = ({ t }) => {
         frame = requestAnimationFrame(loop);
         const t = setInterval(() => setTick(v => v + 1), 1000);
         return () => { cancelAnimationFrame(frame); clearInterval(t); };
-    }, []);
+    }, [isBridgeVisible]);
 
     useEffect(() => {
         if (!isMapOpen) {
@@ -133,7 +157,7 @@ const SysControlBridge = ({ t }) => {
     );
 
     return (
-        <div className="w-full relative select-none" style={{ background: t.chassisBg }}>
+        <div ref={bridgeRef} className="w-full relative select-none" style={{ background: t.chassisBg }}>
             <style>{`
                 @keyframes blink-led2 { 0%,100%{opacity:1} 48%,52%{opacity:0.1} }
                 @keyframes scan-bridge { 0%{transform:translateY(-100%)} 100%{transform:translateY(500%)} }

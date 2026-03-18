@@ -15,7 +15,13 @@ class ProjectController extends Controller
     public function index()
     {
         $projects = Project::latest()->get();
-        return view('admin.projects.index', compact('projects'));
+
+        return view('index', [
+            'page' => 'AdminProjects',
+            'props' => [
+                'projects' => $projects,
+            ],
+        ]);
     }
 
     /**
@@ -23,7 +29,10 @@ class ProjectController extends Controller
      */
     public function create()
     {
-        return view('admin.projects.create');
+        return view('index', [
+            'page' => 'AdminProjectCreate',
+            'props' => [],
+        ]);
     }
 
     /**
@@ -53,7 +62,7 @@ class ProjectController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Project created successfully.',
-                'project' => $project
+                'project' => $project,
             ], 201);
         }
 
@@ -65,7 +74,12 @@ class ProjectController extends Controller
      */
     public function edit(Project $project)
     {
-        return view('admin.projects.edit', compact('project'));
+        return view('index', [
+            'page' => 'AdminProjectEdit',
+            'props' => [
+                'project' => $project,
+            ],
+        ]);
     }
 
     /**
@@ -95,10 +109,10 @@ class ProjectController extends Controller
                 if ($project->image) {
                     Storage::disk('public')->delete($project->image);
                 }
-                
+
                 $path = $request->file('image')->store('projects', 'public');
                 $data['image'] = $path;
-                
+
                 \Log::info('Image stored successfully', ['path' => $path]);
             } else {
                 // Keep existing image if no new upload
@@ -112,31 +126,31 @@ class ProjectController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Project updated successfully.',
-                    'project' => $project
+                    'project' => $project,
                 ]);
             }
 
             return redirect()->route('admin.projects.index')->with('success', 'Project updated successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed', ['errors' => $e->errors()]);
-            
+
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'message' => $e->getMessage(),
-                    'errors' => $e->errors()
+                    'errors' => $e->errors(),
                 ], 422);
             }
             throw $e;
         } catch (\Exception $e) {
             \Log::error('Update failed', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
-                    'message' => 'Failed to update project: ' . $e->getMessage(),
-                    'errors' => ['general' => [$e->getMessage()]]
+                    'message' => 'Failed to update project: '.$e->getMessage(),
+                    'errors' => ['general' => [$e->getMessage()]],
                 ], 500);
             }
             throw $e;
@@ -151,7 +165,7 @@ class ProjectController extends Controller
         if ($project->image) {
             Storage::disk('public')->delete($project->image);
         }
-        
+
         $project->delete();
 
         return redirect()->route('admin.projects.index')->with('success', 'Project deleted successfully.');

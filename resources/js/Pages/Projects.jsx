@@ -1,10 +1,12 @@
 import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 import MainLayout from '../Layout/MainLayout';
 import PlasticButton from '../UI/PlasticButton';
+import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -13,12 +15,47 @@ const Projects = ({ page, props }) => {
     const { repos = [], project = null } = props;
     const comp = useRef();
     const gridRef = useRef();
+    const prefersReducedMotion = useReducedMotion();
 
     const ITEMS_PER_PAGE = 6;
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedProject, setSelectedProject] = useState(null);
+    const [isTouchOptimized, setIsTouchOptimized] = useState(false);
     const totalPages = Math.ceil(repos.length / ITEMS_PER_PAGE);
     const currentRepos = repos.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    useEffect(() => {
+        const updateTouchOptimization = () => {
+            const isMobileViewport = window.innerWidth < 768;
+            const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+            const saveData = navigator.connection?.saveData ?? false;
+
+            setIsTouchOptimized(prefersReducedMotion || isMobileViewport || isCoarsePointer || saveData);
+        };
+
+        updateTouchOptimization();
+        window.addEventListener('resize', updateTouchOptimization);
+
+        return () => {
+            window.removeEventListener('resize', updateTouchOptimization);
+        };
+    }, [prefersReducedMotion]);
+
+    const modalCardLayoutId = selectedProject && !isTouchOptimized ? `card-${selectedProject.id}` : undefined;
+    const modalImageLayoutId = selectedProject && !isTouchOptimized ? `image-${selectedProject.id}` : undefined;
+    const modalContentAnimation = isTouchOptimized
+        ? {
+            initial: { opacity: 0, y: 16 },
+            animate: { opacity: 1, y: 0 },
+            exit: { opacity: 0, y: 12 },
+            transition: { duration: 0.18, ease: 'easeOut' },
+        }
+        : {
+            initial: { opacity: 0 },
+            animate: { opacity: 1 },
+            exit: { opacity: 0 },
+            transition: { duration: 0.24, ease: 'easeOut' },
+        };
 
     const handlePageChange = (pageNum) => {
         setCurrentPage(pageNum);
@@ -225,7 +262,7 @@ const Projects = ({ page, props }) => {
                             <PlasticButton
                                 color="yellow"
                                 className="px-6 py-4 sm:px-10 sm:py-5 text-base sm:text-lg w-full sm:w-auto transition-all hover:scale-105 !bg-[#1c1917] !text-stone-300 !border-[#0c0a09] !shadow-[0_6px_0_#000000,0_10px_20px_rgba(0,0,0,0.6)] shadow-[0_0_30px_rgba(0,0,0,0.3)] hover:!bg-[#0c0a09]"
-                                onClick={() => window.location.href = '/about'}
+                                onClick={() => navigateWithCleanup('/about')}
                             >
                                 View Archives
                             </PlasticButton>
@@ -265,7 +302,7 @@ const Projects = ({ page, props }) => {
                                     return (
                                         <motion.div
                                             key={repo.id || index}
-                                            layoutId={`card-${repo.id}`}
+                                            layoutId={isTouchOptimized ? undefined : `card-${repo.id}`}
                                             onClick={() => setSelectedProject(repo)}
                                             className={`
                                                 project-card group relative block cursor-pointer
@@ -286,7 +323,7 @@ const Projects = ({ page, props }) => {
                                             <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
                                                 {repo.image_url ? (
                                                     <motion.img
-                                                        layoutId={`image-${repo.id}`}
+                                                        layoutId={isTouchOptimized ? undefined : `image-${repo.id}`}
                                                         src={repo.image_url.startsWith('http') ? repo.image_url : `/storage/${repo.image_url}`}
                                                         alt={repo.title || 'Project image'}
                                                         loading="lazy"
@@ -367,83 +404,96 @@ const Projects = ({ page, props }) => {
                 </section>
 
                 {/* Framer Motion Shared Layout Modal */}
-                <AnimatePresence>
-                    {selectedProject && (
-                        <>
-                            {/* Backdrop overlay */}
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setSelectedProject(null)}
-                                className="fixed inset-0 bg-[#0c0a09]/90 z-[100]"
-                                style={{ transform: "translateZ(0)" }} // Force hardware acceleration
-                            ></motion.div>
-
-                            {/* Modal Content */}
-                            <div className="fixed inset-0 z-[101] flex items-center justify-center pointer-events-none p-4 sm:p-8">
+                {typeof document !== 'undefined' && createPortal(
+                    <AnimatePresence initial={false}>
+                        {selectedProject && (
+                            <>
+                                {/* Backdrop overlay */}
                                 <motion.div
-                                    layoutId={`card-${selectedProject.id}`}
-                                    className="relative w-full max-w-4xl max-h-[90vh] bg-[#1c1917] border border-stone-800 rounded-3xl overflow-y-auto pointer-events-auto flex flex-col shadow-2xl custom-scrollbar"
-                                >
-                                    {/* Close Button Inside */}
-                                    <button
-                                        onClick={() => setSelectedProject(null)}
-                                        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/50 border border-stone-700/50 flex items-center justify-center text-stone-300 hover:bg-orange-500 hover:text-black hover:border-orange-500 backdrop-blur-md transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setSelectedProject(null)}
+                                    className="fixed inset-0 z-[200] bg-[#0c0a09]/90"
+                                    style={{ transform: 'translateZ(0)' }}
+                                />
 
-                                    {/* Modal Image Hero */}
-                                    <div className="relative w-full h-[40vh] sm:h-[50vh] shrink-0 border-b border-stone-800">
-                                        {selectedProject.image_url ? (
-                                            <motion.img
-                                                layoutId={`image-${selectedProject.id}`}
-                                                src={selectedProject.image_url.startsWith('http') ? selectedProject.image_url : `/storage/${selectedProject.image_url}`}
-                                                alt={selectedProject.title}
-                                                className="w-full h-full object-cover filter saturate-[0.9]"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-[#0d0c0a] relative overflow-hidden">
-                                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-500/20 via-transparent to-transparent"></div>
-                                                <span className="text-8xl inline-block drop-shadow-[0_0_25px_rgba(249,115,22,0.3)] opacity-100 z-10">
-                                                    🔮
+                                {/* Modal Content */}
+                                <div className="fixed inset-0 z-[201] flex items-center justify-center pointer-events-none p-4 sm:p-8">
+                                    <motion.div
+                                        layoutId={modalCardLayoutId}
+                                        initial={modalContentAnimation.initial}
+                                        animate={modalContentAnimation.animate}
+                                        exit={modalContentAnimation.exit}
+                                        transition={modalContentAnimation.transition}
+                                        className="relative pointer-events-auto flex max-h-[90vh] w-full max-w-4xl flex-col overflow-y-auto rounded-3xl border border-stone-800 bg-[#1c1917] shadow-2xl custom-scrollbar"
+                                    >
+                                        {/* Close Button Inside */}
+                                        <button
+                                            onClick={() => setSelectedProject(null)}
+                                            className="absolute top-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-stone-700/50 bg-black/50 text-stone-300 backdrop-blur-md transition-colors hover:border-orange-500 hover:bg-orange-500 hover:text-black"
+                                        >
+                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+
+                                        {/* Modal Image Hero */}
+                                        <div className="relative h-[40vh] w-full shrink-0 border-b border-stone-800 sm:h-[50vh]">
+                                            {selectedProject.image_url ? (
+                                                isTouchOptimized ? (
+                                                    <img
+                                                        src={selectedProject.image_url.startsWith('http') ? selectedProject.image_url : `/storage/${selectedProject.image_url}`}
+                                                        alt={selectedProject.title}
+                                                        className="h-full w-full object-cover filter saturate-[0.9]"
+                                                    />
+                                                ) : (
+                                                    <motion.img
+                                                        layoutId={modalImageLayoutId}
+                                                        src={selectedProject.image_url.startsWith('http') ? selectedProject.image_url : `/storage/${selectedProject.image_url}`}
+                                                        alt={selectedProject.title}
+                                                        className="h-full w-full object-cover filter saturate-[0.9]"
+                                                    />
+                                                )
+                                            ) : (
+                                                <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#0d0c0a]">
+                                                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-500/20 via-transparent to-transparent"></div>
+                                                    <span className="z-10 inline-block text-8xl opacity-100 drop-shadow-[0_0_25px_rgba(249,115,22,0.3)]">
+                                                        🔮
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/2 bg-gradient-to-t from-[#1c1917] to-transparent"></div>
+                                        </div>
+
+                                        {/* Modal Details Section */}
+                                        <div className="relative z-20 -mt-20 flex flex-col gap-6 p-6 sm:p-10">
+                                            <motion.h2
+                                                className="text-3xl font-black text-[#e7e5e4] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] sm:text-5xl"
+                                            >
+                                                {selectedProject.title || 'Anomaly Details'}
+                                            </motion.h2>
+
+                                            <div className="flex gap-4">
+                                                <span className="rounded-md border border-stone-800 bg-stone-900 px-3 py-1 text-xs font-mono font-bold tracking-widest text-stone-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
+                                                    ID: {String(selectedProject.id).padStart(3, '0')}
+                                                </span>
+                                                <span className="rounded-md border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-orange-400">
+                                                    RECOVERED DATA
                                                 </span>
                                             </div>
-                                        )}
-                                        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#1c1917] to-transparent z-10 pointer-events-none"></div>
-                                    </div>
 
-                                    {/* Modal Details Section */}
-                                    <div className="relative z-20 p-6 sm:p-10 -mt-20 flex flex-col gap-6">
-                                        <motion.h2
-                                            className="text-3xl sm:text-5xl font-black text-[#e7e5e4] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]"
-                                        >
-                                            {selectedProject.title || 'Anomaly Details'}
-                                        </motion.h2>
-
-                                        <div className="flex gap-4">
-                                            <span className="px-3 py-1 text-xs font-mono font-bold tracking-widest rounded-md bg-stone-900 border border-stone-800 text-stone-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
-                                                ID: {String(selectedProject.id).padStart(3, '0')}
-                                            </span>
-                                            <span className="px-3 py-1 text-xs font-bold uppercase tracking-widest rounded-md bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                                                RECOVERED DATA
-                                            </span>
+                                            <div className="prose prose-invert prose-stone mt-4 max-w-none font-light text-stone-400">
+                                                <p className="text-lg leading-relaxed">{selectedProject.description || 'Analysis of this sector reveals complex structural layering. Data extraction complete.'}</p>
+                                            </div>
                                         </div>
-
-                                        <div className="prose prose-invert prose-stone max-w-none text-stone-400 font-light mt-4">
-                                            <p className="text-lg leading-relaxed">{selectedProject.description || "Analysis of this sector reveals complex structural layering. Data extraction complete."}</p>
-                                        </div>
-
-                                        {/* Button removed per user request */}
-                                    </div>
-                                </motion.div>
-                            </div>
-                        </>
-                    )}
-                </AnimatePresence>
+                                    </motion.div>
+                                </div>
+                            </>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
             </div>
         </MainLayout>
     );

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
 
 
 
@@ -213,14 +214,90 @@ void main() {
 function LandscapePrompt() {
     return (
         <div style={{
-            position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,5,20,0.98)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontFamily: 'system-ui', textAlign: 'center', gap: 18
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'radial-gradient(circle at 20% 18%, rgba(56,189,248,0.18), transparent 28%), radial-gradient(circle at 82% 22%, rgba(251,191,36,0.14), transparent 24%), linear-gradient(180deg, #07121d 0%, #091827 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontFamily: 'system-ui',
+            textAlign: 'center',
+            padding: '24px'
         }}>
-            <div style={{ fontSize: 64, animation: 'rp 1.5s ease-in-out infinite alternate' }}>📱</div>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Rotate to Play</h2>
-            <p style={{ margin: 0, opacity: 0.5, fontSize: 13 }}>Landscape mode required</p>
-            <style>{`@keyframes rp{from{transform:rotate(0deg)}to{transform:rotate(90deg)}}`}</style>
+            <div style={{
+                width: '100%',
+                maxWidth: 320,
+                borderRadius: 28,
+                border: '1px solid rgba(148, 163, 184, 0.18)',
+                background: 'linear-gradient(180deg, rgba(15,23,42,0.88), rgba(9,15,28,0.92))',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)',
+                backdropFilter: 'blur(14px)',
+                padding: '28px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 16
+            }}>
+                <div style={{
+                    width: 96,
+                    height: 96,
+                    borderRadius: 26,
+                    background: 'linear-gradient(180deg, rgba(14,116,144,0.22), rgba(15,23,42,0.08))',
+                    border: '1px solid rgba(125,211,252,0.18)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                    animation: 'rpFloat 3s ease-in-out infinite'
+                }}>
+                    <img
+                        src="/images/rotate-device.svg"
+                        alt="Rotate device"
+                        style={{
+                            width: 74,
+                            height: 74,
+                            display: 'block',
+                            animation: 'rpTilt 1.8s ease-in-out infinite alternate'
+                        }}
+                    />
+                </div>
+
+                <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    background: 'rgba(56,189,248,0.12)',
+                    border: '1px solid rgba(125,211,252,0.18)',
+                    color: '#7dd3fc',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: '0.24em',
+                    textTransform: 'uppercase'
+                }}>
+                    Orientation Lock
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, lineHeight: 1.15 }}>Putar layar ke landscape</h2>
+                    <p style={{ margin: 0, color: 'rgba(226,232,240,0.7)', fontSize: 13, lineHeight: 1.6 }}>
+                        Biar kontrol dan area bermain tampil penuh, buka mode horizontal lalu lanjutkan permainan.
+                    </p>
+                </div>
+            </div>
+            <style>{`
+                @keyframes rpTilt {
+                    from { transform: rotate(0deg) scale(0.98); }
+                    to { transform: rotate(14deg) scale(1); }
+                }
+                @keyframes rpFloat {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-6px); }
+                }
+            `}</style>
         </div>
     );
 }
@@ -229,6 +306,7 @@ function LandscapePrompt() {
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════════ */
 const SkillsGame = () => {
+    const shellRef = useRef(null);
     const mountRef = useRef(null);
     const gameRef = useRef({});
     const keysRef = useRef({});
@@ -240,6 +318,7 @@ const SkillsGame = () => {
     const [hud, setHud] = useState(null);
     const [isMobile, setIsMobile] = useState(false);
     const [isPortrait, setIsPortrait] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(() => typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false);
     const [showHelp, setShowHelp] = useState(true);
     const [paused, setPaused] = useState(false);
     const pausedRef = useRef(false);
@@ -254,6 +333,19 @@ const SkillsGame = () => {
         window.addEventListener('resize', check);
         window.addEventListener('orientationchange', check);
         return () => { window.removeEventListener('resize', check); window.removeEventListener('orientationchange', check); };
+    }, []);
+
+    useEffect(() => {
+        const syncFullscreen = () => {
+            setIsFullscreen(Boolean(document.fullscreenElement));
+        };
+
+        syncFullscreen();
+        document.addEventListener('fullscreenchange', syncFullscreen);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', syncFullscreen);
+        };
     }, []);
 
     useEffect(() => {
@@ -554,7 +646,7 @@ const SkillsGame = () => {
         setupBuoys();
 
         /* ── PLAYER STATE ── */
-        const player = { yaw: 0, pitch: 0, speed: 0, heading: 0, velY: 0, onGround: true, camY: 1.2 };
+        const player = { yaw: Math.PI, pitch: 0, speed: 0, heading: 0, velY: 0, onGround: true, camY: 1.2 };
         const MAX_SPEED = 10, ACCEL = 8, DECEL = 4, TURN = 1.8, GRAVITY = -18, JUMP = 8;
 
         /* ── POINTER LOCK ── */
@@ -726,6 +818,7 @@ const SkillsGame = () => {
 
     /* ── Touch Look Swipe Handler ── */
     const onTouchLookStart = (e) => {
+        requestMobileFullscreen();
         if (paused) return;
         const t = e.touches[0];
         if (!t) return;
@@ -755,11 +848,29 @@ const SkillsGame = () => {
     };
     const mobileJump = () => { keysRef.current['Space'] = true; setTimeout(() => { keysRef.current['Space'] = false; }, 160); };
 
+    const requestMobileFullscreen = async () => {
+        if (!isMobile || isPortrait || document.fullscreenElement) return;
+
+        const target = shellRef.current || document.documentElement;
+        if (!target?.requestFullscreen) return;
+
+        try {
+            await target.requestFullscreen({ navigationUI: 'hide' });
+        } catch {
+            try {
+                await target.requestFullscreen();
+            } catch {
+                // Browser blocked fullscreen. Fallback button remains visible.
+            }
+        }
+    };
+
     /* ── RENDER ── */
     if (isMobile && isPortrait) return <LandscapePrompt />;
 
     return (
         <div
+            ref={shellRef}
             onTouchStart={onTouchLookStart}
             onTouchMove={onTouchLookMove}
             onTouchEnd={onTouchLookEnd}
@@ -792,6 +903,67 @@ const SkillsGame = () => {
                         <line x1="14" y1="11" x2="21" y2="11" stroke="rgba(255,255,255,0.7)" strokeWidth="1.3" />
                         <circle cx="11" cy="11" r="2" stroke="rgba(100,220,255,0.85)" strokeWidth="1.3" fill="none" />
                     </svg>
+                </div>
+            )}
+
+            {isMobile && loaded && (
+                <div style={{ position: 'absolute', top: 18, right: 18, display: 'flex', gap: 10, zIndex: 120 }}>
+                    {!isFullscreen && (
+                        <button
+                            onClick={requestMobileFullscreen}
+                            style={{
+                                padding: '10px 14px',
+                                border: '2px solid rgba(120,220,255,0.28)',
+                                background: 'rgba(2,14,34,0.82)',
+                                borderRadius: 12,
+                                color: '#9be7ff',
+                                fontSize: 12,
+                                fontWeight: 800,
+                                letterSpacing: 1,
+                                fontFamily: '"Courier New", monospace',
+                                textTransform: 'uppercase',
+                                backdropFilter: 'blur(8px)'
+                            }}
+                        >
+                            Fullscreen
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setPaused(true)}
+                        style={{
+                            padding: '10px 14px',
+                            border: '2px solid rgba(255,255,255,0.24)',
+                            background: 'rgba(4,12,28,0.72)',
+                            borderRadius: 12,
+                            color: '#fefae0',
+                            fontSize: 12,
+                            fontWeight: 800,
+                            letterSpacing: 1,
+                            fontFamily: '"Courier New", monospace',
+                            textTransform: 'uppercase',
+                            backdropFilter: 'blur(8px)'
+                        }}
+                    >
+                        Menu
+                    </button>
+                    <button
+                        onClick={() => navigateWithCleanup('/')}
+                        style={{
+                            padding: '10px 14px',
+                            border: '2px solid rgba(255,255,255,0.24)',
+                            background: 'rgba(4,12,28,0.72)',
+                            borderRadius: 12,
+                            color: '#fefae0',
+                            fontSize: 12,
+                            fontWeight: 800,
+                            letterSpacing: 1,
+                            fontFamily: '"Courier New", monospace',
+                            textTransform: 'uppercase',
+                            backdropFilter: 'blur(8px)'
+                        }}
+                    >
+                        Home
+                    </button>
                 </div>
             )}
 
@@ -858,7 +1030,7 @@ const SkillsGame = () => {
                             </button>
 
                             <button
-                                onClick={() => { window.location.href = '/'; }}
+                                onClick={() => { navigateWithCleanup('/'); }}
                                 style={{
                                     padding: '16px', border: '2px solid #603813', background: 'transparent', borderRadius: 4, cursor: 'pointer',
                                     color: '#d4a373', fontSize: 16, fontWeight: 700, letterSpacing: 1,
@@ -868,7 +1040,9 @@ const SkillsGame = () => {
                                 Abandon Ship
                             </button>
                         </div>
-                        <div style={{ marginTop: 30, fontSize: 12, color: '#d4a373', opacity: 0.6, fontFamily: 'monospace' }}>PRESS ESC TO CONTINUE</div>
+                        <div style={{ marginTop: 30, fontSize: 12, color: '#d4a373', opacity: 0.6, fontFamily: 'monospace' }}>
+                            {isMobile ? 'TAP MENU TO OPEN / CLOSE' : 'PRESS ESC TO CONTINUE'}
+                        </div>
                     </div>
                 </div>
             )}
@@ -884,6 +1058,8 @@ const SkillsGame = () => {
 
 /* ── Nautical DPad Component ── */
 function DPad({ keys }) {
+    const activePointersRef = useRef(new Map());
+
     const btnStyle = (active) => ({
         width: 60, height: 60, background: active ? '#bc6c25' : '#3d2b1f',
         border: '3px solid #1a140f', borderRadius: 4,
@@ -891,55 +1067,98 @@ function DPad({ keys }) {
         color: '#fefae0', fontSize: 24, fontWeight: 900,
         boxShadow: active ? 'none' : '0 4px 0 #1a140f',
         transform: active ? 'translateY(2px)' : 'none',
-        userSelect: 'none', touchAction: 'none'
+        userSelect: 'none', touchAction: 'none',
+        WebkitTapHighlightColor: 'transparent'
     });
 
-    const handleTouch = (key, active, e) => {
+    const stopTouchLook = (e) => {
         e.preventDefault();
-        e.stopPropagation(); // Stop swipe-look when touching D-Pad
-        keys[key] = active;
+        e.stopPropagation();
     };
 
-    // Need local state just for visual feedback of button presses
+    const setKeyState = (key, active) => {
+        keys[key] = active;
+        setActive((prev) => ({ ...prev, [key]: active }));
+    };
+
     const [active, setActive] = useState({});
 
-    const wrapHandle = (key, val, e) => {
-        handleTouch(key, val, e);
-        setActive(prev => ({ ...prev, [key]: val }));
+    useEffect(() => {
+        return () => {
+            activePointersRef.current.forEach((key) => {
+                keys[key] = false;
+            });
+            activePointersRef.current.clear();
+        };
+    }, [keys]);
+
+    const handlePointerDown = (key, e) => {
+        stopTouchLook(e);
+        activePointersRef.current.set(e.pointerId, key);
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        setKeyState(key, true);
+    };
+
+    const handlePointerUp = (e) => {
+        stopTouchLook(e);
+        const key = activePointersRef.current.get(e.pointerId);
+        if (!key) {
+            return;
+        }
+        activePointersRef.current.delete(e.pointerId);
+        e.currentTarget.releasePointerCapture?.(e.pointerId);
+        setKeyState(key, false);
     };
 
     return (
-        <div style={{ position: 'absolute', bottom: 30, left: 30, display: 'grid', gridTemplateColumns: 'repeat(3, 60px)', gridTemplateRows: 'repeat(3, 60px)', gap: 8, zIndex: 110 }}>
+        <div
+            onPointerDown={stopTouchLook}
+            onPointerMove={stopTouchLook}
+            onPointerUp={stopTouchLook}
+            onPointerCancel={stopTouchLook}
+            onTouchStart={stopTouchLook}
+            onTouchMove={stopTouchLook}
+            onTouchEnd={stopTouchLook}
+            style={{ position: 'absolute', bottom: 30, left: 30, display: 'grid', gridTemplateColumns: 'repeat(3, 60px)', gridTemplateRows: 'repeat(3, 60px)', gap: 8, zIndex: 110 }}
+        >
             <div />
-            <div
+            <button
+                type="button"
                 style={btnStyle(active['KeyW'])}
-                onTouchStart={e => wrapHandle('KeyW', true, e)}
-                onTouchEnd={e => wrapHandle('KeyW', false, e)}
-                onTouchCancel={e => wrapHandle('KeyW', false, e)}
-            >↑</div>
+                onPointerDown={(e) => handlePointerDown('KeyW', e)}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+            >↑</button>
             <div />
 
-            <div
-                style={btnStyle(active['KeyA'])}
-                onTouchStart={e => wrapHandle('KeyA', true, e)}
-                onTouchEnd={e => wrapHandle('KeyA', false, e)}
-                onTouchCancel={e => wrapHandle('KeyA', false, e)}
-            >←</div>
-            <div style={{ background: '#1a140f', borderRadius: 4, opacity: 0.3 }} />
-            <div
+            <button
+                type="button"
                 style={btnStyle(active['KeyD'])}
-                onTouchStart={e => wrapHandle('KeyD', true, e)}
-                onTouchEnd={e => wrapHandle('KeyD', false, e)}
-                onTouchCancel={e => wrapHandle('KeyD', false, e)}
-            >→</div>
+                onPointerDown={(e) => handlePointerDown('KeyD', e)}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+            >←</button>
+            <div style={{ background: '#1a140f', borderRadius: 4, opacity: 0.3 }} />
+            <button
+                type="button"
+                style={btnStyle(active['KeyA'])}
+                onPointerDown={(e) => handlePointerDown('KeyA', e)}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+            >→</button>
 
             <div />
-            <div
+            <button
+                type="button"
                 style={btnStyle(active['KeyS'])}
-                onTouchStart={e => wrapHandle('KeyS', true, e)}
-                onTouchEnd={e => wrapHandle('KeyS', false, e)}
-                onTouchCancel={e => wrapHandle('KeyS', false, e)}
-            >↓</div>
+                onPointerDown={(e) => handlePointerDown('KeyS', e)}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+            >↓</button>
             <div />
         </div>
     );
