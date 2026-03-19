@@ -1,6 +1,4 @@
 import React, { useLayoutEffect, useRef, Suspense, useState, useEffect, useMemo } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Html, useProgress } from '@react-three/drei';
 import { motion, useAnimation, useMotionValue, useInView, useReducedMotion } from 'framer-motion';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
@@ -8,8 +6,7 @@ import PlasticButton from '../UI/PlasticButton';
 import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
 const FeaturedProjects = React.lazy(() => import('../components/FeaturedProjects'));
 const PanzekHome = React.lazy(() => import('../components/UI/PanzekHome'));
-// Lazy load Robocop3D
-const Robocop3D = React.lazy(() => import('../components/3D/Robocop3D'));
+const LandingHeroScene = React.lazy(() => import('../components/3D/LandingHeroScene'));
 
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -231,100 +228,32 @@ const PanzekCLI = () => {
     );
 };
 
-class ModelErrorBoundary extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { hasError: false };
-    }
-
-    static getDerivedStateFromError() {
-        return { hasError: true };
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <Html center>
-                    <div className="flex flex-col items-center justify-center p-6 bg-white/70 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-56 text-center">
-                        <div className="text-slate-700 font-black uppercase tracking-widest text-[10px]">
-                            3D Model Error
-                        </div>
-                        <div className="mt-2 text-xs font-semibold text-slate-600">
-                            Model belum bisa dimuat. Cek koneksi atau file 3D.
-                        </div>
-                    </div>
-                </Html>
-            );
-        }
-
-        return this.props.children;
-    }
-}
-
-// Helper to pause rendering when offscreen
-const PerformanceOptimizer = () => {
-    const { gl, setFrameloop } = useThree();
-    useEffect(() => {
-        const observer = new IntersectionObserver(([entry]) => {
-            // When visible, run animation loop. When hidden, stop it.
-            setFrameloop(entry.isIntersecting ? 'demand' : 'never');
-        }, { threshold: 0.1 });
-
-        if (gl.domElement.parentElement) {
-            observer.observe(gl.domElement.parentElement);
-        }
-
-        return () => observer.disconnect();
-    }, [gl, setFrameloop]);
-    return null;
-};
-
-
-
-// Custom Loader component with progress bar
-const CanvasLoader = () => {
-    const { progress, active } = useProgress();
-    const [showSlowNetwork, setShowSlowNetwork] = useState(false);
-
-    useEffect(() => {
-        if (!active) {
-            setShowSlowNetwork(false);
-            return undefined;
-        }
-
-        const timer = setTimeout(() => {
-            setShowSlowNetwork(true);
-        }, 2500);
-
-        return () => clearTimeout(timer);
-    }, [active]);
-
-    return (
-        <Html center>
-            <div className="flex flex-col items-center justify-center p-6 bg-white/60 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-48 transition-all duration-300">
-                <div className="relative w-16 h-16 animate-pulse mb-4">
-                    {/* Animated Campfire placeholder icon or just circles */}
-                    <div className="absolute inset-0 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin"></div>
-                    <div className="absolute inset-2 border-4 border-orange-200 border-b-orange-500 rounded-full animate-spin-reverse" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-                    <span className="absolute inset-0 flex flex-col items-center justify-center text-xs font-black text-orange-600">
-                        {Math.floor(progress)}%
-                    </span>
-                </div>
-                <div className="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
-                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
-                </div>
-                <div className="text-orange-500 font-bold uppercase tracking-widest text-[10px] mt-1 text-center">
-                    Setting up Camp...
-                </div>
-                {showSlowNetwork && (
-                    <div className="mt-2 text-[10px] font-semibold text-slate-600 text-center">
-                        Koneksi lambat, model 3D masih loading.
-                    </div>
-                )}
+const HeroShowcaseFallback = ({ isLowPower }) => (
+    <div className="flex h-full w-full items-center justify-center rounded-[2.5rem] border border-white/55 bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.9),rgba(255,255,255,0.32)_28%,rgba(191,219,254,0.3)_56%,rgba(56,189,248,0.16)_100%)] p-6 shadow-[0_24px_70px_rgba(14,116,144,0.18)]">
+        <div className="relative flex w-full max-w-[24rem] flex-col items-center gap-5 rounded-[2rem] border border-white/70 bg-white/65 px-6 py-7 text-center shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-md">
+            <div className="absolute inset-x-6 top-0 h-14 rounded-b-[1.5rem] bg-gradient-to-b from-white/80 to-transparent pointer-events-none"></div>
+            <div className="relative flex h-28 w-28 items-center justify-center rounded-[2rem] border border-sky-100 bg-[radial-gradient(circle_at_35%_30%,#ffffff_0%,#e0f2fe_38%,#93c5fd_100%)] shadow-[inset_0_4px_18px_rgba(255,255,255,0.9),0_18px_30px_rgba(14,116,144,0.16)]">
+                <div className="absolute h-16 w-16 rounded-[1.4rem] border border-sky-200/80 bg-white/80 shadow-[0_10px_25px_rgba(59,130,246,0.12)]"></div>
+                <div className="absolute h-7 w-14 rounded-full bg-slate-900/85 blur-[1px]"></div>
+                <div className="absolute bottom-7 h-3 w-20 rounded-full bg-sky-400/25 blur-md"></div>
+                <div className="relative text-[11px] font-black uppercase tracking-[0.26em] text-sky-700">Hero</div>
             </div>
-        </Html>
-    );
-};
+            <div className="space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-sky-700/75">
+                    {isLowPower ? 'Light Mode Active' : '3D Preview Ready'}
+                </div>
+                <div className="text-lg font-black text-slate-800">
+                    {isLowPower ? 'Optimized hero loaded' : 'Interactive hero is loading'}
+                </div>
+                <p className="text-sm font-semibold leading-relaxed text-slate-600">
+                    {isLowPower
+                        ? 'Device terdeteksi mobile atau mode hemat data, jadi homepage pakai fallback yang lebih ringan.'
+                        : 'Scene 3D dipisah ke chunk terpisah supaya bundle awal homepage tidak terlalu berat.'}
+                </p>
+            </div>
+        </div>
+    </div>
+);
 
 const EmbeddedScreenFallback = () => (
     <div className="absolute inset-0 flex items-center justify-center bg-[#020c04]">
@@ -619,12 +548,14 @@ const LandingPage = ({ page, props }) => {
     const { repos = [] } = props;
     const comp = useRef();
     const heroRobotRef = useRef(null);
+    const featuredProjectsRef = useRef(null);
     const profileHeaderRef = useRef(null);
     const portsRef = useRef({});
     const [isMobile, setIsMobile] = useState(false);
     const prefersReducedMotion = useReducedMotion();
     const [isLowPower, setIsLowPower] = useState(false);
     const isHeroRobotInView = useInView(heroRobotRef, { once: true, margin: "200px" });
+    const shouldLoadFeaturedProjects = useInView(featuredProjectsRef, { once: true, margin: '320px 0px' });
     const isProfileHeaderInView = useInView(profileHeaderRef, { once: true, margin: '-15% 0px' });
     const [gameboyStatus, setGameboyStatus] = useState('READY');
     const [showMobileGameboyGuide, setShowMobileGameboyGuide] = useState(true);
@@ -719,6 +650,8 @@ const LandingPage = ({ page, props }) => {
             powerPreference: lowPower ? 'low-power' : 'high-performance'
         };
     }, [isLowPower, isMobile]);
+
+    const shouldRenderHeroScene = isHeroRobotInView && !isLowPower && !isMobile;
 
     useLayoutEffect(() => {
         let ctx = gsap.context(() => {
@@ -907,41 +840,15 @@ const LandingPage = ({ page, props }) => {
 
                     {/* Right: 3D Robot Showcase — responsive container */}
                     <div ref={heroRobotRef} className="hero-robot order-first md:order-none relative w-full h-[300px] sm:h-[380px] md:h-[580px] md:w-[50%] md:aspect-auto flex-shrink-0 z-20">
-
-                        {isHeroRobotInView && (
-                            <Canvas
-                                camera={{ position: [0, 0.5, 7], fov: 50 }}
-                                dpr={heroRenderSettings.dpr}
-                                frameloop="demand"
-                                gl={{
-                                    powerPreference: heroRenderSettings.powerPreference,
-                                    antialias: heroRenderSettings.antialias
-                                }}
-                            >
-                                <PerformanceOptimizer />
-                                <Suspense fallback={<CanvasLoader />}>
-                                    <ambientLight intensity={1.6} />
-                                    <directionalLight position={[5, 10, 5]} intensity={2.8} castShadow />
-                                    <pointLight position={[-5, 5, -5]} intensity={1.0} color="#ffffff" />
-                                    <pointLight position={[3, 2, 3]} intensity={0.6} color="#ffeedd" />
-
-                                    <group position={isMobile ? [0, -0.5, 0] : [0.6, -0.3, 0]}>
-                                        <ModelErrorBoundary>
-                                            <Robocop3D
-                                                scale={isMobile ? 2.8 : 3.0}
-                                                position={[0, 0, 0]}
-                                                rotation={[0, Math.PI / 5, 0]}
-                                            />
-                                        </ModelErrorBoundary>
-                                    </group>
-
-                                    <OrbitControls
-                                        enableZoom={false}
-                                        enablePan={false}
-                                        enableRotate={false}
-                                    />
-                                </Suspense>
-                            </Canvas>
+                        {shouldRenderHeroScene ? (
+                            <Suspense fallback={<HeroShowcaseFallback isLowPower={false} />}>
+                                <LandingHeroScene
+                                    isMobile={isMobile}
+                                    renderSettings={heroRenderSettings}
+                                />
+                            </Suspense>
+                        ) : (
+                            <HeroShowcaseFallback isLowPower={isLowPower || isMobile} />
                         )}
 
                         {/* CSS radial gradient shadow under the car */}
@@ -1248,11 +1155,16 @@ const LandingPage = ({ page, props }) => {
                     </div>
                 </div>
 
-
                 {/* NEW ARRIVALS PREVIEW (3D Cartridge Shelf) */}
-                <Suspense fallback={<FeaturedProjectsFallback />}>
-                    <FeaturedProjects repos={repos} />
-                </Suspense>
+                <div ref={featuredProjectsRef}>
+                    {shouldLoadFeaturedProjects ? (
+                        <Suspense fallback={<FeaturedProjectsFallback />}>
+                            <FeaturedProjects repos={repos} />
+                        </Suspense>
+                    ) : (
+                        <FeaturedProjectsFallback />
+                    )}
+                </div>
 
                 {/* CALL TO ACTION BANNER */}
                 <div className="w-full relative py-32 mt-24 mb-32 flex items-center justify-center pointer-events-none">
