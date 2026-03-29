@@ -1,12 +1,115 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
+
+const BOOT_SEQUENCE = [
+    { text: 'PanzekOS 24.10 LTS secure-gate tty0', delay: 120 },
+    { text: 'Welcome to PanzekOS 24.10 LTS (GNU/Linux 6.15.0-pz-generic x86_64)', delay: 340 },
+    { text: '', delay: 480 },
+    { text: '[    0.182441] systemd[1]: Starting Login Manager...', delay: 720, color: '#a3e635' },
+    { text: '[    0.524991] kernel: secure-session: authentication accepted', delay: 1040, color: '#a3e635' },
+    { text: '[    0.881240] systemd[1]: Reached target Multi-User System.', delay: 1360, color: '#a3e635' },
+    { text: '[    1.102994] panzek-login[221]: preparing dashboard runtime', delay: 1700, color: '#e5e7eb' },
+    { text: '[    1.428442] panzek-shell[255]: mounting user workspace', delay: 2020, color: '#e5e7eb' },
+    { text: '[    1.800315] panzek-shell[255]: launch sequence complete', delay: 2380, color: '#a3e635' },
+];
+
+const LinuxBootOverlay = ({ visible, onComplete }) => {
+    const [visibleLines, setVisibleLines] = useState([]);
+    const [progress, setProgress] = useState(0);
+
+    const totalDuration = useMemo(() => {
+        const maxDelay = Math.max(...BOOT_SEQUENCE.map((line) => line.delay));
+        return maxDelay + 1200;
+    }, []);
+
+    useEffect(() => {
+        if (!visible) {
+            setVisibleLines([]);
+            setProgress(0);
+            return undefined;
+        }
+
+        const lineTimers = BOOT_SEQUENCE.map((line, index) => (
+            setTimeout(() => {
+                setVisibleLines((current) => [...current, index]);
+                setProgress(Math.min(100, Math.round(((index + 1) / BOOT_SEQUENCE.length) * 88)));
+            }, line.delay)
+        ));
+
+        const doneTimer = setTimeout(() => {
+            setProgress(100);
+            onComplete();
+        }, totalDuration);
+
+        return () => {
+            lineTimers.forEach(clearTimeout);
+            clearTimeout(doneTimer);
+        };
+    }, [onComplete, totalDuration, visible]);
+
+    if (!visible) {
+        return null;
+    }
+
+    return (
+        <div className="fixed inset-0 z-[120] overflow-hidden bg-[#0a0a0a] text-[#d4d4d8]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_32%)]" />
+            <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.12), rgba(255,255,255,0.12) 1px, transparent 1px, transparent 3px)' }} />
+
+            <div
+                className="relative flex h-full flex-col px-4 py-6 sm:px-6"
+                style={{ fontFamily: '"IBM Plex Mono", "Fira Code", "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace' }}
+            >
+                <div className="mb-5 flex items-center justify-between text-[11px] uppercase tracking-[0.28em] text-zinc-500">
+                    <span>Boot Sequence</span>
+                    <span>{progress}%</span>
+                </div>
+
+                <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                    <div className="h-full rounded-full bg-[linear-gradient(90deg,#4ade80_0%,#a3e635_45%,#facc15_100%)] transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
+                </div>
+
+                <div className="flex-1 overflow-hidden">
+                    <div className="space-y-2 text-[13px] leading-7 text-zinc-300 sm:text-[15px]">
+                        {BOOT_SEQUENCE.map((line, index) => (
+                            visibleLines.includes(index) && (
+                                <div key={`${line.text}-${index}`} className="animate-[bootLine_180ms_ease-out] whitespace-pre-wrap" style={{ color: line.color ?? '#d4d4d8' }}>
+                                    {line.text || '\u00A0'}
+                                </div>
+                            )
+                        ))}
+
+                        <div className="pt-4 text-zinc-500">
+                            guest@panzekos:~$ <span className="animate-pulse text-zinc-300">_</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                @keyframes bootLine {
+                    from { opacity: 0; transform: translateY(4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+        </div>
+    );
+};
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({});
     const [processing, setProcessing] = useState(false);
+    const [bootVisible, setBootVisible] = useState(false);
+    const [redirectPath, setRedirectPath] = useState('/dashboard');
+
+    const startBootSequence = (path) => {
+        localStorage.setItem('plastic_flash', JSON.stringify({ message: 'Welcome back, Commander!', type: 'success' }));
+        setRedirectPath(path);
+        setBootVisible(true);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -46,7 +149,7 @@ const Login = () => {
                     return;
                 }
 
-                window.location.href = response.url;
+                startBootSequence(response.url);
                 return;
             }
 
@@ -56,8 +159,7 @@ const Login = () => {
                 : {};
 
             if (response.ok) {
-                localStorage.setItem('plastic_flash', JSON.stringify({ message: 'Welcome back, Commander!', type: 'success' }));
-                window.location.href = '/dashboard';
+                startBootSequence('/dashboard');
             } else {
                 setErrors(data.errors || { email: 'Invalid credentials.' });
             }
@@ -70,6 +172,12 @@ const Login = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+            <LinuxBootOverlay
+                visible={bootVisible}
+                onComplete={() => {
+                    window.location.href = redirectPath;
+                }}
+            />
 
             {/* DESKTOP ONLY: LIQUID WAVE BACKGROUND */}
             <div className="hidden md:block absolute inset-0 pointer-events-none -z-10 overflow-hidden">

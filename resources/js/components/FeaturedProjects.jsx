@@ -241,6 +241,7 @@ const ConsoleCable = ({ color, startY, points, segments = 30, radialSegments = 5
 export default function FeaturedProjects({ repos = [] }) {
     const prefersReducedMotion = useReducedMotion();
     const [isLowPower, setIsLowPower] = useState(false);
+    const [hasLoadedCanvas, setHasLoadedCanvas] = useState(false);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -310,6 +311,12 @@ export default function FeaturedProjects({ repos = [] }) {
     const containerRef = useRef(null);
     const isInView = useInView(containerRef, { margin: '200px 0px' });
 
+    useEffect(() => {
+        if (isInView) {
+            setHasLoadedCanvas(true);
+        }
+    }, [isInView]);
+
     return (
         <section ref={containerRef} className="relative w-full py-12 mb-16 z-10 overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 md:px-12">
@@ -366,7 +373,7 @@ export default function FeaturedProjects({ repos = [] }) {
                 <div className="-mx-4 md:mx-0 w-[calc(100%+2rem)] md:w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex hide-scrollbar relative">
                     {/* Active Canvas layer */}
                     <div className="absolute top-0 left-0 w-[225vw] sm:w-[150vw] md:w-full h-full z-0 group">
-                        {isInView && (
+                        {hasLoadedCanvas && (
                             <Canvas
                                 shadows={!isLowPower}
                                 dpr={renderSettings.dpr}

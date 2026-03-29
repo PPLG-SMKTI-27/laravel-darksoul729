@@ -315,6 +315,8 @@ const SkillsGame = () => {
     const touchLookRef = useRef({ active: false, touchId: null, lastX: 0, lastY: 0 });
 
     const [loaded, setLoaded] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingLabel, setLoadingLabel] = useState('Menyiapkan lautan...');
     const [hud, setHud] = useState(null);
     const [isMobile, setIsMobile] = useState(false);
     const [isPortrait, setIsPortrait] = useState(false);
@@ -351,7 +353,9 @@ const SkillsGame = () => {
     useEffect(() => {
         if (isPortrait && isMobile) return;
         // rAF ensures mount has real layout dimensions before init
-        const raf = requestAnimationFrame(() => initGame());
+        const raf = requestAnimationFrame(() => {
+            void initGame();
+        });
         return () => { cancelAnimationFrame(raf); destroyGame(); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isPortrait]);
@@ -359,9 +363,26 @@ const SkillsGame = () => {
     /* ════════════════════════════════════════════════════════════
        INIT GAME
     ════════════════════════════════════════════════════════════ */
-    function initGame() {
+    async function initGame() {
         const mount = mountRef.current;
         if (!mount) return;
+
+        setLoaded(false);
+        setLoadingProgress(4);
+        setLoadingLabel('Menyiapkan renderer...');
+
+        const initSession = Symbol('skills-init');
+        gameRef.current.initSession = initSession;
+
+        const updateLoading = (progress, label) => {
+            if (gameRef.current.initSession !== initSession) {
+                return false;
+            }
+
+            setLoadingProgress(progress);
+            setLoadingLabel(label);
+            return true;
+        };
 
         /* renderer */
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -372,6 +393,7 @@ const SkillsGame = () => {
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         mount.appendChild(renderer.domElement);
+        updateLoading(12, 'Membangun langit...');
 
         /* scene */
         const scene = new THREE.Scene();
@@ -418,6 +440,7 @@ const SkillsGame = () => {
         });
         const skyMesh = new THREE.Mesh(skyGeo, skyMat);
         scene.add(skyMesh);
+        updateLoading(22, 'Membentuk ombak...');
 
         /* ── OCEAN ── */
         const oceanGeo = new THREE.PlaneGeometry(1400, 1400, 220, 220);
@@ -436,6 +459,7 @@ const SkillsGame = () => {
         });
         const ocean = new THREE.Mesh(oceanGeo, waterMat);
         scene.add(ocean);
+        updateLoading(34, 'Menggambar awan...');
 
         /* ── PROCEDURAL CLOUDS ── */
         function makeCloud() {
@@ -475,6 +499,7 @@ const SkillsGame = () => {
         }
         const clouds = [];
         for (let i = 0; i < 18; i++) { const c = makeCloud(); scene.add(c); clouds.push(c); }
+        updateLoading(48, 'Menyiapkan rakit...');
 
         /* ── SIMPLE RAFT (wooden planks) ── */
         const raftGroup = new THREE.Group();
@@ -514,6 +539,7 @@ const SkillsGame = () => {
         raftGroup.traverse(o => { if (o.isMesh) { o.renderOrder = 2; o.material.depthWrite = true; } });
 
         scene.add(raftGroup);
+        updateLoading(58, 'Mengukir papan skill...');
 
         /* ── SKILL BUOYS (Wooden Signboard Style) ── */
         async function makeSkillCard(skill) {
@@ -594,9 +620,14 @@ const SkillsGame = () => {
         }
 
         const skillRefs = [];
+        const allSprites = [];
         const setupBuoys = async () => {
             for (let i = 0; i < SKILLS.length; i++) {
                 const skill = SKILLS[i];
+                updateLoading(
+                    58 + Math.round(((i + 1) / SKILLS.length) * 34),
+                    `Memuat skill ${i + 1}/${SKILLS.length}: ${skill.name}...`
+                );
                 const angle = (i / SKILLS.length) * Math.PI * 2;
                 const dist = 28 + (i % 4) * 14;
                 const px = Math.cos(angle) * dist;
@@ -643,7 +674,6 @@ const SkillsGame = () => {
                 allSprites.push(spr); // Add to HUD raycaster
             }
         };
-        setupBuoys();
 
         /* ── PLAYER STATE ── */
         const player = { yaw: Math.PI, pitch: 0, speed: 0, heading: 0, velY: 0, onGround: true, camY: 1.2 };
@@ -676,8 +706,6 @@ const SkillsGame = () => {
         /* ── RAYCASTER HUD ── */
         const raycaster = new THREE.Raycaster();
         const screenCenter = new THREE.Vector2(0, 0);
-        const allSprites = [];
-        scene.traverse(o => { if (o.isSprite && o.userData.isCard) allSprites.push(o); });
 
         /* ── CLOCK ── */
         const clock = new THREE.Clock();
@@ -783,6 +811,15 @@ const SkillsGame = () => {
         }
         animate();
 
+        await setupBuoys();
+
+        if (gameRef.current.initSession !== initSession) {
+            renderer.dispose();
+            return;
+        }
+
+        updateLoading(96, 'Finalisasi world...');
+
         const onResize = () => {
             if (!mount) return;
             camera.aspect = mount.clientWidth / mount.clientHeight;
@@ -792,6 +829,7 @@ const SkillsGame = () => {
         window.addEventListener('resize', onResize);
 
         gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onResize, player };
+        updateLoading(100, 'World siap dimainkan');
         setLoaded(true);
     }
 
@@ -807,6 +845,7 @@ const SkillsGame = () => {
 
     function destroyGame() {
         const g = gameRef.current;
+        gameRef.current.initSession = null;
         if (!g.renderer) return;
         cancelAnimationFrame(g.animId);
         document.removeEventListener('mousemove', g.onMouseMove);
@@ -880,16 +919,27 @@ const SkillsGame = () => {
 
             {/* Loading */}
             {!loaded && (
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#000c20,#001840)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: 22 }}>
-                    <div style={{ fontSize: 58, filter: 'drop-shadow(0 0 22px #00bfff)' }}>🌊</div>
-                    <div style={{ textAlign: 'center' }}>
+                <div style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'radial-gradient(circle at 20% 18%, rgba(56,189,248,0.18), transparent 28%), radial-gradient(circle at 82% 22%, rgba(251,191,36,0.12), transparent 24%), linear-gradient(160deg,#000c20,#001840)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: 22, backdropFilter: 'blur(10px)' }}>
+                    <div style={{ fontSize: 58, filter: 'drop-shadow(0 0 22px #00bfff)', animation: 'skillsLoaderFloat 2.8s ease-in-out infinite' }}>🌊</div>
+                    <div style={{ textAlign: 'center', maxWidth: 360, paddingInline: 20 }}>
                         <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: 3 }}>SKILLS WORLD</div>
-                        <div style={{ fontSize: 12, opacity: 0.4, marginTop: 4 }}>Loading ocean…</div>
+                        <div style={{ fontSize: 12, opacity: 0.62, marginTop: 6 }}>{loadingLabel}</div>
                     </div>
-                    <div style={{ width: 180, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: '60%', background: 'linear-gradient(90deg,#0066ff,#00ccff)', borderRadius: 99, animation: 'ldbar 1.2s ease-in-out infinite' }} />
+                    <div style={{ width: 240, maxWidth: '80vw', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.35)' }}>
+                            <div style={{ height: '100%', width: `${loadingProgress}%`, background: 'linear-gradient(90deg,#0ea5e9,#38bdf8,#93c5fd)', borderRadius: 99, boxShadow: '0 0 20px rgba(56,189,248,0.55)', transition: 'width 280ms ease' }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: '"Courier New", monospace', fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.78)' }}>
+                            <span>Booting</span>
+                            <span>{loadingProgress}%</span>
+                        </div>
                     </div>
-                    <style>{`@keyframes ldbar{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}`}</style>
+                    <style>{`
+                        @keyframes skillsLoaderFloat {
+                            0%, 100% { transform: translateY(0); }
+                            50% { transform: translateY(-8px); }
+                        }
+                    `}</style>
                 </div>
             )}
 
