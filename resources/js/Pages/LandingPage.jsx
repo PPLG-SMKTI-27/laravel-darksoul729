@@ -719,6 +719,7 @@ const LandingPage = ({ page, props }) => {
             powerPreference: lowPower ? 'low-power' : 'high-performance'
         };
     }, [isLowPower, isMobile]);
+    const useLiteMobileScene = isMobile || isLowPower || prefersReducedMotion;
 
     const { scrollYProgress } = useScroll({
         target: comp,
@@ -762,36 +763,41 @@ const LandingPage = ({ page, props }) => {
         <MainLayout page={page}>
             <div className="fixed inset-0 pointer-events-none -z-40 bg-gradient-to-b from-[#3b8fd9] via-[#7cbbed] to-[#d8ecf8] overflow-hidden">
                 {/* Sun Glow/Source in Top Left */}
-                <div className="absolute -top-[10%] -left-[5%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-br from-yellow-200/40 via-orange-100/20 to-transparent blur-[120px] mix-blend-screen" />
-                <div className="absolute top-[10%] left-[10%] w-[15vw] h-[15vw] rounded-full bg-yellow-100/30 blur-[80px]" />
+                <div className={`absolute -top-[10%] -left-[5%] rounded-full bg-gradient-to-br from-yellow-200/40 via-orange-100/20 to-transparent mix-blend-screen ${useLiteMobileScene ? 'h-[58vw] w-[58vw] blur-[70px]' : 'h-[45vw] w-[45vw] blur-[120px]'}`} />
+                <div className={`absolute top-[10%] left-[10%] rounded-full bg-yellow-100/30 ${useLiteMobileScene ? 'h-[22vw] w-[22vw] blur-[46px]' : 'h-[15vw] w-[15vw] blur-[80px]'}`} />
                 {/* Soft blended clouds integrated into background gradient */}
-                <div className="absolute top-[45%] left-[5%] w-[50%] h-[180px] bg-white/30 rounded-full blur-[60px]"></div>
-                <div className="absolute top-[55%] right-[0%] w-[45%] h-[160px] bg-white/35 rounded-full blur-[50px]"></div>
-                <div className="absolute top-[65%] left-[20%] w-[70%] h-[200px] bg-white/40 rounded-full blur-[70px]"></div>
-                <div className="absolute top-[75%] left-[0%] w-full h-[300px] bg-white/50 rounded-full blur-[80px]"></div>
-                {/* Subtle upper cloud wisps */}
-                <div className="absolute top-[20%] right-[25%] w-[250px] h-[80px] bg-white/20 rounded-full blur-[40px]"></div>
-                <div className="absolute top-[15%] left-[60%] w-[200px] h-[60px] bg-white/15 rounded-full blur-[35px]"></div>
-                <div className="absolute top-[5%] left-[25%] w-[180px] h-[40px] bg-white/10 rounded-full blur-[25px]"></div>
-                <div className="absolute top-[8%] right-[10%] w-[300px] h-[50px] bg-white/15 rounded-full blur-[45px]"></div>
+                {!isMobile && (
+                    <>
+                        <div className={`absolute top-[45%] left-[5%] rounded-full bg-white/30 ${useLiteMobileScene ? 'h-[120px] w-[52%] blur-[38px]' : 'h-[180px] w-[50%] blur-[60px]'}`}></div>
+                        <div className={`absolute top-[55%] right-[0%] rounded-full bg-white/35 ${useLiteMobileScene ? 'h-[120px] w-[48%] blur-[34px]' : 'h-[160px] w-[45%] blur-[50px]'}`}></div>
+                        <div className={`absolute top-[65%] left-[20%] rounded-full bg-white/40 ${useLiteMobileScene ? 'h-[140px] w-[70%] blur-[40px]' : 'h-[200px] w-[70%] blur-[70px]'}`}></div>
+                        <div className={`absolute top-[75%] left-[0%] w-full rounded-full bg-white/50 ${useLiteMobileScene ? 'h-[220px] blur-[44px]' : 'h-[300px] blur-[80px]'}`}></div>
+                        <div className="absolute top-[20%] right-[25%] w-[250px] h-[80px] bg-white/20 rounded-full blur-[40px]"></div>
+                        <div className="absolute top-[15%] left-[60%] w-[200px] h-[60px] bg-white/15 rounded-full blur-[35px]"></div>
+                        <div className="absolute top-[5%] left-[25%] w-[180px] h-[40px] bg-white/10 rounded-full blur-[25px]"></div>
+                        <div className="absolute top-[8%] right-[10%] w-[300px] h-[50px] bg-white/15 rounded-full blur-[45px]"></div>
+                    </>
+                )}
 
                 {/* SVG Filter for Cloud Texture */}
-                <svg width="0" height="0" className="absolute">
-                    <filter id="cloud-texture">
-                        <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="5" seed="8" result="noise" />
-                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="45" xChannelSelector="R" yChannelSelector="G" />
-                    </filter>
-                    <filter id="wispy-cloud">
-                        <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" seed="12" result="noise" />
-                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="30" />
-                        <feGaussianBlur stdDeviation="3" />
-                    </filter>
-                </svg>
+                {!useLiteMobileScene && (
+                    <svg width="0" height="0" className="absolute">
+                        <filter id="cloud-texture">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="5" seed="8" result="noise" />
+                            <feDisplacementMap in="SourceGraphic" in2="noise" scale="45" xChannelSelector="R" yChannelSelector="G" />
+                        </filter>
+                        <filter id="wispy-cloud">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" seed="12" result="noise" />
+                            <feDisplacementMap in="SourceGraphic" in2="noise" scale="30" />
+                            <feGaussianBlur stdDeviation="3" />
+                        </filter>
+                    </svg>
+                )}
 
                 {/* Sky accents - Paper Plane 1 */}
                 <motion.div
-                    animate={prefersReducedMotion ? undefined : { x: [0, -18, 0], y: [0, 10, 0], rotate: [10, 15, 10] }}
-                    transition={prefersReducedMotion ? undefined : { duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+                    animate={useLiteMobileScene ? undefined : { x: [0, -18, 0], y: [0, 10, 0], rotate: [10, 15, 10] }}
+                    transition={useLiteMobileScene ? undefined : { duration: 9, repeat: Infinity, ease: 'easeInOut' }}
                     className="absolute right-[8%] top-[18%] w-24 text-white/92 drop-shadow-[0_14px_16px_rgba(255,255,255,0.14)]"
                 >
                     <svg viewBox="0 0 160 120" className="h-auto w-full">
@@ -803,33 +809,36 @@ const LandingPage = ({ page, props }) => {
                 </motion.div>
 
                 {/* Sky accents - Paper Plane 2 (Smaller/Higher) */}
-                <motion.div
-                    animate={prefersReducedMotion ? undefined : { x: [0, 12, 0], y: [0, -8, 0], rotate: [-5, -2, -5] }}
-                    transition={prefersReducedMotion ? undefined : { duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                    className="absolute left-[35%] top-[12%] w-14 text-white/60 drop-shadow-[0_8px_10px_rgba(255,255,255,0.1)]"
-                >
-                    <svg viewBox="0 0 160 120" className="h-auto w-full opacity-70">
-                        <path d="M10 56 146 20 98 104 72 66Z" fill="white" />
-                        <path d="M10 56 72 66 98 104" fill="#f1f5f9" />
-                    </svg>
-                </motion.div>
+                {!useLiteMobileScene && (
+                    <motion.div
+                        animate={{ x: [0, 12, 0], y: [0, -8, 0], rotate: [-5, -2, -5] }}
+                        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                        className="absolute left-[35%] top-[12%] w-14 text-white/60 drop-shadow-[0_8px_10px_rgba(255,255,255,0.1)]"
+                    >
+                        <svg viewBox="0 0 160 120" className="h-auto w-full opacity-70">
+                            <path d="M10 56 146 20 98 104 72 66Z" fill="white" />
+                            <path d="M10 56 72 66 98 104" fill="#f1f5f9" />
+                        </svg>
+                    </motion.div>
+                )}
 
                 {/* Floating Themed Elements (Portfolio Capsule aesthetic) */}
 
                 {/* Hot Air Balloon */}
-                <motion.div
-                    animate={{
-                        y: [0, -25, 0],
-                        x: [0, 15, 0],
-                        rotate: [-2, 2, -2]
-                    }}
-                    transition={{
-                        duration: 15,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                    className="absolute left-[12%] top-[15%] z-10 hidden sm:block"
-                >
+                {!useLiteMobileScene && (
+                    <motion.div
+                        animate={{
+                            y: [0, -25, 0],
+                            x: [0, 15, 0],
+                            rotate: [-2, 2, -2]
+                        }}
+                        transition={{
+                            duration: 15,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                        }}
+                        className="absolute left-[12%] top-[15%] z-10 hidden sm:block"
+                    >
                     <svg width="60" height="80" viewBox="0 0 60 80">
                         {/* Balloon */}
                         <path d="M30 5 C15 5, 5 15, 5 30 C5 45, 15 55, 30 55 C45 55, 55 45, 55 30 C55 15, 45 5, 30 5Z" fill="#ff5b6b" />
@@ -842,20 +851,22 @@ const LandingPage = ({ page, props }) => {
                         <rect x="18" y="65" width="24" height="4" rx="1" fill="#78350f" opacity="0.3" />
                     </svg>
                     <div className="absolute inset-0 bg-white/20 blur-xl rounded-full scale-150 -z-10" />
-                </motion.div>
+                    </motion.div>
+                )}
 
                 {/* Distant Flock of Birds */}
-                <motion.div
-                    animate={{
-                        x: ['-10vw', '110vw'],
-                        y: [0, -20, 10, -5]
-                    }}
-                    transition={{
-                        x: { duration: 60, repeat: Infinity, ease: "linear" },
-                        y: { duration: 15, repeat: Infinity, ease: "easeInOut" }
-                    }}
-                    className="absolute top-[8%] opacity-30 flex gap-12 pointer-events-none"
-                >
+                {!useLiteMobileScene && (
+                    <motion.div
+                        animate={{
+                            x: ['-10vw', '110vw'],
+                            y: [0, -20, 10, -5]
+                        }}
+                        transition={{
+                            x: { duration: 60, repeat: Infinity, ease: "linear" },
+                            y: { duration: 15, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        className="absolute top-[8%] opacity-30 flex gap-12 pointer-events-none"
+                    >
                     {[0, 1, 2, 3].map((i) => (
                         <motion.div
                             key={i}
@@ -868,144 +879,161 @@ const LandingPage = ({ page, props }) => {
                             </svg>
                         </motion.div>
                     ))}
-                </motion.div>
+                    </motion.div>
+                )}
 
                 {/* Star Icon (Platformer style) */}
-                <motion.div
-                    animate={{
-                        y: [0, -15, 0],
-                        rotate: [0, 360],
-                        scale: [1, 1.1, 1]
-                    }}
-                    transition={{
-                        y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-                        rotate: { duration: 12, repeat: Infinity, ease: "linear" },
-                        scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
-                    }}
-                    className="absolute right-[18%] top-[25%] opacity-40 mix-blend-overlay"
-                >
+                {!useLiteMobileScene && (
+                    <motion.div
+                        animate={{
+                            y: [0, -15, 0],
+                            rotate: [0, 360],
+                            scale: [1, 1.1, 1]
+                        }}
+                        transition={{
+                            y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
+                            rotate: { duration: 12, repeat: Infinity, ease: "linear" },
+                            scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        className="absolute right-[18%] top-[25%] opacity-40 mix-blend-overlay"
+                    >
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="#ffd54a">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                         {/* Gloss effect */}
                         <path d="M12 4 l1.5 3 h3 l-2 2" fill="white" opacity="0.5" />
                     </svg>
-                </motion.div>
+                    </motion.div>
+                )}
 
                 {/* Coin Icon */}
-                <motion.div
-                    animate={{
-                        y: [0, 20, 0],
-                        rotateY: [0, 360]
-                    }}
-                    transition={{
-                        y: { duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 },
-                        rotateY: { duration: 3, repeat: Infinity, ease: "linear" }
-                    }}
-                    className="absolute left-[28%] top-[35%] opacity-30"
-                >
+                {!useLiteMobileScene && (
+                    <motion.div
+                        animate={{
+                            y: [0, 20, 0],
+                            rotateY: [0, 360]
+                        }}
+                        transition={{
+                            y: { duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 },
+                            rotateY: { duration: 3, repeat: Infinity, ease: "linear" }
+                        }}
+                        className="absolute left-[28%] top-[35%] opacity-30"
+                    >
                     <div className="w-6 h-8 rounded-full bg-yellow-400 border-[2px] border-yellow-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_8px_rgba(0,0,0,0.2)] flex items-center justify-center font-black text-yellow-800 text-[10px]">
                         $
                     </div>
-                </motion.div>
+                    </motion.div>
+                )}
 
-                <motion.div
-                    animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute right-[25%] top-[30%] opacity-20"
-                >
+                {!useLiteMobileScene && (
+                    <motion.div
+                        animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
+                        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute right-[25%] top-[30%] opacity-20"
+                    >
                     <svg width="40" height="40" viewBox="0 0 40 40">
                         <circle cx="20" cy="20" r="18" fill="none" stroke="white" strokeWidth="2" strokeDasharray="4 4" />
                         <path d="M12 20 L28 20 M20 12 L20 28" stroke="white" strokeWidth="3" strokeLinecap="round" />
                     </svg>
-                </motion.div>
+                    </motion.div>
+                )}
 
-                <motion.div
-                    animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                    className="absolute left-[15%] top-[40%] opacity-[0.15]"
-                >
+                {!useLiteMobileScene && (
+                    <motion.div
+                        animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                        className="absolute left-[15%] top-[40%] opacity-[0.15]"
+                    >
                     <svg width="30" height="30" viewBox="0 0 30 30">
                         <rect x="5" y="5" width="20" height="20" rx="4" fill="none" stroke="white" strokeWidth="2" />
                         <circle cx="15" cy="15" r="4" fill="white" />
                     </svg>
-                </motion.div>
+                    </motion.div>
+                )}
 
-                <motion.div
-                    animate={prefersReducedMotion ? undefined : { x: [0, 26, 0], opacity: [0.45, 0.8, 0.45] }}
-                    transition={prefersReducedMotion ? undefined : { duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute right-[16%] top-[25%] h-[2px] w-24 bg-gradient-to-r from-transparent via-white/80 to-transparent"
-                />
-
-                <motion.div
-                    animate={prefersReducedMotion ? undefined : { x: [0, 14, 0], y: [0, -6, 0] }}
-                    transition={prefersReducedMotion ? undefined : { duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                    className="absolute left-[10%] top-[22%] flex items-center gap-4 text-white/55"
-                >
-                    <svg viewBox="0 0 120 32" className="h-6 w-20">
-                        <path d="M10 22c7-9 15-9 22 0M36 20c7-8 14-8 21 0M64 18c7-7 14-7 21 0" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
-                    </svg>
-                </motion.div>
-
-                <motion.div
-                    style={{ y: cloudBankY, opacity: cloudBankOpacity, scale: cloudBankScale }}
-                    className="absolute inset-x-[-5%] bottom-[-8%] h-[34vh] min-h-[220px] origin-bottom"
-                >
-                    <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-white via-white/95 to-transparent z-10" />
-
-                    {/* Primary Cloud Layer with Texture and Drift */}
+                {!useLiteMobileScene && (
                     <motion.div
-                        animate={{
-                            x: [0, 15, -12, 5, 0],
-                            y: [0, -8, 6, -4, 0]
-                        }}
-                        transition={{
-                            duration: 25,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                        }}
-                        className="absolute inset-x-0 bottom-0 h-full"
-                        style={{
-                            backgroundImage: `
-                                radial-gradient(circle at 4% 72%, rgba(255,255,255,0.98) 0 10%, rgba(255,255,255,0) 11%),
-                                radial-gradient(circle at 12% 68%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
-                                radial-gradient(circle at 22% 75%, rgba(255,255,255,0.98) 0 11%, rgba(255,255,255,0) 12%),
-                                radial-gradient(circle at 31% 69%, rgba(255,255,255,0.98) 0 13%, rgba(255,255,255,0) 14%),
-                                radial-gradient(circle at 42% 76%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
-                                radial-gradient(circle at 53% 70%, rgba(255,255,255,0.98) 0 14%, rgba(255,255,255,0) 15%),
-                                radial-gradient(circle at 64% 77%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
-                                radial-gradient(circle at 75% 71%, rgba(255,255,255,0.98) 0 13%, rgba(255,255,255,0) 14%),
-                                radial-gradient(circle at 86% 76%, rgba(255,255,255,0.98) 0 11%, rgba(255,255,255,0) 12%),
-                                radial-gradient(circle at 95% 69%, rgba(255,255,255,0.98) 0 10%, rgba(255,255,255,0) 11%)
-                            `,
-                            filter: 'url(#cloud-texture) drop-shadow(0 -8px 24px rgba(255,255,255,0.4))',
-                        }}
+                        animate={{ x: [0, 26, 0], opacity: [0.45, 0.8, 0.45] }}
+                        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute right-[16%] top-[25%] h-[2px] w-24 bg-gradient-to-r from-transparent via-white/80 to-transparent"
                     />
+                )}
 
-                    {/* Secondary Soft Layer for Depth */}
+                {!useLiteMobileScene && (
                     <motion.div
-                        animate={{
-                            x: [0, -20, 15, -5, 0],
-                            y: [0, 10, -8, 4, 0]
-                        }}
-                        transition={{
-                            duration: 35,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                            delay: 2
-                        }}
-                        className="absolute inset-x-0 bottom-0 h-[80%] opacity-40 blur-[25px]"
-                        style={{
-                            backgroundImage: `
-                                radial-gradient(circle at 10% 80%, rgba(219,234,254,0.8) 0 15%, transparent 20%),
-                                radial-gradient(circle at 50% 75%, rgba(219,234,254,0.8) 0 20%, transparent 25%),
-                                radial-gradient(circle at 90% 85%, rgba(219,234,254,0.8) 0 15%, transparent 20%)
-                            `,
-                            filter: 'url(#wispy-cloud)',
-                        }}
-                    />
+                        animate={{ x: [0, 14, 0], y: [0, -6, 0] }}
+                        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                        className="absolute left-[10%] top-[22%] flex items-center gap-4 text-white/55"
+                    >
+                        <svg viewBox="0 0 120 32" className="h-6 w-20">
+                            <path d="M10 22c7-9 15-9 22 0M36 20c7-8 14-8 21 0M64 18c7-7 14-7 21 0" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
+                        </svg>
+                    </motion.div>
+                )}
 
-                    <div className="absolute inset-x-0 bottom-[4%] h-[24%] bg-[linear-gradient(180deg,rgba(191,219,254,0.22)_0%,rgba(255,255,255,0.8)_100%)] blur-[25px] z-0" />
-                </motion.div>
+                {!isMobile && (
+                    <motion.div
+                        style={{ y: cloudBankY, opacity: cloudBankOpacity, scale: cloudBankScale }}
+                        className="absolute inset-x-[-5%] bottom-[-8%] h-[34vh] min-h-[220px] origin-bottom"
+                    >
+                        <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-white via-white/95 to-transparent z-10" />
+
+                        {/* Primary Cloud Layer with Texture and Drift */}
+                        <motion.div
+                            animate={useLiteMobileScene ? undefined : {
+                                x: [0, 15, -12, 5, 0],
+                                y: [0, -8, 6, -4, 0]
+                            }}
+                            transition={useLiteMobileScene ? undefined : {
+                                duration: 25,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                            className="absolute inset-x-0 bottom-0 h-full"
+                            style={{
+                                backgroundImage: `
+                                    radial-gradient(circle at 4% 72%, rgba(255,255,255,0.98) 0 10%, rgba(255,255,255,0) 11%),
+                                    radial-gradient(circle at 12% 68%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
+                                    radial-gradient(circle at 22% 75%, rgba(255,255,255,0.98) 0 11%, rgba(255,255,255,0) 12%),
+                                    radial-gradient(circle at 31% 69%, rgba(255,255,255,0.98) 0 13%, rgba(255,255,255,0) 14%),
+                                    radial-gradient(circle at 42% 76%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
+                                    radial-gradient(circle at 53% 70%, rgba(255,255,255,0.98) 0 14%, rgba(255,255,255,0) 15%),
+                                    radial-gradient(circle at 64% 77%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
+                                    radial-gradient(circle at 75% 71%, rgba(255,255,255,0.98) 0 13%, rgba(255,255,255,0) 14%),
+                                    radial-gradient(circle at 86% 76%, rgba(255,255,255,0.98) 0 11%, rgba(255,255,255,0) 12%),
+                                    radial-gradient(circle at 95% 69%, rgba(255,255,255,0.98) 0 10%, rgba(255,255,255,0) 11%)
+                                `,
+                                filter: useLiteMobileScene ? 'drop-shadow(0 -4px 12px rgba(255,255,255,0.22))' : 'url(#cloud-texture) drop-shadow(0 -8px 24px rgba(255,255,255,0.4))',
+                            }}
+                        />
+
+                        {/* Secondary Soft Layer for Depth */}
+                        {!useLiteMobileScene && (
+                            <motion.div
+                                animate={{
+                                    x: [0, -20, 15, -5, 0],
+                                    y: [0, 10, -8, 4, 0]
+                                }}
+                                transition={{
+                                    duration: 35,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                    delay: 2
+                                }}
+                                className="absolute inset-x-0 bottom-0 h-[80%] opacity-40 blur-[25px]"
+                                style={{
+                                    backgroundImage: `
+                                        radial-gradient(circle at 10% 80%, rgba(219,234,254,0.8) 0 15%, transparent 20%),
+                                        radial-gradient(circle at 50% 75%, rgba(219,234,254,0.8) 0 20%, transparent 25%),
+                                        radial-gradient(circle at 90% 85%, rgba(219,234,254,0.8) 0 15%, transparent 20%)
+                                    `,
+                                    filter: 'url(#wispy-cloud)',
+                                }}
+                            />
+                        )}
+
+                        <div className={`absolute inset-x-0 bottom-[4%] h-[24%] bg-[linear-gradient(180deg,rgba(191,219,254,0.22)_0%,rgba(255,255,255,0.8)_100%)] z-0 ${useLiteMobileScene ? 'blur-[12px]' : 'blur-[25px]'}`} />
+                    </motion.div>
+                )}
             </div>
 
             {/* Vertical Social Links */}
@@ -1059,29 +1087,33 @@ const LandingPage = ({ page, props }) => {
                                         initial={{ opacity: 0, y: 40, rotateX: 45, scale: 0.5 }}
                                         animate={{
                                             opacity: 1,
-                                            y: prefersReducedMotion ? 0 : [0, -16, -6, -14, 0],
-                                            x: prefersReducedMotion ? 0 : [0, 2, -2, 1, 0],
+                                            y: useLiteMobileScene ? 0 : [0, -16, -6, -14, 0],
+                                            x: useLiteMobileScene ? 0 : [0, 2, -2, 1, 0],
                                             rotateX: 0,
-                                            rotateZ: prefersReducedMotion ? 0 : [0, -3, 3, -2, 0],
-                                            scale: prefersReducedMotion ? 1 : [1, 1.1, 0.95, 1.08, 1],
-                                            scaleX: prefersReducedMotion ? 1 : [1, 1.12, 0.92, 1.05, 1],
-                                            scaleY: prefersReducedMotion ? 1 : [1, 0.98, 1.08, 0.98, 1],
+                                            rotateZ: useLiteMobileScene ? 0 : [0, -3, 3, -2, 0],
+                                            scale: useLiteMobileScene ? 1 : [1, 1.1, 0.95, 1.08, 1],
+                                            scaleX: useLiteMobileScene ? 1 : [1, 1.12, 0.92, 1.05, 1],
+                                            scaleY: useLiteMobileScene ? 1 : [1, 0.98, 1.08, 0.98, 1],
                                         }}
                                         transition={{
                                             opacity: { duration: 0.4, delay: item.delay },
-                                            y: [
-                                                { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
-                                                { duration: 2.4 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + item.delay }
-                                            ],
-                                            x: prefersReducedMotion ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1 + item.delay },
+                                            y: useLiteMobileScene
+                                                ? { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay }
+                                                : [
+                                                    { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
+                                                    { duration: 2.4 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + item.delay }
+                                                ],
+                                            x: useLiteMobileScene ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1 + item.delay },
                                             rotateX: { duration: 0.8, type: 'spring', stiffness: 200, delay: item.delay },
-                                            rotateZ: prefersReducedMotion ? undefined : { duration: 2.6 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.12 },
-                                            scale: [
-                                                { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
-                                                { duration: 2.8 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.2 }
-                                            ],
-                                            scaleX: prefersReducedMotion ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.3 + i * 0.2 },
-                                            scaleY: prefersReducedMotion ? undefined : { duration: 2.1 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.25 + i * 0.2 }
+                                            rotateZ: useLiteMobileScene ? undefined : { duration: 2.6 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.12 },
+                                            scale: useLiteMobileScene
+                                                ? { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay }
+                                                : [
+                                                    { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
+                                                    { duration: 2.8 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.2 }
+                                                ],
+                                            scaleX: useLiteMobileScene ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.3 + i * 0.2 },
+                                            scaleY: useLiteMobileScene ? undefined : { duration: 2.1 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.25 + i * 0.2 }
                                         }}
                                         className="origin-bottom"
                                         style={{
@@ -1099,17 +1131,17 @@ const LandingPage = ({ page, props }) => {
                                 initial={{ opacity: 0, scaleY: 0, originY: 0 }}
                                 animate={{
                                     opacity: 1,
-                                    scaleY: prefersReducedMotion ? 1 : [1, 1.06, 0.98, 1.04, 1],
-                                    y: prefersReducedMotion ? 0 : [0, -5, -1, -7, 0],
-                                    x: prefersReducedMotion ? 0 : [0, 1.5, -1, 1, 0],
-                                    rotateZ: prefersReducedMotion ? 0 : [0, -1.5, 1, -1, 0]
+                                    scaleY: useLiteMobileScene ? 1 : [1, 1.06, 0.98, 1.04, 1],
+                                    y: useLiteMobileScene ? 0 : [0, -5, -1, -7, 0],
+                                    x: useLiteMobileScene ? 0 : [0, 1.5, -1, 1, 0],
+                                    rotateZ: useLiteMobileScene ? 0 : [0, -1.5, 1, -1, 0]
                                 }}
                                 transition={{
                                     opacity: { duration: 0.5, delay: 0.5 },
-                                    y: prefersReducedMotion ? undefined : { duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 1.2 },
-                                    x: prefersReducedMotion ? undefined : { duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 },
-                                    rotateZ: prefersReducedMotion ? undefined : { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay: 1.3 },
-                                    scaleY: prefersReducedMotion
+                                    y: useLiteMobileScene ? undefined : { duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 1.2 },
+                                    x: useLiteMobileScene ? undefined : { duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 },
+                                    rotateZ: useLiteMobileScene ? undefined : { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay: 1.3 },
+                                    scaleY: useLiteMobileScene
                                         ? { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 }
                                         : [
                                             { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 },
@@ -1235,10 +1267,10 @@ const LandingPage = ({ page, props }) => {
                                             initial={{ opacity: 0, y: 26, rotateX: -26, scale: 0.84 }}
                                             animate={isProfileHeaderInView ? {
                                                 opacity: 1,
-                                                y: prefersReducedMotion ? 0 : [0, -3, 0, -2, 0],
+                                                y: useLiteMobileScene ? 0 : [0, -3, 0, -2, 0],
                                                 rotateX: 0,
-                                                rotateZ: prefersReducedMotion ? 0 : [0, -1.2, 1.1, -0.6, 0],
-                                                scale: prefersReducedMotion ? 1 : [1, 1.03, 1, 1.02, 1],
+                                                rotateZ: useLiteMobileScene ? 0 : [0, -1.2, 1.1, -0.6, 0],
+                                                scale: useLiteMobileScene ? 1 : [1, 1.03, 1, 1.02, 1],
                                             } : {
                                                 opacity: 0,
                                                 y: 26,
@@ -1247,15 +1279,15 @@ const LandingPage = ({ page, props }) => {
                                             }}
                                             transition={{
                                                 opacity: { duration: 0.34, delay: letter.delay },
-                                                y: prefersReducedMotion
+                                                y: useLiteMobileScene
                                                     ? { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay }
                                                     : [
                                                         { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay },
                                                         { duration: 3.1 + index * 0.16, repeat: Infinity, ease: 'easeInOut', delay: 0.75 + letter.delay }
                                                     ],
                                                 rotateX: { duration: 0.48, ease: 'easeOut', delay: letter.delay },
-                                                rotateZ: prefersReducedMotion ? undefined : { duration: 3.5 + index * 0.15, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + letter.delay },
-                                                scale: prefersReducedMotion ? undefined : { duration: 3 + index * 0.14, repeat: Infinity, ease: 'easeInOut', delay: 0.82 + letter.delay },
+                                                rotateZ: useLiteMobileScene ? undefined : { duration: 3.5 + index * 0.15, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + letter.delay },
+                                                scale: useLiteMobileScene ? undefined : { duration: 3 + index * 0.14, repeat: Infinity, ease: 'easeInOut', delay: 0.82 + letter.delay },
                                             }}
                                             className="inline-block origin-bottom will-change-transform"
                                             style={{ color: letter.color, textShadow: letter.shadow }}
@@ -1547,6 +1579,23 @@ const LandingPage = ({ page, props }) => {
                             // Deep ambient occlusion and soft inset rim light
                             boxShadow: 'inset 0 4px 6px rgba(255,255,255,0.9), inset 0 -5px 10px rgba(0,0,0,0.05), 0 40px 80px -20px rgba(0,0,0,0.35), 0 20px 40px -10px rgba(0,0,0,0.2)'
                         }}>
+                        <div className="absolute left-1/2 top-[-10px] h-[14px] w-26 -translate-x-1/2 rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#cdd6e1_100%)] shadow-[0_2px_0_rgba(255,255,255,0.7)]" />
+
+                        {[
+                            'left-4 top-4 rotate-45',
+                            'right-4 top-4 rotate-[110deg]',
+                            'left-4 bottom-4 rotate-12',
+                            'right-4 bottom-4 -rotate-[30deg]',
+                        ].map((positionClass) => (
+                            <div
+                                key={positionClass}
+                                className={`absolute h-3 w-3 rounded-full bg-[linear-gradient(180deg,#dbe3ee_0%,#94a3b8_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.7),inset_0_-2px_3px_rgba(0,0,0,0.3)] ${positionClass}`}
+                            >
+                                <div className="flex h-full w-full items-center justify-center rounded-full border border-slate-600/70">
+                                    <div className="h-[1.5px] w-[60%] bg-slate-700/85 shadow-[0_1px_0_rgba(255,255,255,0.25)]" />
+                                </div>
+                            </div>
+                        ))}
 
                         {/* Left Cylinder Connectors */}
                         <div className="absolute left-[-16px] md:left-[-18px] top-1/2 -translate-y-1/2 flex flex-col gap-8 md:gap-11">
@@ -1595,6 +1644,13 @@ const LandingPage = ({ page, props }) => {
                             style={{
                                 boxShadow: 'inset 0 8px 20px rgba(0,0,0,0.08), inset 0 2px 6px rgba(0,0,0,0.04), 0 2px 0 rgba(255,255,255,0.9)'
                             }}>
+                            <div className="absolute left-5 top-5 z-20 flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/75 px-3 py-1 text-[9px] font-black uppercase tracking-[0.28em] text-slate-500 shadow-[0_4px_10px_rgba(15,23,42,0.06)]">
+                                Creator Dock
+                            </div>
+                            <div className="absolute right-5 top-5 z-20 hidden sm:flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#4ade80]" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">ONLINE</span>
+                            </div>
 
                             {/* Red Liquid Fill Background - Refined for premium look */}
                             <div className="absolute inset-x-0 bottom-0 h-full z-0 pointer-events-none flex flex-col justify-end">
@@ -1641,6 +1697,18 @@ const LandingPage = ({ page, props }) => {
                                 <p className="text-slate-100 font-bold text-sm md:text-base leading-relaxed max-w-sm drop-shadow-md px-2 mt-2">
                                     Available for freelance projects and full-<br />time opportunities. Let's create something<br />extraordinary!
                                 </p>
+
+                                <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                                    <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                        UI Systems
+                                    </span>
+                                    <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                        Frontend
+                                    </span>
+                                    <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                        Illustration
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Inner Screen Corner Accent (Top Right) */}
