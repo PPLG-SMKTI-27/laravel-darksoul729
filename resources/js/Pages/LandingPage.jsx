@@ -1,11 +1,12 @@
 import React, { useLayoutEffect, useRef, Suspense, useState, useEffect, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, useProgress } from '@react-three/drei';
-import { motion, useAnimation, useMotionValue, useInView, useReducedMotion } from 'framer-motion';
+import { motion, useAnimation, useMotionValue, useInView, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
 import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
+import { Github, Linkedin, Twitter, Dribbble } from 'lucide-react';
 const FeaturedProjects = React.lazy(() => import('../components/FeaturedProjects'));
 const PanzekHome = React.lazy(() => import('../components/UI/PanzekHome'));
 // Lazy load Robocop3D
@@ -281,7 +282,6 @@ const PerformanceOptimizer = () => {
 
 
 
-// Custom Loader component with progress bar
 const CanvasLoader = () => {
     const { progress, active } = useProgress();
     const [showSlowNetwork, setShowSlowNetwork] = useState(false);
@@ -720,17 +720,16 @@ const LandingPage = ({ page, props }) => {
         };
     }, [isLowPower, isMobile]);
 
+    const { scrollYProgress } = useScroll({
+        target: comp,
+        offset: ['start start', 'start 70%'],
+    });
+    const cloudBankY = useTransform(scrollYProgress, [0, 0.18], [220, 0]);
+    const cloudBankOpacity = useTransform(scrollYProgress, [0, 0.18], [0.18, 1]);
+    const cloudBankScale = useTransform(scrollYProgress, [0, 0.18], [1.08, 1]);
+
     useLayoutEffect(() => {
         let ctx = gsap.context(() => {
-            // Robot Entrance (Scale up)
-            gsap.from('.hero-robot', {
-                scale: 0,
-                opacity: 0,
-                duration: 1.2,
-                ease: 'elastic.out(1, 0.5)',
-                delay: 0.2
-            });
-
             // Profile Card Animation
             gsap.from('.profile-card', {
                 scrollTrigger: {
@@ -761,7 +760,10 @@ const LandingPage = ({ page, props }) => {
 
     return (
         <MainLayout page={page}>
-            <div className="fixed inset-0 pointer-events-none -z-40 bg-gradient-to-b from-[#4a9ad4] via-[#7cbbed] to-[#d8ecf8] overflow-hidden">
+            <div className="fixed inset-0 pointer-events-none -z-40 bg-gradient-to-b from-[#3b8fd9] via-[#7cbbed] to-[#d8ecf8] overflow-hidden">
+                {/* Sun Glow/Source in Top Left */}
+                <div className="absolute -top-[10%] -left-[5%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-br from-yellow-200/40 via-orange-100/20 to-transparent blur-[120px] mix-blend-screen" />
+                <div className="absolute top-[10%] left-[10%] w-[15vw] h-[15vw] rounded-full bg-yellow-100/30 blur-[80px]" />
                 {/* Soft blended clouds integrated into background gradient */}
                 <div className="absolute top-[45%] left-[5%] w-[50%] h-[180px] bg-white/30 rounded-full blur-[60px]"></div>
                 <div className="absolute top-[55%] right-[0%] w-[45%] h-[160px] bg-white/35 rounded-full blur-[50px]"></div>
@@ -770,14 +772,278 @@ const LandingPage = ({ page, props }) => {
                 {/* Subtle upper cloud wisps */}
                 <div className="absolute top-[20%] right-[25%] w-[250px] h-[80px] bg-white/20 rounded-full blur-[40px]"></div>
                 <div className="absolute top-[15%] left-[60%] w-[200px] h-[60px] bg-white/15 rounded-full blur-[35px]"></div>
+                <div className="absolute top-[5%] left-[25%] w-[180px] h-[40px] bg-white/10 rounded-full blur-[25px]"></div>
+                <div className="absolute top-[8%] right-[10%] w-[300px] h-[50px] bg-white/15 rounded-full blur-[45px]"></div>
+
+                {/* SVG Filter for Cloud Texture */}
+                <svg width="0" height="0" className="absolute">
+                    <filter id="cloud-texture">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="5" seed="8" result="noise" />
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="45" xChannelSelector="R" yChannelSelector="G" />
+                    </filter>
+                    <filter id="wispy-cloud">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" seed="12" result="noise" />
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="30" />
+                        <feGaussianBlur stdDeviation="3" />
+                    </filter>
+                </svg>
+
+                {/* Sky accents - Paper Plane 1 */}
+                <motion.div
+                    animate={prefersReducedMotion ? undefined : { x: [0, -18, 0], y: [0, 10, 0], rotate: [10, 15, 10] }}
+                    transition={prefersReducedMotion ? undefined : { duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute right-[8%] top-[18%] w-24 text-white/92 drop-shadow-[0_14px_16px_rgba(255,255,255,0.14)]"
+                >
+                    <svg viewBox="0 0 160 120" className="h-auto w-full">
+                        <path d="M10 56 146 20 98 104 72 66Z" fill="rgba(255,255,255,0.95)" />
+                        <path d="M10 56 72 66 98 104" fill="rgba(219,234,254,0.95)" />
+                        <path d="M72 66 94 42 146 20" fill="rgba(255,255,255,0.82)" />
+                        <path d="M53 60 94 42" stroke="rgba(147,197,253,0.8)" strokeWidth="2.5" strokeLinecap="round" />
+                    </svg>
+                </motion.div>
+
+                {/* Sky accents - Paper Plane 2 (Smaller/Higher) */}
+                <motion.div
+                    animate={prefersReducedMotion ? undefined : { x: [0, 12, 0], y: [0, -8, 0], rotate: [-5, -2, -5] }}
+                    transition={prefersReducedMotion ? undefined : { duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                    className="absolute left-[35%] top-[12%] w-14 text-white/60 drop-shadow-[0_8px_10px_rgba(255,255,255,0.1)]"
+                >
+                    <svg viewBox="0 0 160 120" className="h-auto w-full opacity-70">
+                        <path d="M10 56 146 20 98 104 72 66Z" fill="white" />
+                        <path d="M10 56 72 66 98 104" fill="#f1f5f9" />
+                    </svg>
+                </motion.div>
+
+                {/* Floating Themed Elements (Portfolio Capsule aesthetic) */}
+
+                {/* Hot Air Balloon */}
+                <motion.div
+                    animate={{
+                        y: [0, -25, 0],
+                        x: [0, 15, 0],
+                        rotate: [-2, 2, -2]
+                    }}
+                    transition={{
+                        duration: 15,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                    }}
+                    className="absolute left-[12%] top-[15%] z-10 hidden sm:block"
+                >
+                    <svg width="60" height="80" viewBox="0 0 60 80">
+                        {/* Balloon */}
+                        <path d="M30 5 C15 5, 5 15, 5 30 C5 45, 15 55, 30 55 C45 55, 55 45, 55 30 C55 15, 45 5, 30 5Z" fill="#ff5b6b" />
+                        <path d="M30 5 C22 5, 15 15, 15 30 C15 45, 22 55, 30 55" fill="#f87171" opacity="0.6" />
+                        <path d="M30 5 C38 5, 45 15, 45 30 C45 45, 38 55, 30 55" fill="#ef4444" opacity="0.4" />
+                        {/* Wires */}
+                        <path d="M15 48 L18 65 M45 48 L42 65" stroke="#94a3b8" strokeWidth="1.5" />
+                        {/* Basket */}
+                        <rect x="18" y="65" width="24" height="12" rx="3" fill="#92400e" />
+                        <rect x="18" y="65" width="24" height="4" rx="1" fill="#78350f" opacity="0.3" />
+                    </svg>
+                    <div className="absolute inset-0 bg-white/20 blur-xl rounded-full scale-150 -z-10" />
+                </motion.div>
+
+                {/* Distant Flock of Birds */}
+                <motion.div
+                    animate={{
+                        x: ['-10vw', '110vw'],
+                        y: [0, -20, 10, -5]
+                    }}
+                    transition={{
+                        x: { duration: 60, repeat: Infinity, ease: "linear" },
+                        y: { duration: 15, repeat: Infinity, ease: "easeInOut" }
+                    }}
+                    className="absolute top-[8%] opacity-30 flex gap-12 pointer-events-none"
+                >
+                    {[0, 1, 2, 3].map((i) => (
+                        <motion.div
+                            key={i}
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
+                            style={{ scale: 0.4 + (i * 0.1) }}
+                        >
+                            <svg width="24" height="12" viewBox="0 0 24 12">
+                                <path d="M2 10 C6 2, 10 10, 12 10 C14 10, 18 2, 22 10" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+                            </svg>
+                        </motion.div>
+                    ))}
+                </motion.div>
+
+                {/* Star Icon (Platformer style) */}
+                <motion.div
+                    animate={{
+                        y: [0, -15, 0],
+                        rotate: [0, 360],
+                        scale: [1, 1.1, 1]
+                    }}
+                    transition={{
+                        y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
+                        rotate: { duration: 12, repeat: Infinity, ease: "linear" },
+                        scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+                    }}
+                    className="absolute right-[18%] top-[25%] opacity-40 mix-blend-overlay"
+                >
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#ffd54a">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        {/* Gloss effect */}
+                        <path d="M12 4 l1.5 3 h3 l-2 2" fill="white" opacity="0.5" />
+                    </svg>
+                </motion.div>
+
+                {/* Coin Icon */}
+                <motion.div
+                    animate={{
+                        y: [0, 20, 0],
+                        rotateY: [0, 360]
+                    }}
+                    transition={{
+                        y: { duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 },
+                        rotateY: { duration: 3, repeat: Infinity, ease: "linear" }
+                    }}
+                    className="absolute left-[28%] top-[35%] opacity-30"
+                >
+                    <div className="w-6 h-8 rounded-full bg-yellow-400 border-[2px] border-yellow-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_8px_rgba(0,0,0,0.2)] flex items-center justify-center font-black text-yellow-800 text-[10px]">
+                        $
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
+                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute right-[25%] top-[30%] opacity-20"
+                >
+                    <svg width="40" height="40" viewBox="0 0 40 40">
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="white" strokeWidth="2" strokeDasharray="4 4" />
+                        <path d="M12 20 L28 20 M20 12 L20 28" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                </motion.div>
+
+                <motion.div
+                    animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
+                    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                    className="absolute left-[15%] top-[40%] opacity-[0.15]"
+                >
+                    <svg width="30" height="30" viewBox="0 0 30 30">
+                        <rect x="5" y="5" width="20" height="20" rx="4" fill="none" stroke="white" strokeWidth="2" />
+                        <circle cx="15" cy="15" r="4" fill="white" />
+                    </svg>
+                </motion.div>
+
+                <motion.div
+                    animate={prefersReducedMotion ? undefined : { x: [0, 26, 0], opacity: [0.45, 0.8, 0.45] }}
+                    transition={prefersReducedMotion ? undefined : { duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute right-[16%] top-[25%] h-[2px] w-24 bg-gradient-to-r from-transparent via-white/80 to-transparent"
+                />
+
+                <motion.div
+                    animate={prefersReducedMotion ? undefined : { x: [0, 14, 0], y: [0, -6, 0] }}
+                    transition={prefersReducedMotion ? undefined : { duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                    className="absolute left-[10%] top-[22%] flex items-center gap-4 text-white/55"
+                >
+                    <svg viewBox="0 0 120 32" className="h-6 w-20">
+                        <path d="M10 22c7-9 15-9 22 0M36 20c7-8 14-8 21 0M64 18c7-7 14-7 21 0" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
+                    </svg>
+                </motion.div>
+
+                <motion.div
+                    style={{ y: cloudBankY, opacity: cloudBankOpacity, scale: cloudBankScale }}
+                    className="absolute inset-x-[-5%] bottom-[-8%] h-[34vh] min-h-[220px] origin-bottom"
+                >
+                    <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-white via-white/95 to-transparent z-10" />
+
+                    {/* Primary Cloud Layer with Texture and Drift */}
+                    <motion.div
+                        animate={{
+                            x: [0, 15, -12, 5, 0],
+                            y: [0, -8, 6, -4, 0]
+                        }}
+                        transition={{
+                            duration: 25,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                        }}
+                        className="absolute inset-x-0 bottom-0 h-full"
+                        style={{
+                            backgroundImage: `
+                                radial-gradient(circle at 4% 72%, rgba(255,255,255,0.98) 0 10%, rgba(255,255,255,0) 11%),
+                                radial-gradient(circle at 12% 68%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
+                                radial-gradient(circle at 22% 75%, rgba(255,255,255,0.98) 0 11%, rgba(255,255,255,0) 12%),
+                                radial-gradient(circle at 31% 69%, rgba(255,255,255,0.98) 0 13%, rgba(255,255,255,0) 14%),
+                                radial-gradient(circle at 42% 76%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
+                                radial-gradient(circle at 53% 70%, rgba(255,255,255,0.98) 0 14%, rgba(255,255,255,0) 15%),
+                                radial-gradient(circle at 64% 77%, rgba(255,255,255,0.98) 0 12%, rgba(255,255,255,0) 13%),
+                                radial-gradient(circle at 75% 71%, rgba(255,255,255,0.98) 0 13%, rgba(255,255,255,0) 14%),
+                                radial-gradient(circle at 86% 76%, rgba(255,255,255,0.98) 0 11%, rgba(255,255,255,0) 12%),
+                                radial-gradient(circle at 95% 69%, rgba(255,255,255,0.98) 0 10%, rgba(255,255,255,0) 11%)
+                            `,
+                            filter: 'url(#cloud-texture) drop-shadow(0 -8px 24px rgba(255,255,255,0.4))',
+                        }}
+                    />
+
+                    {/* Secondary Soft Layer for Depth */}
+                    <motion.div
+                        animate={{
+                            x: [0, -20, 15, -5, 0],
+                            y: [0, 10, -8, 4, 0]
+                        }}
+                        transition={{
+                            duration: 35,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 2
+                        }}
+                        className="absolute inset-x-0 bottom-0 h-[80%] opacity-40 blur-[25px]"
+                        style={{
+                            backgroundImage: `
+                                radial-gradient(circle at 10% 80%, rgba(219,234,254,0.8) 0 15%, transparent 20%),
+                                radial-gradient(circle at 50% 75%, rgba(219,234,254,0.8) 0 20%, transparent 25%),
+                                radial-gradient(circle at 90% 85%, rgba(219,234,254,0.8) 0 15%, transparent 20%)
+                            `,
+                            filter: 'url(#wispy-cloud)',
+                        }}
+                    />
+
+                    <div className="absolute inset-x-0 bottom-[4%] h-[24%] bg-[linear-gradient(180deg,rgba(191,219,254,0.22)_0%,rgba(255,255,255,0.8)_100%)] blur-[25px] z-0" />
+                </motion.div>
+            </div>
+
+            {/* Vertical Social Links */}
+            <div className="hidden lg:flex fixed left-5 top-1/2 z-50 -translate-y-1/2 flex-col items-center gap-3">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-12 w-[3px] rounded-full bg-gradient-to-b from-transparent via-white/80 to-[#93c5fd]" />
+                    <a href="#" target="_blank" rel="noreferrer" aria-label="GitHub" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#fca5a5] bg-[linear-gradient(180deg,#f87171_0%,#ef4444_100%)] text-white shadow-[0_4px_0_#b91c1c,_0_10px_18px_rgba(239,68,68,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                        <Github size={18} strokeWidth={2.4} />
+                    </a>
+                    <a href="#" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#93c5fd] bg-[linear-gradient(180deg,#60a5fa_0%,#2563eb_100%)] text-white shadow-[0_4px_0_#1d4ed8,_0_10px_18px_rgba(37,99,235,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                        <Linkedin size={18} strokeWidth={2.4} />
+                    </a>
+                    <a href="#" target="_blank" rel="noreferrer" aria-label="Dribbble" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#86efac] bg-[linear-gradient(180deg,#4ade80_0%,#22c55e_100%)] text-white shadow-[0_4px_0_#15803d,_0_10px_18px_rgba(34,197,94,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                        <Dribbble size={18} strokeWidth={2.4} />
+                    </a>
+                    <a href="#" target="_blank" rel="noreferrer" aria-label="Twitter" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#fdba74] bg-[linear-gradient(180deg,#fb923c_0%,#f97316_100%)] text-white shadow-[0_4px_0_#c2410c,_0_10px_18px_rgba(249,115,22,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                        <Twitter size={18} strokeWidth={2.4} />
+                    </a>
+                    <div className="h-12 w-[3px] rounded-full bg-gradient-to-b from-[#93c5fd] via-white/80 to-transparent" />
+                </div>
             </div>
 
             <div ref={comp} className="flex flex-col gap-12 md:gap-16 pb-12 relative w-full">
                 {/* HERO SECTION: 2-Column Layout */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-8 pt-2 md:pt-16 max-w-7xl mx-auto w-full px-4 overflow-visible">
-
+                <div className="relative z-20 mb-8 flex flex-col items-center justify-between gap-4 overflow-visible px-4 pt-2 md:mb-0 md:max-w-7xl md:flex-row md:gap-8 md:px-4 md:pt-16 md:mx-auto md:w-full">
                     {/* Left: Text Content */}
                     <div className="flex flex-col items-center md:items-start text-center md:text-left z-10 w-full md:w-[45%] md:pl-16">
+                        <motion.div
+                            initial={{ opacity: 0, y: 14 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.28 }}
+                            className="mb-5 flex flex-wrap items-center justify-center gap-2 md:justify-start"
+                        >
+                            <span className="rounded-full border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(219,234,254,0.92)_100%)] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-sky-700 shadow-[0_4px_0_#93c5fd,0_10px_16px_rgba(59,130,246,0.16)]">
+                                Portfolio Capsule
+                            </span>
+                        </motion.div>
+
                         <h1 className="hero-text font-black tracking-tighter mb-4 leading-[0.9] select-none flex flex-col gap-2 min-h-[100px] sm:min-h-[140px] md:min-h-[180px] lg:min-h-[220px]">
                             {/* KEVIN - Multi-colored floating text */}
                             <span className="flex justify-center md:justify-start text-[3.5rem] sm:text-[5rem] md:text-[7rem] lg:text-[8.5rem] drop-shadow-xl relative z-10 -space-x-1 md:-space-x-3">
@@ -906,11 +1172,11 @@ const LandingPage = ({ page, props }) => {
                     </div>
 
                     {/* Right: 3D Robot Showcase — responsive container */}
-                    <div ref={heroRobotRef} className="hero-robot order-first md:order-none relative w-full h-[300px] sm:h-[380px] md:h-[580px] md:w-[50%] md:aspect-auto flex-shrink-0 z-20">
- 
+                    <div ref={heroRobotRef} className="hero-robot order-first md:order-none relative w-full h-[450px] sm:h-[600px] md:h-[580px] md:w-[50%] md:aspect-auto flex-shrink-0 z-20">
+
                         {isHeroRobotInView && (
                             <Canvas
-                                camera={{ position: [0, 0.5, 7], fov: 50 }}
+                                camera={{ position: [0, 0.6, 8.8], fov: isMobile ? 62 : 50 }}
                                 dpr={heroRenderSettings.dpr}
                                 frameloop="demand"
                                 gl={{
@@ -925,10 +1191,10 @@ const LandingPage = ({ page, props }) => {
                                     <pointLight position={[-5, 5, -5]} intensity={1.0} color="#ffffff" />
                                     <pointLight position={[3, 2, 3]} intensity={0.6} color="#ffeedd" />
 
-                                    <group position={isMobile ? [0, -0.5, 0] : [0.6, -0.3, 0]}>
+                                    <group position={isMobile ? [0, -0.18, 0] : [0.6, -0.3, 0]}>
                                         <ModelErrorBoundary>
                                             <Robocop3D
-                                                scale={isMobile ? 2.8 : 3.0}
+                                                scale={isMobile ? 2.5 : 3.0}
                                                 position={[0, 0, 0]}
                                                 rotation={[0, Math.PI / 5, 0]}
                                             />
@@ -944,41 +1210,11 @@ const LandingPage = ({ page, props }) => {
                             </Canvas>
                         )}
 
-                        {/* CSS radial gradient shadow under the car */}
-                        <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2 w-[65%] h-[25px] rounded-full bg-[radial-gradient(ellipse,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0.06)_40%,transparent_70%)] blur-[2px] pointer-events-none"></div>
                     </div>
                 </div>
 
-                {/* Animated Smog/Cloud Blobs (Smoky Effect) */}
-                <div className="w-full relative mt-[-2rem] md:mt-[-4rem] h-[150px] md:h-[200px] z-0 pointer-events-none select-none overflow-visible">
-                    {/* Blob 1 */}
-                    <motion.div
-                        animate={{ x: ['-2%', '4%', '-2%'], y: ['0%', '-8%', '0%'] }}
-                        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute bottom-[20px] left-[-10%] w-[60%] h-[150px] md:h-[200px] bg-white/40 rounded-[100%] blur-[40px] md:blur-[70px]"
-                    />
-                    {/* Blob 2 */}
-                    <motion.div
-                        animate={{ x: ['4%', '-4%', '4%'], y: ['-4%', '6%', '-4%'] }}
-                        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute bottom-[-10px] right-[-10%] w-[70%] h-[180px] md:h-[220px] bg-white/30 rounded-[100%] blur-[50px] md:blur-[80px]"
-                    />
-                    {/* Blob 3 */}
-                    <motion.div
-                        animate={{ x: ['-5%', '5%', '-5%'], y: ['5%', '-5%', '5%'] }}
-                        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute bottom-[40px] left-[15%] w-[80%] h-[140px] md:h-[180px] bg-[#bae6fd]/30 rounded-[100%] blur-[60px] md:blur-[90px]"
-                    />
-                    {/* Blob 4 */}
-                    <motion.div
-                        animate={{ x: ['2%', '-3%', '2%'], y: ['-2%', '3%', '-2%'] }}
-                        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute bottom-[-30px] left-[10%] w-[100%] h-[120px] md:h-[160px] bg-white/40 rounded-[100%] blur-[45px] md:blur-[60px]"
-                    />
-                </div>
-
                 {/* PROFILE SECTION */}
-                <div className="profile-section max-w-6xl mx-auto w-full px-4 mt-8 md:mt-16 mb-20 z-10 relative">
+                <div className="profile-section relative z-10 mx-auto mb-20 mt-12 w-full max-w-6xl px-4 md:mt-16">
                     <div className="flex flex-col gap-6 items-center">
 
                         {/* Title Header */}

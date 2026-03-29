@@ -78,18 +78,45 @@ const App = ({ initialPage, initialProps }) => {
     const routeCacheRef = useRef(new Map());
     const navigationControllerRef = useRef(null);
 
+    const bringWindowToFront = useCallback((windowList, id, updates = {}) => {
+        const index = windowList.findIndex((windowItem) => windowItem.id === id);
+        if (index === -1) {
+            return windowList;
+        }
+
+        const nextWindows = [...windowList];
+        const activeWindow = {
+            ...nextWindows.splice(index, 1)[0],
+            ...updates,
+        };
+
+        nextWindows.push(activeWindow);
+
+        return nextWindows;
+    }, []);
+
     const closeWindow = useCallback((id) => {
         setWindows(prev => prev.filter(w => w.id !== id));
     }, []);
 
     const focusWindow = useCallback((id) => {
+        setWindows(prev => bringWindowToFront(prev, id, { isMinimized: false }));
+    }, [bringWindowToFront]);
+
+    const minimizeWindow = useCallback((id) => {
         setWindows(prev => {
-            const index = prev.findIndex(w => w.id === id);
-            if (index === -1 || index === prev.length - 1) return prev;
-            const next = [...prev];
-            const win = next.splice(index, 1)[0];
-            next.push(win);
-            return next;
+            const index = prev.findIndex((windowItem) => windowItem.id === id);
+            if (index === -1) {
+                return prev;
+            }
+
+            const nextWindows = [...prev];
+            nextWindows[index] = {
+                ...nextWindows[index],
+                isMinimized: true,
+            };
+
+            return nextWindows;
         });
     }, []);
 
@@ -366,10 +393,11 @@ const App = ({ initialPage, initialProps }) => {
                     windows={windows}
                     closeWindow={closeWindow}
                     focusWindow={focusWindow}
+                    minimizeWindow={minimizeWindow}
                     setTitle={setTitle}
                     navigateMenu={navigate}
                 >
-                    {windows.map(win => {
+                    {windows.filter((win) => !win.isMinimized).map(win => {
                         const Component = AdminComponents[win.page];
                         return Component ? <Component key={win.id} windowId={win.id} {...win.props} /> : null;
                     })}

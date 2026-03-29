@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useContext, useEffect } from 'react';
+import React, { useMemo, useState, useContext, useEffect, useRef } from 'react';
 import {
     Boxes,
     ChevronDown,
@@ -30,6 +30,7 @@ export const OSContext = React.createContext({
     windows: [],
     closeWindow: (id) => { },
     focusWindow: (id) => { },
+    minimizeWindow: (id) => { },
     setTitle: (id, title) => { },
     navigateMenu: (href) => { },
     wallpaper: '',
@@ -85,12 +86,14 @@ export const AdminTerminalButton = ({
     );
 };
 
-export const AdminDesktop = ({ windows, closeWindow, focusWindow, setTitle, navigateMenu, children }) => {
+export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow, setTitle, navigateMenu, children }) => {
     const [wallpaper, setWallpaperState] = useState(() => localStorage.getItem('admin_wallpaper') || '');
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [showApplicationsMenu, setShowApplicationsMenu] = useState(false);
     const [isMobilePortrait, setIsMobilePortrait] = useState(false);
     const [isMobileLandscape, setIsMobileLandscape] = useState(false);
     const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(Boolean(document.fullscreenElement));
+    const applicationsMenuRef = useRef(null);
 
     const setWallpaper = (url) => {
         setWallpaperState(url);
@@ -112,13 +115,14 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, setTitle, navi
         windows,
         closeWindow,
         focusWindow,
+        minimizeWindow,
         setTitle,
         navigateMenu,
         wallpaper,
         setWallpaper
     };
 
-    const activeWindow = windows[windows.length - 1]; // Top-most window
+    const activeWindow = [...windows].reverse().find((windowItem) => !windowItem.isMinimized) ?? null;
 
     useEffect(() => {
         const syncViewportMode = () => {
@@ -145,6 +149,20 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, setTitle, navi
             window.removeEventListener('resize', syncViewportMode);
             window.removeEventListener('orientationchange', syncViewportMode);
             document.removeEventListener('fullscreenchange', syncFullscreenState);
+        };
+    }, []);
+
+    useEffect(() => {
+        const handlePointerDown = (event) => {
+            if (!applicationsMenuRef.current?.contains(event.target)) {
+                setShowApplicationsMenu(false);
+            }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
         };
     }, []);
 
@@ -201,19 +219,65 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, setTitle, navi
                             isMobileLandscape ? "h-[24px]" : "h-[26px]"
                         )}>
                             <div className="flex items-center h-full min-w-0">
-                                <button
-                                    type="button"
-                                    className={cx(
-                                        "flex h-full items-center gap-1.5 hover:bg-white/10 transition-colors cursor-default select-none group focus:outline-none shrink-0",
-                                        isMobileLandscape ? "px-2 text-[11px]" : "px-3"
+                                <div ref={applicationsMenuRef} className="relative h-full shrink-0">
+                                    <button
+                                        type="button"
+                                        className={cx(
+                                            "flex h-full items-center gap-1.5 hover:bg-white/10 transition-colors cursor-default select-none group focus:outline-none shrink-0",
+                                            showApplicationsMenu ? "bg-white/10" : "",
+                                            isMobileLandscape ? "px-2 text-[11px]" : "px-3"
+                                        )}
+                                        onClick={() => setShowApplicationsMenu((current) => !current)}
+                                    >
+                                        <div className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-sky-500 text-white font-bold text-[9px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] group-active:bg-sky-600">
+                                            X
+                                        </div>
+                                        <span className="font-medium tracking-wide text-white">Applications</span>
+                                    </button>
+
+                                    {showApplicationsMenu && (
+                                        <div className="absolute left-0 top-full z-50 mt-[1px] min-w-[240px] overflow-hidden rounded-b-md border border-black/55 bg-[#efefef] shadow-[0_10px_24px_rgba(0,0,0,0.4)]">
+                                            <div className="border-b border-black/10 bg-[linear-gradient(180deg,#fafafa_0%,#e6e6e6_100%)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
+                                                Applications
+                                            </div>
+
+                                            <div className="py-1">
+                                                {NAV_ITEMS.map((item) => {
+                                                    const Icon = item.icon;
+
+                                                    return (
+                                                        <button
+                                                            key={`applications-menu-${item.key}`}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowApplicationsMenu(false);
+                                                                navigateMenu(item.href);
+                                                            }}
+                                                            className="flex w-full items-center gap-3 px-3 py-2 text-left text-[12px] text-zinc-800 transition hover:bg-[#316ac5] hover:text-white"
+                                                        >
+                                                            <Icon size={15} strokeWidth={2.1} />
+                                                            <span className="flex-1">{item.label}</span>
+                                                        </button>
+                                                    );
+                                                })}
+
+                                                <div className="my-1 h-px bg-black/10" />
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowApplicationsMenu(false);
+                                                        setShowLogoutConfirm(true);
+                                                    }}
+                                                    className="flex w-full items-center gap-3 px-3 py-2 text-left text-[12px] text-zinc-800 transition hover:bg-[#316ac5] hover:text-white"
+                                                >
+                                                    <LogOut size={15} strokeWidth={2.1} />
+                                                    <span className="flex-1">Log Out</span>
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
-                                    onClick={() => navigateMenu('/dashboard')}
-                                >
-                                    <div className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-sky-500 text-white font-bold text-[9px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] group-active:bg-sky-600">
-                                        X
-                                    </div>
-                                    <span className="font-medium tracking-wide text-white">Applications</span>
-                                </button>
+                                </div>
                                 <div className={cx("h-[14px] w-px bg-white/20 shrink-0", isMobileLandscape ? "mx-0.5" : "mx-1")} />
                                 <button className={cx(
                                     "flex h-full items-center hover:bg-white/10 transition-colors select-none cursor-default font-medium text-white focus:outline-none shrink-0",
@@ -234,7 +298,11 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, setTitle, navi
                                                 className={cx(
                                                     "flex h-[20px] items-center gap-1.5 border border-transparent rounded-[2px] transition-colors select-none focus:outline-none truncate",
                                                     isMobileLandscape ? "max-w-[110px] px-2 text-[10px]" : "max-w-[150px] px-3 text-[11px]",
-                                                    isFocused ? "bg-white/15 border-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] text-white" : "hover:bg-white/10 text-white/70"
+                                                    isFocused
+                                                        ? "bg-white/15 border-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] text-white"
+                                                        : win.isMinimized
+                                                            ? "bg-black/15 text-white/45 hover:bg-white/8"
+                                                            : "hover:bg-white/10 text-white/70"
                                                 )}
                                                 onClick={() => focusWindow(win.id)}
                                             >
@@ -375,6 +443,8 @@ export const AdminWindow = ({
     hideMenuBar = false,
     hideToolbar = false,
     hideSidebar = false,
+    hideStatusBar = false,
+    contentClassName = '',
 }) => {
     const os = useContext(OSContext);
 
@@ -510,7 +580,7 @@ export const AdminWindow = ({
                     <button
                         type="button"
                         className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[2px] border border-[#a0a0a0] bg-[linear-gradient(180deg,#F5F5F5_0%,#DCDCDC_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_1px_rgba(0,0,0,0.1)] hover:bg-[linear-gradient(180deg,#FFF_0%,#E4E4E4_100%)] active:bg-[linear-gradient(180deg,#CACACA_0%,#DCDCDC_100%)]"
-                        onClick={() => os.focusWindow(windowId)}
+                        onClick={() => os.minimizeWindow(windowId)}
                     >
                         <Minus size={10} strokeWidth={4} className={!isFocused ? 'opacity-50' : ''} />
                     </button>
@@ -587,6 +657,7 @@ export const AdminWindow = ({
                 <div className={cx(
                     "flex-1 overflow-auto relative transition-opacity flex flex-col",
                     showSidebar ? "bg-white" : "bg-white",
+                    contentClassName,
                     !isFocused && 'opacity-[0.85] pointer-events-none'
                 )}>
                     {/* Content Header overlay preventer */}
@@ -646,9 +717,11 @@ export const AdminWindow = ({
             </div>
 
             {/* Status bar */}
-            <div className="flex h-5 items-center bg-[#EDEDED] border-t border-[#D4D4D4] px-2 text-[11px] text-zinc-600 shrink-0 select-none">
-                {title} window active
-            </div>
+            {!hideStatusBar && (
+                <div className="flex h-5 items-center bg-[#EDEDED] border-t border-[#D4D4D4] px-2 text-[11px] text-zinc-600 shrink-0 select-none">
+                    {title} window active
+                </div>
+            )}
 
             {/* Resize Handle */}
             {!useFullscreenLayout && (

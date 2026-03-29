@@ -107,10 +107,13 @@ export const LocalTerminal = ({ windowId }) => {
             hideMenuBar={true}
             hideToolbar={true}
             hideSidebar={true}
+            hideStatusBar={true}
+            contentClassName="!bg-black"
             actions={[]}
         >
             <div
-                className="flex flex-col w-full h-full bg-black text-[#d4d4d4] font-mono text-[13px] p-2 leading-relaxed cursor-text"
+                className="flex h-full w-full flex-col bg-black px-3 py-2 text-[13px] leading-relaxed text-[#d4d4d4] cursor-text"
+                style={{ fontFamily: '"Liberation Mono", "DejaVu Sans Mono", "Ubuntu Mono", "Cascadia Mono", monospace' }}
                 onClick={() => inputRef.current?.focus()}
             >
                 <div className="flex-1 overflow-y-auto">
@@ -134,7 +137,7 @@ export const LocalTerminal = ({ windowId }) => {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="flex-1 bg-transparent border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus:border-transparent px-0 py-0 min-w-0 font-bold text-white"
+                            className="min-w-0 flex-1 border-0 bg-transparent px-0 py-0 font-bold text-white outline-none ring-0 focus:border-transparent focus:outline-none focus:ring-0"
                             style={{ boxShadow: 'none' }}
                             autoFocus
                             spellCheck={false}

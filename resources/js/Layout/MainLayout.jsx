@@ -16,19 +16,19 @@ gsap.registerPlugin(ScrollTrigger);
 
 const NAV_THEMES = {
     default: {
-        logo: 'border-[#dbe4f0] bg-[#f7fafc] text-[#244a73] shadow-[0_10px_24px_rgba(15,23,42,0.08)] hover:bg-white',
-        navShell: 'border-transparent bg-transparent shadow-none',
-        navItem: 'text-white hover:text-white/85',
-        navItemActive: 'bg-transparent text-white border-transparent',
-        action: 'border-[#d8e0ea] bg-[#f8fafc] text-[#22324a] shadow-[0_10px_24px_rgba(15,23,42,0.08)] hover:bg-white',
-        mobileButton: 'border-[#d8e0ea] bg-[#f8fafc] text-[#22324a] shadow-[0_10px_24px_rgba(15,23,42,0.08)]',
-        sidebar: 'border-[#d8e0ea] bg-[rgba(249,251,255,0.98)] backdrop-blur-md',
-        sidebarItem: 'text-[#1d2d45] hover:bg-[#f4f7fb]',
-        sidebarItemActive: 'border-[#d8e0ea] bg-[#f7fafc] text-[#244a73] shadow-[0_8px_22px_rgba(15,23,42,0.06)]',
-        sidebarAction: 'border-[#d8e0ea] bg-[#f7fafc] text-[#22324a] shadow-[0_8px_22px_rgba(15,23,42,0.06)] hover:bg-white',
-        backdrop: 'bg-[#0f172a]/20 backdrop-blur-[1px]',
-        footer: 'text-[#23345f]/50',
-        heading: 'text-[#16213d]',
+        logo: 'border-[#d6ecff] bg-[linear-gradient(180deg,#ffffff_0%,#edf7ff_100%)] text-[#29507b] shadow-[0_6px_0_#9dc9ec,_0_18px_30px_rgba(37,99,235,0.18)] hover:translate-y-[-1px]',
+        navShell: 'rounded-full border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.42)_0%,rgba(191,219,254,0.2)_100%)] px-4 py-3 shadow-[inset_0_2px_0_rgba(255,255,255,0.7),0_18px_40px_rgba(59,130,246,0.18)] backdrop-blur-md',
+        navItem: 'rounded-full border border-transparent text-[#f8fbff] hover:border-white/45 hover:bg-white/15 hover:text-white',
+        navItemActive: 'rounded-full border border-[#bfdbfe] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(219,234,254,0.94)_100%)] text-[#1d4ed8] shadow-[0_4px_0_#93c5fd,0_12px_22px_rgba(37,99,235,0.2)]',
+        action: 'border-[#cfd8e3] bg-[linear-gradient(180deg,#ffffff_0%,#ecf3ff_100%)] text-[#22324a] shadow-[0_5px_0_#b7c9df,_0_14px_25px_rgba(15,23,42,0.12)] hover:translate-y-[-1px]',
+        mobileButton: 'border-[#d6ecff] bg-[linear-gradient(180deg,#ffffff_0%,#edf7ff_100%)] text-[#29507b] shadow-[0_6px_0_#9dc9ec,_0_18px_28px_rgba(37,99,235,0.16)]',
+        sidebar: 'border-l-[#d6ecff] bg-[linear-gradient(180deg,rgba(248,251,255,0.98)_0%,rgba(231,243,255,0.98)_100%)] backdrop-blur-xl shadow-[inset_0_2px_0_rgba(255,255,255,0.9)]',
+        sidebarItem: 'text-[#294567] hover:bg-white/65',
+        sidebarItemActive: 'border-[#bfdbfe] bg-[linear-gradient(180deg,#ffffff_0%,#dbeafe_100%)] text-[#1d4ed8] shadow-[0_5px_0_#93c5fd,_0_12px_20px_rgba(37,99,235,0.14)]',
+        sidebarAction: 'border-[#d7e6f7] bg-[linear-gradient(180deg,#ffffff_0%,#eef6ff_100%)] text-[#22324a] shadow-[0_4px_0_#c4d7ee,_0_12px_20px_rgba(15,23,42,0.08)] hover:bg-white',
+        backdrop: 'bg-[#15304d]/28 backdrop-blur-[2px]',
+        footer: 'text-[#5f7393]',
+        heading: 'text-[#17314e]',
     },
 };
 
@@ -399,9 +399,6 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                         {/* Extra subtle dirt granular pattern */}
                         <div className="absolute inset-0 opacity-70 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')] mix-blend-overlay scale-125 z-10"></div>
 
-                        {/* Volumetric Light rays / Penchoayaan (Lighting) */}
-                        <div className="absolute top-[-10%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-[#fca5a5] blur-[100px] opacity-[0.1] mix-blend-screen scale-150 z-10 pointer-events-none"></div>
-                        <div className="absolute bottom-[20%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-[#ca8a04] blur-[150px] opacity-[0.2] mix-blend-color-dodge z-10 pointer-events-none"></div>
                     </div>
                     {/* The solid backing behind the absolute layer should be lighter brown, not pure black, to let blend modes show */}
                     <div className="absolute inset-0 w-full h-full pointer-events-none -z-30 bg-[#3e2723]"></div>
@@ -413,6 +410,10 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             ) : (
                 <>
                     <div className="absolute top-0 left-0 w-full h-[150vh] pointer-events-none -z-20 bg-gradient-to-b from-[#5c9cd4] via-[#5c9cd4] to-[#f8fafc]">
+                        {/* Dot Grid Overlay */}
+                        <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, black 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
+                        {/* Noise SVG Overlay */}
+                        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
                         {/* Simple Noise Overlay */}
                         <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
                     </div>
@@ -423,17 +424,21 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             {/* Navbar Section */}
             {!hideNavigation && (
                 <nav className="relative z-50 flex h-24 items-center justify-between px-6 md:h-28 md:px-12" style={navFontStyle}>
+                    {page === 'LandingPage' && (
+                        <div className="absolute top-6 left-1/2 z-[-1] h-[40px] w-[60%] -translate-x-1/2 rounded-full bg-white/40 blur-[30px] pointer-events-none"></div>
+                    )}
+
                     <div className="flex items-center h-full flex-shrink-0 z-10">
                         <button
                             type="button"
                             onClick={() => handleNavigate('/')}
-                            className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border text-[0.95rem] font-black tracking-[0.06em] transition-colors duration-150 md:h-14 md:w-14 ${currentTheme.logo}`}
+                            className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border text-[0.95rem] font-black tracking-[0.06em] transition-all duration-150 md:h-14 md:w-14 ${currentTheme.logo}`}
                         >
                             KH
                         </button>
                     </div>
 
-                    <div className={`absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-7 px-1 py-2 lg:flex ${currentTheme.navShell}`}>
+                    <div className={`absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-2 lg:flex ${currentTheme.navShell}`}>
                         {primaryNavItems.map((item) => {
                             const isActive = isItemActive(item);
                             const Icon = item.icon;
@@ -444,13 +449,12 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                     href={item.href}
                                     onClick={(event) => handleNavItemClick(event, item)}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`flex items-center gap-2.5 px-0 py-2 text-[12px] font-semibold uppercase tracking-[0.24em] transition-colors duration-150 ${
-                                        isActive
-                                            ? currentTheme.navItemActive
-                                            : currentTheme.navItem
-                                    }`}
+                                    className={`flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-[0.24em] transition-all duration-150 ${isActive
+                                        ? currentTheme.navItemActive
+                                        : currentTheme.navItem
+                                        }`}
                                 >
-                                    <Icon className="h-[16px] w-[16px] text-white" strokeWidth={2.15} />
+                                    <Icon className={`h-[16px] w-[16px] ${isActive ? 'text-[#2563eb]' : 'text-white'}`} strokeWidth={2.15} />
                                     <span>{item.name}</span>
                                 </a>
                             );
@@ -467,7 +471,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                         href={authItem.href}
                                         onClick={(event) => handleNavItemClick(event, authItem)}
                                         aria-current={isItemActive(authItem) ? 'page' : undefined}
-                                        className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.22em] transition-colors duration-150 ${currentTheme.action} ${accent.activeText}`}
+                                        className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.22em] transition-all duration-150 ${currentTheme.action} ${accent.activeText}`}
                                     >
                                         <span className={`flex h-8 w-8 items-center justify-center rounded-full border ${accent.chip}`}>
                                             {React.createElement(authItem.icon, { className: 'h-[15px] w-[15px]', strokeWidth: 2.1 })}
@@ -484,7 +488,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                 event.preventDefault();
                                 handleNavigate('/contact');
                             }}
-                            className="flex items-center rounded-full border border-[#1a324d] bg-[#223d5b] px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] transition-colors duration-150 hover:bg-[#29486b]"
+                            className="flex items-center rounded-full border border-[#d97706] bg-[linear-gradient(180deg,#fbbf24_0%,#f59e0b_100%)] px-5 py-2.5 text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-[0_5px_0_#d97706,_0_16px_24px_rgba(245,158,11,0.25)] transition-all duration-150 hover:translate-y-[-1px]"
                         >
                             Hire Me
                         </a>
@@ -498,7 +502,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                     <button
                         type="button"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition-colors duration-150 ${currentTheme.mobileButton}`}
+                        className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border transition-all duration-150 ${currentTheme.mobileButton}`}
                         aria-label={isMenuOpen ? 'Close navigation' : 'Open navigation'}
                     >
                         {isMenuOpen ? <X className="h-5 w-5" strokeWidth={2.2} /> : <Menu className="h-5 w-5" strokeWidth={2.2} />}
@@ -520,19 +524,21 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                     className={`fixed inset-y-0 right-0 z-[55] flex w-72 max-w-[85vw] flex-col border-l px-5 py-6 shadow-[0_22px_65px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out ${currentTheme.sidebar} ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
                     style={navFontStyle}
                 >
-                    <div className="mb-8 flex items-center justify-between">
-                        <div>
-                            <p className={`text-[10px] font-bold uppercase tracking-[0.32em] ${currentTheme.footer}`}>Navigation</p>
-                            <p className={`mt-1 text-[1.08rem] font-semibold tracking-[-0.01em] ${currentTheme.heading}`}>Quick Links</p>
+                    <div className="mb-8 rounded-[1.6rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(219,234,254,0.92)_100%)] px-4 py-4 shadow-[inset_0_2px_0_rgba(255,255,255,0.85),0_8px_18px_rgba(59,130,246,0.12)]">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className={`text-[10px] font-bold uppercase tracking-[0.32em] ${currentTheme.footer}`}>Navigation</p>
+                                <p className={`mt-1 text-[1.08rem] font-semibold tracking-[-0.01em] ${currentTheme.heading}`}>Quick Links</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsMenuOpen(false)}
+                                className={`flex h-11 w-11 items-center justify-center rounded-[1rem] border transition-colors duration-150 ${currentTheme.mobileButton}`}
+                                aria-label="Close navigation"
+                            >
+                                <X className="h-4.5 w-4.5" strokeWidth={2.15} />
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setIsMenuOpen(false)}
-                            className={`flex h-11 w-11 items-center justify-center rounded-[1rem] border transition-colors duration-150 ${currentTheme.mobileButton}`}
-                            aria-label="Close navigation"
-                        >
-                            <X className="h-4.5 w-4.5" strokeWidth={2.15} />
-                        </button>
                     </div>
 
                     <div className="flex w-full flex-col gap-3">
@@ -547,17 +553,15 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                     href={item.href}
                                     onClick={(event) => handleNavItemClick(event, item)}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left text-[13px] font-semibold uppercase tracking-[0.22em] transition-colors duration-150 ${
-                                        isActive
-                                            ? `${currentTheme.sidebarItemActive} ${accent.activeText}`
+                                    className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left text-[13px] font-semibold uppercase tracking-[0.22em] transition-colors duration-150 ${isActive
+                                        ? `${currentTheme.sidebarItemActive} ${accent.activeText}`
                                         : item.isAction
                                             ? `${currentTheme.sidebarAction} ${accent.activeText}`
                                             : `border-transparent ${currentTheme.sidebarItem}`
-                                    }`}
+                                        }`}
                                 >
-                                    <span className={`flex h-10 w-10 items-center justify-center rounded-full border ${
-                                        isActive || item.isAction ? accent.chip : `${accent.chip} bg-white/60`
-                                    }`}>
+                                    <span className={`flex h-10 w-10 items-center justify-center rounded-full border ${isActive || item.isAction ? accent.chip : `${accent.chip} bg-white/60`
+                                        }`}>
                                         <Icon className="h-4 w-4" strokeWidth={2.1} />
                                     </span>
                                     <span className="flex-1">{item.name}</span>
