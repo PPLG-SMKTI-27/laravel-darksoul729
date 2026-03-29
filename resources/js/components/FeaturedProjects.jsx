@@ -1,592 +1,308 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { Canvas, useThree } from '@react-three/fiber';
-import {
-    ContactShadows,
-    Environment,
-    Html,
-    RoundedBox,
-    PerspectiveCamera,
-    Float,
-    Text
-} from '@react-three/drei';
-import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing';
-import { motion, useInView, useReducedMotion } from 'framer-motion';
+import { Canvas } from '@react-three/fiber';
+import { motion, useReducedMotion } from 'framer-motion';
 import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
 
-// --------------- HELPER COMPONENTS ---------------
-
-const CanvasLoader = () => {
-    return (
-        <Html as='div' center className="flex flex-col items-center justify-center z-50">
-            <div className="w-12 h-12 border-4 border-slate-200 border-t-pink-500 rounded-full animate-spin shadow-lg"></div>
-            <p className="mt-4 text-xs font-black text-slate-600 uppercase tracking-[0.2em] animate-pulse">Initializing 3D...</p>
-        </Html>
-    );
-};
-
-const SceneTicker = ({ fps = 30, enabled = true }) => {
-    const invalidate = useThree((state) => state.invalidate);
-
-    useEffect(() => {
-        if (!enabled) {
-            return undefined;
-        }
-
-        const interval = setInterval(() => invalidate(), 1000 / fps);
-        return () => clearInterval(interval);
-    }, [enabled, fps, invalidate]);
-
-    return null;
-};
-
-const StaggeredText = ({ text, color, delay = 0, className = "" }) => {
+const StaggeredText = ({ text, delay = 0, className = '', letterStyle }) => {
     const prefersReducedMotion = useReducedMotion();
-    const letters = text.split("");
+    const letters = text.split('');
 
     return (
         <span className={`inline-flex ${className}`}>
-            {letters.map((letter, i) => (
+            {letters.map((letter, index) => (
                 <motion.span
-                    key={i}
-                    initial={{ opacity: 0, y: 22, scale: 0.82, rotate: -4, filter: 'blur(6px)' }}
+                    key={`${letter}-${index}`}
+                    initial={{ opacity: 0, y: 20, scale: 0.84, rotate: -3, filter: 'blur(5px)' }}
                     animate={{
                         opacity: 1,
-                        y: prefersReducedMotion ? 0 : [0, -7, 0, -3, 0],
-                        scale: prefersReducedMotion ? 1 : [1, 1.06, 0.97, 1.03, 1],
-                        rotate: prefersReducedMotion ? 0 : [0, -1.5, 1.3, -0.6, 0],
-                        filter: 'blur(0px)'
+                        y: prefersReducedMotion ? 0 : [0, -4, 0],
+                        scale: prefersReducedMotion ? 1 : [1, 1.02, 1],
+                        rotate: prefersReducedMotion ? 0 : [0, -0.8, 0.6, 0],
+                        filter: 'blur(0px)',
                     }}
                     transition={{
-                        opacity: { duration: 0.28, delay: delay + i * 0.055, ease: 'easeOut' },
+                        opacity: { duration: 0.24, delay: delay + index * 0.045, ease: 'easeOut' },
                         y: prefersReducedMotion
-                            ? { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 }
+                            ? { type: 'spring', stiffness: 220, damping: 18, delay: delay + index * 0.045 }
                             : [
-                                { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 },
-                                { duration: 3.6 + i * 0.15, repeat: Infinity, ease: 'easeInOut', delay: 0.95 + delay + i * 0.04 }
+                                { type: 'spring', stiffness: 220, damping: 18, delay: delay + index * 0.045 },
+                                { duration: 3.1 + index * 0.08, repeat: Infinity, ease: 'easeInOut', delay: 0.8 + delay + index * 0.03 },
                             ],
-                        scale: prefersReducedMotion
-                            ? { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 }
-                            : [
-                                { type: 'spring', stiffness: 220, damping: 16, delay: delay + i * 0.055 },
-                                { duration: 3.2 + i * 0.12, repeat: Infinity, ease: 'easeInOut', delay: 1 + delay + i * 0.04 }
-                            ],
-                        rotate: prefersReducedMotion ? undefined : { duration: 4 + i * 0.18, repeat: Infinity, ease: 'easeInOut', delay: 1.05 + delay + i * 0.04 },
+                        scale: prefersReducedMotion ? undefined : { duration: 3.6 + index * 0.08, repeat: Infinity, ease: 'easeInOut', delay: 1 + delay + index * 0.03 },
+                        rotate: prefersReducedMotion ? undefined : { duration: 4.2 + index * 0.08, repeat: Infinity, ease: 'easeInOut', delay: 1.05 + delay + index * 0.03 },
                     }}
                     style={{ display: 'inline-block', transformOrigin: '50% 100%' }}
                 >
-                    <motion.span
-                        animate={prefersReducedMotion ? undefined : { x: [0, 1.5, -1, 0] }}
-                        transition={prefersReducedMotion ? undefined : {
-                            duration: 4.4 + i * 0.15,
-                            repeat: Infinity,
-                            ease: 'easeInOut',
-                            delay: 1.1 + delay + i * 0.05
-                        }}
-                        style={{ display: 'inline-block' }}
-                    >
-                        {letter === " " ? "\u00A0" : letter}
-                    </motion.span>
+                    <span style={letterStyle}>{letter === ' ' ? '\u00A0' : letter}</span>
                 </motion.span>
             ))}
         </span>
     );
 };
 
-// --------------- 3D COMPONENTS ---------------
+const FauxProjectCard = ({ project, index }) => {
+    const ledColors = ['#ef4444', '#facc15', '#22c55e', '#3b82f6'];
+    const isCenterCard = index === 1;
 
-const LedBulb = ({ color, position, segments = 8 }) => (
-    <mesh position={position}>
-        <sphereGeometry args={[0.06, segments, segments]} />
-        <meshPhysicalMaterial
-            color={color}
-            emissive={color}
-            emissiveIntensity={3}
-            roughness={0.1}
-            clearcoat={1}
-        />
-        <pointLight color={color} intensity={0.5} distance={1} decay={2} />
-    </mesh>
-);
-
-const SideRibs = ({ color }) => {
     return (
-        <group position={[0, 0.6, 0.05]}>
-            {[-1.02, 1.02].map((x, i) => (
-                <group key={i} position={[x, 0, 0]}>
-                    {[-0.2, 0, 0.2].map((y, j) => (
-                        <RoundedBox key={j} args={[0.2, 0.06, 0.06]} radius={0.02} smoothness={1} position={[0, y, 0]}>
-                            <meshPhysicalMaterial color={color} roughness={0.3} clearcoat={0.3} />
-                        </RoundedBox>
-                    ))}
+        <motion.div
+            initial={{ opacity: 0, y: 26, rotate: index === 0 ? -3 : index === 2 ? 3 : 0 }}
+            whileInView={{ opacity: 1, y: 0, rotate: index === 0 ? -2 : index === 2 ? 2 : 0 }}
+            viewport={{ once: true, margin: '-15% 0px' }}
+            transition={{ duration: 0.45, delay: 0.08 * index, ease: 'easeOut' }}
+            className={`relative flex h-full min-h-[260px] flex-col justify-between rounded-[1.8rem] border border-white/80 bg-[linear-gradient(160deg,#eef5ff_0%,#d8e5f8_52%,#b7c7e3_100%)] p-4 shadow-[inset_0_3px_0_rgba(255,255,255,0.95),inset_0_-7px_12px_rgba(71,85,105,0.16),0_18px_40px_rgba(15,23,42,0.14)] ${isCenterCard ? 'md:-translate-y-4' : ''}`}
+        >
+            <div className="pointer-events-none absolute inset-x-5 top-2 h-6 rounded-full bg-white/45 blur-md" />
+            <div className="pointer-events-none absolute inset-x-4 bottom-[-14px] h-6 rounded-full bg-slate-900/18 blur-xl" />
+
+            <div className="absolute left-3 top-3 flex gap-2">
+                {ledColors.map((ledColor) => (
+                    <span
+                        key={ledColor}
+                        className="h-2.5 w-2.5 rounded-full border border-white/70 shadow-[0_0_8px_rgba(255,255,255,0.35)]"
+                        style={{ background: ledColor, boxShadow: `0 0 10px ${ledColor}` }}
+                    />
+                ))}
+            </div>
+
+            <div className="absolute right-3 top-3 flex flex-col gap-1">
+                {[0, 1, 2].map((rib) => (
+                    <span key={rib} className="h-2 w-1 rounded-full bg-slate-500/60 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)]" />
+                ))}
+            </div>
+
+            <div className="mt-7 rounded-[1.2rem] border border-slate-300/90 bg-[linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)] p-4 shadow-[inset_0_2px_0_rgba(255,255,255,0.95),0_5px_0_rgba(148,163,184,0.8)]">
+                <div className="flex aspect-[4/3] items-center justify-center rounded-[0.9rem] border border-slate-200 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.9)_0%,rgba(255,255,255,0.75)_28%,rgba(248,250,252,0.95)_100%)] px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.95)]">
+                    <p
+                        className="text-lg font-black uppercase tracking-[0.06em] sm:text-xl"
+                        style={{
+                            color: project.textColor,
+                            textShadow: '0 1px 0 rgba(255,255,255,0.75)',
+                        }}
+                    >
+                        {project.title}
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-5 flex items-end justify-between">
+                <div className="flex gap-2">
+                    <span className="h-4 w-12 rounded-[0.35rem] bg-slate-400/70 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]" />
+                    <span className="h-4 w-12 rounded-[0.35rem] bg-slate-400/70 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]" />
+                </div>
+                <div
+                    className="h-2.5 w-16 rounded-full"
+                    style={{
+                        background: `linear-gradient(90deg, ${project.color}, ${project.textColor})`,
+                        boxShadow: `0 0 12px ${project.color}55`,
+                    }}
+                />
+            </div>
+        </motion.div>
+    );
+};
+
+const ChainModel = ({ mirrored = false }) => {
+    const chainData = useMemo(() => {
+        return [
+            { position: new THREE.Vector3(2.36, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
+            { position: new THREE.Vector3(1.98, 0.02, 0), rotation: [Math.PI / 2, 0, 0.16], scale: [2.55, 0.72, 1] },
+            { position: new THREE.Vector3(1.56, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
+            { position: new THREE.Vector3(1.16, 0.02, 0), rotation: [Math.PI / 2, 0, 0.14], scale: [2.55, 0.72, 1] },
+            { position: new THREE.Vector3(0.72, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
+            { position: new THREE.Vector3(0.32, 0.02, 0), rotation: [Math.PI / 2, 0, 0.12], scale: [2.55, 0.72, 1] },
+            { position: new THREE.Vector3(-0.1, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
+            { position: new THREE.Vector3(-0.5, 0.02, 0), rotation: [Math.PI / 2, 0, 0.1], scale: [2.55, 0.72, 1] },
+            { position: new THREE.Vector3(-0.94, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
+            { position: new THREE.Vector3(-1.34, 0.02, 0), rotation: [Math.PI / 2, 0, 0.08], scale: [2.55, 0.72, 1] },
+            { position: new THREE.Vector3(-1.78, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
+        ];
+    }, []);
+
+    return (
+        <group scale={mirrored ? [-1, 1, 1] : [1, 1, 1]}>
+            {chainData.map((link, index) => (
+                <group
+                    key={index}
+                    position={link.position}
+                    rotation={link.rotation}
+                >
+                    <mesh scale={link.scale} castShadow receiveShadow>
+                        <torusGeometry args={[0.128, 0.034, 16, 40]} />
+                        <meshPhysicalMaterial
+                            color="#dce2eb"
+                            metalness={0.62}
+                            roughness={0.24}
+                            clearcoat={0.88}
+                            reflectivity={0.92}
+                        />
+                    </mesh>
                 </group>
             ))}
+
+            <mesh position={[2.9, 0, 0]} rotation={[0, Math.PI / 2, 0]} castShadow receiveShadow>
+                <cylinderGeometry args={[0.05, 0.05, 0.18, 20]} />
+                <meshPhysicalMaterial color="#cfd7e3" metalness={0.42} roughness={0.26} clearcoat={0.74} />
+            </mesh>
+            <mesh position={[2.68, 0, 0]} rotation={[0, 0, 0]} castShadow receiveShadow scale={[1.4, 0.95, 1]}>
+                <torusGeometry args={[0.082, 0.022, 14, 28]} />
+                <meshPhysicalMaterial color="#e2e8f0" metalness={0.5} roughness={0.25} clearcoat={0.78} />
+            </mesh>
         </group>
     );
 };
 
-const CartridgeMesh = ({ project, position, ledSegments = 8 }) => {
-    // 4 distinct LED colors (Red, Yellow, Green, Blue)
-    const ledColors = ['#ef4444', '#facc15', '#22c55e', '#3b82f6'];
+const ChainDecoration3D = ({ side = 'left' }) => {
+    const isLeft = side === 'left';
 
     return (
-        <group position={position}>
-            {/* Top Bar where LEDs sit */}
-            <group position={[0, 1.05, 0.05]}>
-                <RoundedBox args={[1.7, 0.35, 0.3]} radius={0.05} smoothness={2} position={[0, 0, 0]}>
-                    <meshPhysicalMaterial color={project.color} roughness={0.3} clearcoat={0.3} />
-                </RoundedBox>
-                {/* 4 LEDs */}
-                {ledColors.map((color, i) => (
-                    <group key={i} position={[(i - 1.5) * 0.35, 0.15, 0.1]}>
-                        {/* LED Base */}
-                        <mesh position={[0, -0.05, 0]}>
-                            <cylinderGeometry args={[0.08, 0.08, 0.05, 8]} />
-                            <meshStandardMaterial color={project.color} />
-                        </mesh>
-                        {/* LED Bulb */}
-                        <LedBulb color={color} position={[0, 0.02, 0]} segments={ledSegments} />
-                    </group>
-                ))}
-            </group>
-
-            {/* Main Body */}
-            <RoundedBox
-                args={[2.1, 2.0, 0.4]}
-                radius={0.08}
-                smoothness={2}
-                position={[0, -0.15, 0]}
+        <div className={`pointer-events-none absolute top-1/2 hidden h-[150px] w-[360px] -translate-y-1/2 lg:block ${isLeft ? 'right-full -mr-4' : 'left-full -ml-4'}`}>
+            <Canvas
+                camera={{ position: [0.14, 2.1, 1.42], fov: 20 }}
+                dpr={[1, 1.5]}
+                frameloop="demand"
+                shadows
+                gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }}
             >
-                <meshPhysicalMaterial
-                    color={project.color}
-                    roughness={0.25}
-                    metalness={0.1}
-                    clearcoat={0.3}
-                />
-            </RoundedBox>
-
-            {/* Side Ribs */}
-            <SideRibs color={project.color} />
-
-            {/* Bottom indentations */}
-            <group position={[0, -1.0, 0.15]}>
-                <RoundedBox args={[0.5, 0.15, 0.2]} radius={0.02} smoothness={1} position={[-0.55, 0, 0]}>
-                    <meshPhysicalMaterial color={project.color} roughness={0.3} />
-                </RoundedBox>
-                <RoundedBox args={[0.5, 0.15, 0.2]} radius={0.02} smoothness={1} position={[0.55, 0, 0]}>
-                    <meshPhysicalMaterial color={project.color} roughness={0.3} />
-                </RoundedBox>
-            </group>
-
-            {/* Label Panel Base */}
-            <mesh position={[0, -0.15, 0.21]}>
-                <planeGeometry args={[1.7, 1.2]} />
-                <meshStandardMaterial color="#ffffff" roughness={0.1} />
-            </mesh>
-            <Text
-                position={[0, -0.15, 0.235]}
-                fontSize={0.18}
-                color={project.textColor || '#111827'}
-                maxWidth={1.4}
-                lineHeight={1.1}
-                textAlign="center"
-                anchorX="center"
-                anchorY="middle"
-                letterSpacing={0.02}
-                fontWeight={900}
-            >
-                {project.title}
-            </Text>
-        </group>
+                <ambientLight intensity={1.15} />
+                <directionalLight position={[4, 4, 5]} intensity={1.5} castShadow shadow-mapSize={[512, 512]} />
+                <directionalLight position={[-3, -2, 2]} intensity={0.38} color="#94a3b8" />
+                <group rotation={[-0.58, 0, 0]}>
+                    <ChainModel mirrored={!isLeft} />
+                </group>
+            </Canvas>
+        </div>
     );
 };
 
-const ConsoleCable = ({ color, startY, points, segments = 30, radialSegments = 5 }) => {
-    // Generate CatmullRomCurve3 for tangled cables
-    const curve = useMemo(() => {
-        const vecs = points.map(p => new THREE.Vector3(...p));
-        return new THREE.CatmullRomCurve3([
-            new THREE.Vector3(5.6, startY, 0),
-            new THREE.Vector3(5.0, startY - 0.2, 0.4),
-            ...vecs
-        ]);
-    }, [startY, points]);
+const FauxShelf = ({ projects }) => {
+    const primaryProject = projects[0];
 
     return (
-        <group>
-            {/* The plug connector attached to wall */}
-            <mesh position={[5.6, startY, 0]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.15, 0.15, 0.3, 8]} />
-                <meshStandardMaterial color={color} roughness={0.3} metalness={0.2} />
-            </mesh>
-            <mesh position={[5.8, startY, 0]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.08, 0.08, 0.2, 8]} />
-                <meshStandardMaterial color={color} />
-            </mesh>
-            {/* The cable */}
-            <mesh>
-                <tubeGeometry args={[curve, segments, 0.06, radialSegments, false]} />
-                <meshStandardMaterial
-                    color={color}
-                    roughness={0.6}
-                    clearcoat={0.1}
-                />
-            </mesh>
-        </group>
+        <div className="relative overflow-visible rounded-[2.4rem] border-[4px] border-[#eef2f8] bg-[linear-gradient(180deg,#d8dde6_0%,#c3cad5_42%,#b1bccb_100%)] p-4 shadow-[inset_0_3px_0_rgba(255,255,255,0.96),inset_0_-8px_14px_rgba(100,116,139,0.24),12px_12px_0_rgba(148,163,184,0.5),0_22px_44px_rgba(15,23,42,0.14)] md:p-6">
+            <ChainDecoration3D side="left" />
+            <ChainDecoration3D side="right" />
+            <div className="absolute left-18 top-[-14px] h-3.5 w-20 rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#c7cfda_100%)] shadow-[0_2px_0_rgba(255,255,255,0.6)]" />
+            <div className="absolute inset-x-5 top-2 h-6 rounded-full bg-white/60 blur-md" />
+            <div className="absolute inset-y-5 left-[-10px] w-2 rounded-l-full bg-[linear-gradient(180deg,#94a3b8_0%,#64748b_100%)] opacity-80" />
+            <div className="absolute inset-y-5 right-[-10px] w-2 rounded-r-full bg-[linear-gradient(180deg,#94a3b8_0%,#64748b_100%)] opacity-80" />
+            <div className="absolute bottom-[-10px] left-[8%] right-[8%] h-5 rounded-full bg-slate-900/18 blur-2xl" />
+
+            <div className="rounded-[2rem] border-[2px] border-[#4b5563]/45 bg-[linear-gradient(180deg,#566274_0%,#3c4758_16%,#202938_100%)] p-5 shadow-[inset_0_14px_24px_rgba(255,255,255,0.08),inset_0_-22px_34px_rgba(0,0,0,0.42)] md:min-h-[390px] md:p-7">
+                <div className="pointer-events-none absolute inset-x-10 top-[18%] h-[52%] rounded-full bg-sky-300/8 blur-3xl" />
+                <div className="pointer-events-none absolute inset-7 rounded-[1.6rem] border border-white/6 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.25)]" />
+
+                <div className="relative flex min-h-[280px] flex-col gap-5 md:min-h-[320px] md:flex-row md:items-stretch">
+                    <div className="relative w-full md:w-[340px] md:min-w-[340px] lg:w-[360px] lg:min-w-[360px]">
+                        <div className="absolute left-[14%] right-[14%] bottom-[-20px] h-6 rounded-full bg-black/35 blur-xl" />
+                        <div className="absolute left-[6%] right-[6%] bottom-[-8px] h-4 rounded-[0.8rem] border border-slate-400/80 bg-[linear-gradient(180deg,#95a4bc_0%,#7b8aa4_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" />
+                        <FauxProjectCard project={primaryProject} index={0} />
+                    </div>
+
+                    <div className="relative hidden min-w-0 flex-1 overflow-hidden rounded-[1.5rem] border border-white/5 bg-[linear-gradient(180deg,rgba(148,163,184,0.06)_0%,rgba(15,23,42,0.06)_100%)] md:block">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_28%,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_42%)]" />
+                        <div className="absolute inset-y-8 left-8 w-px bg-white/10" />
+                        <div className="absolute inset-y-8 right-8 w-px bg-white/8" />
+                        <div className="absolute inset-x-8 top-10 h-px bg-white/8" />
+                        <div className="absolute inset-x-8 bottom-10 h-px bg-white/8" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-5 h-7 rounded-[1rem] border border-[#e2e8f0] bg-[linear-gradient(180deg,#dbe4ef_0%,#a9b6c8_100%)] shadow-[inset_0_2px_0_rgba(255,255,255,0.92),inset_0_-2px_3px_rgba(71,85,105,0.18)]" />
+        </div>
     );
 };
-
-// --------------- MAIN COMPONENT ---------------
 
 export default function FeaturedProjects({ repos = [] }) {
     const prefersReducedMotion = useReducedMotion();
-    const [isLowPower, setIsLowPower] = useState(false);
-    const [hasLoadedCanvas, setHasLoadedCanvas] = useState(false);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        const cores = navigator.hardwareConcurrency ?? 4;
-        const memory = navigator.deviceMemory ?? 4;
-        const saveData = navigator.connection?.saveData ?? false;
-        const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
-        const lowPower = prefersReducedMotion || saveData || isCoarsePointer || cores <= 6 || memory <= 6;
-
-        setIsLowPower(lowPower);
-    }, [prefersReducedMotion]);
-
-    const renderSettings = useMemo(() => {
-        const lowPower = isLowPower;
-        return {
-            dpr: lowPower ? [0.75, 1] : [0.9, 1.35],
-            targetFps: lowPower ? 0 : 24,
-            shadowMapSize: lowPower ? 512 : 768,
-            multisampling: lowPower ? 0 : 2,
-            ssaoSamples: lowPower ? 0 : 16,
-            contactShadowResolution: lowPower ? 256 : 512,
-            contactShadowFrames: lowPower ? 1 : Infinity,
-            cableSegments: lowPower ? 18 : 30,
-            cableRadialSegments: lowPower ? 3 : 5,
-            ledSegments: lowPower ? 6 : 8,
-            enablePostprocessing: !lowPower,
-            enableTicker: !lowPower,
-            floatSpeed: lowPower ? 0 : 2,
-            floatRotation: lowPower ? 0 : 0.05,
-            floatIntensity: lowPower ? 0 : 0.15
-        };
-    }, [isLowPower]);
 
     const projects = useMemo(() => {
-        // Fallback data if no repos provided
-        let data = repos && repos.length > 0 ? repos : [
-            { title: 'ALIAS PARIATUR QUAM.', name: 'Project 1' },
-            { title: 'EUM EOS UT.', name: 'Project 2' },
-            { title: 'EST VOLUPTATEM VOLUPTATEM QUIA.', name: 'Project 3' }
-        ];
-
-        // Ensure we only have 3 projects (newest 3)
-        data = data.slice(0, 3);
+        const data = repos && repos.length > 0
+            ? repos.slice(0, 3)
+            : [
+                { title: 'Alias Pariatur Quam.' },
+                { title: 'Eum Eos Ut.' },
+                { title: 'Est Voluptatem Quia.' },
+            ];
 
         const palettes = [
-            { color: '#3b82f6', text: '#1e40af' }, // Blue
-            { color: '#ec4899', text: '#9d174d' }, // Pink
-            { color: '#22c55e', text: '#166534' }  // Green
+            { color: '#3b82f6', textColor: '#1d4ed8' },
+            { color: '#ec4899', textColor: '#be185d' },
+            { color: '#22c55e', textColor: '#15803d' },
         ];
 
-        return data.map((repo, i) => {
-            const p = palettes[i % palettes.length];
+        return data.map((repo, index) => {
+            const palette = palettes[index % palettes.length];
             const rawTitle = (repo?.title ?? repo?.name ?? '').toString().trim();
+
             return {
                 title: rawTitle.length > 0 ? rawTitle : 'Untitled Project',
-                color: p.color,
-                textColor: p.text,
-                link: repo.link
+                color: palette.color,
+                textColor: palette.textColor,
+                link: repo?.link,
             };
         });
     }, [repos]);
 
-    // Set up intersection observer for lazy-loading the Canvas
-    const containerRef = useRef(null);
-    const isInView = useInView(containerRef, { margin: '200px 0px' });
-
-    useEffect(() => {
-        if (isInView) {
-            setHasLoadedCanvas(true);
-        }
-    }, [isInView]);
-
     return (
-        <section ref={containerRef} className="relative w-full py-12 mb-16 z-10 overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 md:px-12">
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-end mb-4 md:mb-8 gap-4 px-4 overflow-visible relative">
-                    <div className="flex flex-col gap-2 z-10">
+        <section className="relative z-10 mb-16 w-full overflow-visible py-12">
+            <div className="mx-auto max-w-7xl px-4 md:px-12">
+                <div className="relative mb-4 flex flex-col items-end justify-between gap-4 overflow-visible px-4 md:mb-8 md:flex-row">
+                    <div className="z-10 flex flex-col gap-2">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.7, y: 18, rotate: -4 }}
-                            animate={prefersReducedMotion ? { opacity: 1, scale: 1, y: 0, rotate: 0 } : {
-                                opacity: 1,
-                                scale: 1,
-                                y: [0, -4, 0],
-                                rotate: [0, -1.2, 0.8, 0],
-                            }}
+                            animate={prefersReducedMotion ? { opacity: 1, scale: 1, y: 0, rotate: 0 } : { opacity: 1, scale: 1, y: [0, -4, 0], rotate: [0, -1.2, 0.8, 0] }}
                             transition={prefersReducedMotion
                                 ? { type: 'spring', stiffness: 260, damping: 18 }
                                 : {
                                     opacity: { duration: 0.3 },
                                     scale: { type: 'spring', stiffness: 260, damping: 18 },
-                                    y: [
-                                        { type: 'spring', stiffness: 260, damping: 18 },
-                                        { duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }
-                                    ],
-                                    rotate: { duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 }
+                                    y: [{ type: 'spring', stiffness: 260, damping: 18 }, { duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }],
+                                    rotate: { duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 },
                                 }}
-                            className="bg-[#fbbf24] text-[#78350f] text-[10px] md:text-[11px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg border border-white/60 self-start"
+                            className="self-start rounded-full border border-white/60 bg-[#fbbf24] px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#78350f] shadow-lg md:text-[11px]"
                         >
-                            COLLECTORS EDITION
+                            Collectors Edition
                         </motion.div>
-                        <h2 className="text-[3.5rem] md:text-7xl lg:text-8xl font-black text-slate-800 leading-[0.85] tracking-tighter flex flex-col items-start drop-shadow-sm">
-                            <StaggeredText text="FEATURED" color="text-slate-800" delay={0.2} />
-                            <StaggeredText text="PROJECTS" className="text-pink-500" delay={0.4} />
+
+                        <h2 className="flex flex-col items-start text-[3.5rem] font-black leading-[0.85] tracking-tighter md:text-7xl lg:text-8xl">
+                            <StaggeredText
+                                text="FEATURED"
+                                delay={0.2}
+                                className="text-slate-800"
+                                letterStyle={{
+                                    textShadow: '0 2px 0 #0f172a, 0 5px 0 #334155, 0 10px 16px rgba(15,23,42,0.18)',
+                                }}
+                            />
+                            <StaggeredText
+                                text="PROJECTS"
+                                delay={0.4}
+                                className="text-pink-500"
+                                letterStyle={{
+                                    textShadow: '0 2px 0 #db2777, 0 5px 0 #be185d, 0 10px 16px rgba(157,23,77,0.2)',
+                                }}
+                            />
                         </h2>
                     </div>
 
-                    {/* Retro Button */}
-                    <div className="bg-[#cbd5e1] p-[3px] rounded-xl shadow-inner border border-slate-300 mt-4 md:mt-0 z-10">
+                    <div className="z-10 mt-4 rounded-xl border border-slate-300 bg-[#cbd5e1] p-[3px] shadow-inner md:mt-0">
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => navigateWithCleanup('/projects')}
-                            className="bg-slate-600 text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),_0_3px_6px_rgba(0,0,0,0.3)] border border-slate-700 uppercase tracking-wide text-xs md:text-sm"
+                            className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-600 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),_0_3px_6px_rgba(0,0,0,0.3)] md:text-sm"
                         >
-                            See Collection <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" className="mb-[2px] opacity-90"><path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"></path></svg>
+                            See Collection
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" className="mb-[2px] opacity-90">
+                                <path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"></path>
+                            </svg>
                         </motion.button>
                     </div>
                 </div>
 
-                {/* 3D Scene Container */}
-                <style>{`
-                    .hide-scrollbar::-webkit-scrollbar { display: none; }
-                    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                `}</style>
-                <div className="-mx-4 md:mx-0 w-[calc(100%+2rem)] md:w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex hide-scrollbar relative">
-                    {/* Active Canvas layer */}
-                    <div className="absolute top-0 left-0 w-[225vw] sm:w-[150vw] md:w-full h-full z-0 group">
-                        {hasLoadedCanvas && (
-                            <Canvas
-                                shadows={!isLowPower}
-                                dpr={renderSettings.dpr}
-                                frameloop="demand"
-                                gl={{
-                                    powerPreference: isLowPower ? 'low-power' : 'high-performance',
-                                    antialias: !isLowPower
-                                }}
-                                className="!overflow-visible"
-                            >
-                                <SceneTicker fps={renderSettings.targetFps} enabled={renderSettings.enableTicker && isInView} />
-                                <PerspectiveCamera makeDefault position={[0, 0, 9]} fov={35} />
-                                <ambientLight intensity={0.7} />
-                                <directionalLight
-                                    position={[5, 10, 5]}
-                                    intensity={1.5}
-                                    castShadow={!isLowPower}
-                                    shadow-mapSize={[renderSettings.shadowMapSize, renderSettings.shadowMapSize]}
-                                />
-                                <pointLight position={[0, -2, 5]} intensity={0.5} />
-
-                                <Suspense fallback={<CanvasLoader />}>
-                                    <Environment preset="city" />
-
-                                    <group position={[0, 0.5, 0]}>
-                                        {/* Console Shelf Base */}
-                                        <group position={[0, -0.5, -1]}>
-                                            {/* Inner Back Wall (Dark Grey) */}
-                                            <RoundedBox args={[11.4, 4.0, 0.2]} radius={0.05} position={[0, 0.3, -0.8]}>
-                                                <meshStandardMaterial color="#334155" roughness={0.8} />
-                                            </RoundedBox>
-
-                                            {/* Inner Floor (extends back to front) */}
-                                            <RoundedBox args={[11.4, 0.2, 2.0]} radius={0.05} position={[0, -1.6, 0.1]}>
-                                                <meshStandardMaterial color="#475569" roughness={0.8} />
-                                            </RoundedBox>
-
-                                            {/* Inner Ceiling */}
-                                            <RoundedBox args={[11.4, 0.2, 2.0]} radius={0.05} position={[0, 2.2, 0.1]}>
-                                                <meshStandardMaterial color="#475569" roughness={0.8} />
-                                            </RoundedBox>
-
-                                            {/* Inner Left Wall */}
-                                            <RoundedBox args={[0.2, 4.0, 2.0]} radius={0.05} position={[-5.6, 0.3, 0.1]}>
-                                                <meshStandardMaterial color="#475569" roughness={0.8} />
-                                            </RoundedBox>
-
-                                            {/* Inner Right Wall */}
-                                            <RoundedBox args={[0.2, 4.0, 2.0]} radius={0.05} position={[5.6, 0.3, 0.1]}>
-                                                <meshStandardMaterial color="#475569" roughness={0.8} />
-                                            </RoundedBox>
-
-                                            {/* Outer Frame (Top, Left, Right) */}
-                                            <RoundedBox args={[12.2, 0.4, 2.4]} radius={0.1} smoothness={2} position={[0, 2.5, 0.2]}>
-                                                <meshPhysicalMaterial color="#cbd5e1" roughness={0.4} metalness={0.1} clearcoat={0.1} />
-                                            </RoundedBox>
-                                            <RoundedBox args={[0.6, 5.0, 2.4]} radius={0.1} smoothness={2} position={[-6.0, 0.2, 0.2]}>
-                                                <meshPhysicalMaterial color="#cbd5e1" roughness={0.4} metalness={0.1} clearcoat={0.1} />
-                                            </RoundedBox>
-                                            <RoundedBox args={[0.6, 5.0, 2.4]} radius={0.1} smoothness={2} position={[6.0, 0.2, 0.2]}>
-                                                <meshPhysicalMaterial color="#cbd5e1" roughness={0.4} metalness={0.1} clearcoat={0.1} />
-                                            </RoundedBox>
-
-                                            {/* Base Lip extending forward/down */}
-                                            <RoundedBox args={[12.2, 0.8, 2.6]} radius={0.1} smoothness={2} position={[0, -1.9, 0.3]}>
-                                                <meshPhysicalMaterial color="#94a3b8" roughness={0.4} metalness={0.1} clearcoat={0.1} />
-                                            </RoundedBox>
-
-                                            {/* Three bottom slots */}
-                                            {[-3.5, 0, 3.5].map((xPos, idx) => (
-                                                <group key={idx} position={[xPos, -1.5, 1.1]}>
-                                                    {/* Indentation Cavity */}
-                                                    <RoundedBox args={[2.5, 0.2, 0.5]} radius={0.05} position={[0, 0.2, 0]}>
-                                                        <meshStandardMaterial color="#64748b" roughness={0.7} />
-                                                    </RoundedBox>
-
-                                                    {/* Text Label Background Badge */}
-                                                    <RoundedBox args={[1.6, 0.2, 0.05]} radius={0.05} position={[0, -0.15, 0.25]}>
-                                                        <meshStandardMaterial color="#64748b" roughness={0.5} />
-                                                    </RoundedBox>
-
-                                                    <Text
-                                                        position={[0, -0.15, 0.28]}
-                                                        fontSize={0.08}
-                                                        color="#cbd5e1"
-                                                        anchorX="center"
-                                                        anchorY="middle"
-                                                        letterSpacing={0.1}
-                                                        fontWeight={900}
-                                                    >
-                                                        COLLECTION SERIES 1
-                                                    </Text>
-                                                </group>
-                                            ))}
-
-                                            {/* Tangled Cables hooking into Cartridges */}
-                                            <ConsoleCable
-                                                color="#ef4444"
-                                                startY={1.4}
-                                                points={[
-                                                    [5.2, 0.5, -0.2],
-                                                    [4.8, -1.3, 0.1],
-                                                    [3.5, -1.45, 0.6],
-                                                    [2.0, -1.3, 0.8],
-                                                    [1.0, -1.45, 0.4],
-                                                    [0.55, -1.4, 0.2],
-                                                    [0.55, -1.175, -0.05]
-                                                ]}
-                                                segments={renderSettings.cableSegments}
-                                                radialSegments={renderSettings.cableRadialSegments}
-                                            />
-                                            <ConsoleCable
-                                                color="#facc15"
-                                                startY={0.6}
-                                                points={[
-                                                    [5.2, -0.5, -0.1],
-                                                    [4.5, -1.4, 0.5],
-                                                    [3.0, -1.3, 0.9],
-                                                    [1.5, -1.45, 0.6],
-                                                    [0.0, -1.3, 1.0],
-                                                    [-1.5, -1.45, 0.6],
-                                                    [-2.5, -1.35, 0.4],
-                                                    [-2.95, -1.4, 0.2],
-                                                    [-2.95, -1.175, -0.05]
-                                                ]}
-                                                segments={renderSettings.cableSegments}
-                                                radialSegments={renderSettings.cableRadialSegments}
-                                            />
-                                            <ConsoleCable
-                                                color="#22c55e"
-                                                startY={-0.2}
-                                                points={[
-                                                    [5.0, -1.3, 0.4],
-                                                    [4.4, -1.45, 0.6],
-                                                    [4.05, -1.4, 0.2],
-                                                    [4.05, -1.175, -0.05]
-                                                ]}
-                                                segments={renderSettings.cableSegments}
-                                                radialSegments={renderSettings.cableRadialSegments}
-                                            />
-                                            <ConsoleCable
-                                                color="#3b82f6"
-                                                startY={-1.0}
-                                                points={[
-                                                    [4.8, -1.2, 0.8],
-                                                    [2.5, -1.45, 0.4],
-                                                    [0.5, -1.2, 0.9],
-                                                    [-1.0, -1.45, 0.7],
-                                                    [-2.5, -1.2, 1.0],
-                                                    [-3.5, -1.45, 0.5],
-                                                    [-4.05, -1.4, 0.2],
-                                                    [-4.05, -1.175, -0.05]
-                                                ]}
-                                                segments={renderSettings.cableSegments}
-                                                radialSegments={renderSettings.cableRadialSegments}
-                                            />
-                                        </group>
-
-                                        {/* Cartridges */}
-                                        {projects.map((project, i) => {
-                                            const xPos = (i - 1) * 3.5;
-                                            return (
-                                                <Float
-                                                    key={i}
-                                                    speed={renderSettings.floatSpeed}
-                                                    rotationIntensity={renderSettings.floatRotation}
-                                                    floatIntensity={renderSettings.floatIntensity}
-                                                    position={[xPos, -0.1, -0.2]}
-                                                >
-                                                    <CartridgeMesh
-                                                        project={project}
-                                                        position={[0, 0, 0]}
-                                                        ledSegments={renderSettings.ledSegments}
-                                                    />
-                                                </Float>
-                                            );
-                                        })}
-
-                                    </group>
-
-                                    <ContactShadows
-                                        position={[0, -2.5, 0]}
-                                        opacity={0.5}
-                                        scale={20}
-                                        blur={2}
-                                        far={4}
-                                        frames={renderSettings.contactShadowFrames}
-                                        resolution={renderSettings.contactShadowResolution}
-                                    />
-
-                                    {renderSettings.enablePostprocessing && (
-                                        <EffectComposer enableNormalPass multisampling={renderSettings.multisampling}>
-                                            <SSAO
-                                                radius={0.35}
-                                                intensity={20}
-                                                luminanceWeight={0.7}
-                                                samples={renderSettings.ssaoSamples}
-                                            />
-                                            <Bloom luminanceThreshold={0.85} intensity={0.9} radius={0.2} />
-                                        </EffectComposer>
-                                    )}
-                                </Suspense>
-                            </Canvas>
-                        )}
-                    </div>
-
-                    {/* Static scroll-width layer with snap points */}
-                    <div className="w-[225vw] sm:w-[150vw] md:w-full aspect-[21/10] flex-none flex pointer-events-none z-10">
-                        <div className="flex-1 snap-center" />
-                        <div className="flex-1 snap-center" />
-                        <div className="flex-1 snap-center" />
-                    </div>
-                </div>
+                <FauxShelf projects={projects} />
             </div>
         </section>
     );

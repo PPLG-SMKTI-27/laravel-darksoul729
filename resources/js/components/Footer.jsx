@@ -3,11 +3,11 @@ import React, { useEffect, useRef, useState } from 'react';
 
 // ─── Screw component (matches footer corners) ────────────────────────────────
 
-const Screw = ({ rotate = 0 }) => (
-    <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-[#050f30] to-[#153ebf] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]">
+const Screw = ({ rotate = 0, baseClassName = 'from-[#050f30] to-[#153ebf]', lineColor = '#020617' }) => (
+    <div className={`w-3 h-3 rounded-full bg-gradient-to-tr ${baseClassName} shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]`}>
         <div className="w-full h-full rounded-full border border-black/80 flex items-center justify-center">
-            <div className={`w-[60%] h-[1.5px] bg-[#020617] shadow-[0_1px_0_rgba(255,255,255,0.2)]`}
-                style={{ transform: `rotate(${rotate}deg)` }}
+            <div className="w-[60%] h-[1.5px] shadow-[0_1px_0_rgba(255,255,255,0.2)]"
+                style={{ background: lineColor, transform: `rotate(${rotate}deg)` }}
             />
         </div>
     </div>
@@ -206,10 +206,10 @@ const SysControlBridge = ({ t }) => {
                 <div className="w-full rounded-[16px] border-[2px] border-b-[4px] border-t-black/40 border-l-black/30 shadow-[inset_0_15px_30px_rgba(0,0,0,0.8),0_2px_0_rgba(255,255,255,0.08)] p-3 relative" style={{ background: t.panelGrad, borderRightColor: t.panelBorderR + '66', borderBottomColor: t.panelBorderB + '99' }}>
 
                     {/* Corner screws */}
-                    <div className="absolute top-2 left-2"><Screw rotate={45} /></div>
-                    <div className="absolute top-2 right-2"><Screw rotate={110} /></div>
-                    <div className="absolute bottom-2 left-2"><Screw rotate={12} /></div>
-                    <div className="absolute bottom-2 right-2"><Screw rotate={-30} /></div>
+                    <div className="absolute top-2 left-2"><Screw rotate={45} baseClassName={t.screwBase} lineColor={t.screwLine} /></div>
+                    <div className="absolute top-2 right-2"><Screw rotate={110} baseClassName={t.screwBase} lineColor={t.screwLine} /></div>
+                    <div className="absolute bottom-2 left-2"><Screw rotate={12} baseClassName={t.screwBase} lineColor={t.screwLine} /></div>
+                    <div className="absolute bottom-2 right-2"><Screw rotate={-30} baseClassName={t.screwBase} lineColor={t.screwLine} /></div>
 
                     {/* Panel label */}
                     <div className="absolute top-[-10px] left-1/2 -translate-x-1/2 z-20 rounded px-3 py-[2px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.8),0_2px_4px_rgba(0,0,0,0.5)]" style={{ background: t.sideBorder + '33', border: `1px solid ${t.sideBorder}` }}>
@@ -505,24 +505,24 @@ const Footer = ({ page }) => {
                     <div className="w-full rounded-[16px] border-[2px] border-b-[4px] border-t-black/40 border-l-black/30 shadow-[inset_0_15px_30px_rgba(0,0,0,0.8),0_2px_0_rgba(255,255,255,0.08)] p-3 lg:p-4 flex flex-col xl:flex-row gap-4 lg:gap-6 items-stretch relative" style={{ background: t.panelGrad, borderRightColor: t.panelBorderR + '66', borderBottomColor: t.panelBorderB + '99' }}>
 
                         {/* Screws in corners of inner panel */}
-                        <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-gradient-to-tr from-[#050f30] to-[#153ebf] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]">
+                        <div className={`absolute top-2 left-2 w-3 h-3 rounded-full bg-gradient-to-tr ${t.screwBase} shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]`}>
                             <div className="w-full h-full rounded-full border border-black/80 flex items-center justify-center">
-                                <div className="w-[60%] h-[1.5px] bg-[#020617] rotate-45 shadow-[0_1px_0_rgba(255,255,255,0.2)]"></div>
+                                <div className="w-[60%] h-[1.5px] rotate-45 shadow-[0_1px_0_rgba(255,255,255,0.2)]" style={{ background: t.screwLine }}></div>
                             </div>
                         </div>
-                        <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-gradient-to-tr from-[#050f30] to-[#153ebf] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]">
+                        <div className={`absolute top-2 right-2 w-3 h-3 rounded-full bg-gradient-to-tr ${t.screwBase} shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]`}>
                             <div className="w-full h-full rounded-full border border-black/80 flex items-center justify-center">
-                                <div className="w-[60%] h-[1.5px] bg-[#020617] rotate-[110deg] shadow-[0_1px_0_rgba(255,255,255,0.2)]"></div>
+                                <div className="w-[60%] h-[1.5px] rotate-[110deg] shadow-[0_1px_0_rgba(255,255,255,0.2)]" style={{ background: t.screwLine }}></div>
                             </div>
                         </div>
-                        <div className="absolute bottom-2 left-2 w-3 h-3 rounded-full bg-gradient-to-tr from-[#050f30] to-[#153ebf] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]">
+                        <div className={`absolute bottom-2 left-2 w-3 h-3 rounded-full bg-gradient-to-tr ${t.screwBase} shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]`}>
                             <div className="w-full h-full rounded-full border border-black/80 flex items-center justify-center">
-                                <div className="w-[60%] h-[1.5px] bg-[#020617] rotate-12 shadow-[0_1px_0_rgba(255,255,255,0.2)]"></div>
+                                <div className="w-[60%] h-[1.5px] rotate-12 shadow-[0_1px_0_rgba(255,255,255,0.2)]" style={{ background: t.screwLine }}></div>
                             </div>
                         </div>
-                        <div className="absolute bottom-2 right-2 w-3 h-3 rounded-full bg-gradient-to-tr from-[#050f30] to-[#153ebf] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]">
+                        <div className={`absolute bottom-2 right-2 w-3 h-3 rounded-full bg-gradient-to-tr ${t.screwBase} shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.3)]`}>
                             <div className="w-full h-full rounded-full border border-black/80 flex items-center justify-center">
-                                <div className="w-[60%] h-[1.5px] bg-[#020617] -rotate-[30deg] shadow-[0_1px_0_rgba(255,255,255,0.2)]"></div>
+                                <div className="w-[60%] h-[1.5px] -rotate-[30deg] shadow-[0_1px_0_rgba(255,255,255,0.2)]" style={{ background: t.screwLine }}></div>
                             </div>
                         </div>
 
@@ -538,8 +538,8 @@ const Footer = ({ page }) => {
                             </div>
 
                             <div className="flex items-center gap-2 mt-6 lg:mt-0 lg:mb-1">
-                                <div className="w-3 h-3 rounded-full bg-[#0a206a] shadow-[inset_0_2px_4px_rgba(0,0,0,0.9),0_1px_0_rgba(255,255,255,0.2)] flex justify-center items-center">
-                                    <div className="w-1.5 h-[1.5px] bg-[#051650] rotate-45"></div>
+                                <div className={`w-3 h-3 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.9),0_1px_0_rgba(255,255,255,0.2)] flex justify-center items-center ${t.screwDot}`}>
+                                    <div className="w-1.5 h-[1.5px] rotate-45" style={{ background: t.screwLine }}></div>
                                 </div>
                                 <div className="text-white/60 text-[9px] font-mono tracking-widest font-bold">
                                     © {currentYear} KEVIN HERMANSYAH // V3.0

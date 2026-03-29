@@ -232,6 +232,19 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
     };
 
     const handleNavigate = (href) => {
+        if (window.location.pathname === href) {
+            setIsMenuOpen(false);
+            return;
+        }
+
+        if (isTouchOptimized && isMenuOpen) {
+            setIsMenuOpen(false);
+            window.setTimeout(() => {
+                navigateWithCleanup(href, { lenis: lenisRef.current });
+            }, 16);
+            return;
+        }
+
         setIsMenuOpen(false);
         navigateWithCleanup(href, { lenis: lenisRef.current });
     };
@@ -250,6 +263,31 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
     const primaryNavItems = navItems.filter((item) => !item.isAction);
     const authItem = navItems.find((item) => item.isAction);
     const currentTheme = NAV_THEMES.default;
+    const mobileBackdropClassName = isTouchOptimized ? 'bg-[#15304d]/12' : currentTheme.backdrop;
+    const mobileSidebarClassName = isTouchOptimized
+        ? 'border-l-[#dbeafe] bg-[#f8fbff] shadow-none'
+        : currentTheme.sidebar;
+    const mobileSidebarShellClassName = isTouchOptimized
+        ? 'shadow-[0_8px_24px_rgba(15,23,42,0.06)]'
+        : 'shadow-[0_22px_65px_rgba(15,23,42,0.12)]';
+    const mobileButtonClassName = isTouchOptimized
+        ? 'border-[#d6ecff] bg-white text-[#29507b] shadow-[0_2px_8px_rgba(37,99,235,0.06)]'
+        : currentTheme.mobileButton;
+    const mobileSidebarHeaderClassName = isTouchOptimized
+        ? 'mb-5 rounded-[1.25rem] border border-sky-100 bg-white px-4 py-4 shadow-[0_2px_10px_rgba(59,130,246,0.04)]'
+        : 'mb-8 rounded-[1.6rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(219,234,254,0.92)_100%)] px-4 py-4 shadow-[inset_0_2px_0_rgba(255,255,255,0.85),0_8px_18px_rgba(59,130,246,0.12)]';
+    const mobileSidebarItemBaseClassName = isTouchOptimized
+        ? 'rounded-[1.15rem] px-3.5 py-3 text-[12px] tracking-[0.18em] transition-none'
+        : 'rounded-[1.35rem] px-4 py-3.5 text-[13px] tracking-[0.22em] transition-colors duration-150';
+    const mobileSidebarItemActiveClassName = isTouchOptimized
+        ? 'border-sky-200 bg-sky-50 text-[#1d4ed8] shadow-none'
+        : currentTheme.sidebarItemActive;
+    const mobileSidebarItemClassName = isTouchOptimized
+        ? 'border-transparent text-[#294567] bg-transparent'
+        : `border-transparent ${currentTheme.sidebarItem}`;
+    const mobileSidebarActionClassName = isTouchOptimized
+        ? 'border-slate-200 bg-white text-[#22324a] shadow-none'
+        : currentTheme.sidebarAction;
     const navFontStyle = { fontFamily: '"Space Grotesk", sans-serif' };
     const getNavAccent = (itemName) => {
         return NAV_ITEM_ACCENTS[itemName] || NAV_ITEM_ACCENTS.Home;
@@ -502,7 +540,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                     <button
                         type="button"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border transition-all duration-150 ${currentTheme.mobileButton}`}
+                        className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border transition-all duration-150 ${mobileButtonClassName}`}
                         aria-label={isMenuOpen ? 'Close navigation' : 'Open navigation'}
                     >
                         {isMenuOpen ? <X className="h-5 w-5" strokeWidth={2.2} /> : <Menu className="h-5 w-5" strokeWidth={2.2} />}
@@ -514,17 +552,17 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             {!hideNavigation && (
                 <div
                     onClick={() => setIsMenuOpen(false)}
-                    className={`fixed inset-0 z-[54] transition-opacity duration-150 ${currentTheme.backdrop} ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                    className={`fixed inset-0 z-[54] ${isTouchOptimized ? 'transition-none' : 'transition-opacity duration-150'} ${mobileBackdropClassName} ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 />
             )}
 
             {/* Mobile Sidebar */}
             {!hideNavigation && (
                 <div
-                    className={`fixed inset-y-0 right-0 z-[55] flex w-72 max-w-[85vw] flex-col border-l px-5 py-6 shadow-[0_22px_65px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out ${currentTheme.sidebar} ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
-                    style={navFontStyle}
+                    className={`fixed inset-y-0 right-0 z-[55] flex w-[18.5rem] max-w-[82vw] flex-col border-l px-4 py-5 ${isTouchOptimized ? 'transform-gpu transition-none' : 'transition-transform duration-200 ease-out'} ${mobileSidebarShellClassName} ${mobileSidebarClassName} ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    style={{ ...navFontStyle, contain: 'layout paint style' }}
                 >
-                    <div className="mb-8 rounded-[1.6rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(219,234,254,0.92)_100%)] px-4 py-4 shadow-[inset_0_2px_0_rgba(255,255,255,0.85),0_8px_18px_rgba(59,130,246,0.12)]">
+                    <div className={mobileSidebarHeaderClassName}>
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className={`text-[10px] font-bold uppercase tracking-[0.32em] ${currentTheme.footer}`}>Navigation</p>
@@ -533,7 +571,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                             <button
                                 type="button"
                                 onClick={() => setIsMenuOpen(false)}
-                                className={`flex h-11 w-11 items-center justify-center rounded-[1rem] border transition-colors duration-150 ${currentTheme.mobileButton}`}
+                                className={`flex h-11 w-11 items-center justify-center rounded-[1rem] border transition-colors duration-150 ${mobileButtonClassName}`}
                                 aria-label="Close navigation"
                             >
                                 <X className="h-4.5 w-4.5" strokeWidth={2.15} />
@@ -541,7 +579,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                         </div>
                     </div>
 
-                    <div className="flex w-full flex-col gap-3">
+                    <div className="flex w-full flex-col gap-2.5">
                         {navItems.map((item) => {
                             const isActive = isItemActive(item);
                             const Icon = item.icon;
@@ -553,14 +591,14 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                     href={item.href}
                                     onClick={(event) => handleNavItemClick(event, item)}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left text-[13px] font-semibold uppercase tracking-[0.22em] transition-colors duration-150 ${isActive
-                                        ? `${currentTheme.sidebarItemActive} ${accent.activeText}`
+                                    className={`flex w-full items-center gap-3 border text-left font-semibold uppercase ${mobileSidebarItemBaseClassName} ${isActive
+                                        ? `${mobileSidebarItemActiveClassName} ${accent.activeText}`
                                         : item.isAction
-                                            ? `${currentTheme.sidebarAction} ${accent.activeText}`
-                                            : `border-transparent ${currentTheme.sidebarItem}`
+                                            ? `${mobileSidebarActionClassName} ${accent.activeText}`
+                                            : mobileSidebarItemClassName
                                         }`}
                                 >
-                                    <span className={`flex h-10 w-10 items-center justify-center rounded-full border ${isActive || item.isAction ? accent.chip : `${accent.chip} bg-white/60`
+                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full border ${isActive || item.isAction ? accent.chip : `${accent.chip} bg-white/60`
                                         }`}>
                                         <Icon className="h-4 w-4" strokeWidth={2.1} />
                                     </span>
@@ -578,9 +616,15 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
 
             {/* Main Content Area */}
             <main className={`${standalone ? 'relative z-10 w-full' : fullBleed || page === 'Skills' ? 'flex-grow relative z-10 w-full' : 'flex-grow container mx-auto px-4 py-8 relative z-10 w-full'}`}>
-                <motion.div key={page} {...pageTransitionProps}>
-                    {children}
-                </motion.div>
+                {isTouchOptimized ? (
+                    <div key={page}>
+                        {children}
+                    </div>
+                ) : (
+                    <motion.div key={page} {...pageTransitionProps}>
+                        {children}
+                    </motion.div>
+                )}
             </main>
 
             {/* Footer */}
