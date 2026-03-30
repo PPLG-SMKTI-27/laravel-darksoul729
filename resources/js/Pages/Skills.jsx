@@ -8,11 +8,13 @@ import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
    WAVE MATH — mirrored CPU side to place raft correctly
 ══════════════════════════════════════════════════════════════════ */
 const WAVE_PARAMS = [
-    { dir: [1.0, 0.6], steep: 0.14, len: 40 },
-    { dir: [0.6, 1.0], steep: 0.10, len: 28 },
-    { dir: [-0.5, 0.8], steep: 0.07, len: 18 },
-    { dir: [0.9, -0.4], steep: 0.05, len: 12 },
+    { dir: [1.0, 0.6], steep: 0.08, len: 46 },
+    { dir: [0.6, 1.0], steep: 0.06, len: 32 },
+    { dir: [-0.5, 0.8], steep: 0.04, len: 22 },
+    { dir: [0.9, -0.4], steep: 0.025, len: 16 },
 ];
+const WAVE_TIME_SCALE = 0.42;
+
 function waveHeight(x, z, t) {
     let h = 0;
     for (const w of WAVE_PARAMS) {
@@ -21,7 +23,7 @@ function waveHeight(x, z, t) {
         const nx = dx / len, nz = dz / len;
         const k = (2 * Math.PI) / w.len;
         const c = Math.sqrt(9.8 / k);
-        const f = k * (nx * x + nz * z) - c * t;
+        const f = k * (nx * x + nz * z) - c * (t * WAVE_TIME_SCALE);
         h += (w.steep / k) * Math.sin(f);
     }
     return h;
@@ -67,16 +69,16 @@ vec3 waveDisp(vec2 p, float t) {
     float k, c, f, a;
     vec2 d;
 
-    d = normalize(vec2(1.0, 0.6));  k = 6.283/40.0; c = sqrt(9.8/k); a=0.14/k; f=k*dot(d,p)-c*t;
+    d = normalize(vec2(1.0, 0.6));  k = 6.283/46.0; c = sqrt(9.8/k); a=0.08/k; f=k*dot(d,p)-c*t;
     h += a*sin(f); nx -= d.x*a*k*cos(f); nz -= d.y*a*k*cos(f);
 
-    d = normalize(vec2(0.6, 1.0));  k = 6.283/28.0; c = sqrt(9.8/k); a=0.10/k; f=k*dot(d,p)-c*t;
+    d = normalize(vec2(0.6, 1.0));  k = 6.283/32.0; c = sqrt(9.8/k); a=0.06/k; f=k*dot(d,p)-c*t;
     h += a*sin(f); nx -= d.x*a*k*cos(f); nz -= d.y*a*k*cos(f);
 
-    d = normalize(vec2(-0.5, 0.8)); k = 6.283/18.0; c = sqrt(9.8/k); a=0.07/k; f=k*dot(d,p)-c*t;
+    d = normalize(vec2(-0.5, 0.8)); k = 6.283/22.0; c = sqrt(9.8/k); a=0.04/k; f=k*dot(d,p)-c*t;
     h += a*sin(f); nx -= d.x*a*k*cos(f); nz -= d.y*a*k*cos(f);
 
-    d = normalize(vec2(0.9,-0.4));  k = 6.283/12.0; c = sqrt(9.8/k); a=0.05/k; f=k*dot(d,p)-c*t;
+    d = normalize(vec2(0.9,-0.4));  k = 6.283/16.0; c = sqrt(9.8/k); a=0.025/k; f=k*dot(d,p)-c*t;
     h += a*sin(f); nx -= d.x*a*k*cos(f); nz -= d.y*a*k*cos(f);
 
     return vec3(nx, h, nz);
@@ -87,7 +89,7 @@ void main() {
     vec4 worldPos4 = modelMatrix * vec4(position, 1.0);
     vec2 xz = worldPos4.xz;
 
-    vec3 disp  = waveDisp(xz, uTime);
+    vec3 disp  = waveDisp(xz, uTime * 0.42);
     float wH   = disp.y;
     vec3 nrm   = normalize(vec3(disp.x, 1.0, disp.z));
 
@@ -219,6 +221,175 @@ function generateRoomCode() {
     return code;
 }
 
+function createPlayerBadge(text, accentColor) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 160;
+
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = 'rgba(8, 15, 31, 0.86)';
+    context.strokeStyle = `#${accentColor.toString(16).padStart(6, '0')}`;
+    context.lineWidth = 6;
+
+    context.beginPath();
+    context.roundRect(20, 24, 472, 112, 30);
+    context.fill();
+    context.stroke();
+
+    context.font = 'bold 54px "Courier New", monospace';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = '#f8fafc';
+    context.fillText(text, canvas.width / 2, canvas.height / 2 + 4);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(3.2, 1, 1);
+    sprite.position.set(0, 4.2, 0);
+
+    return sprite;
+}
+
+function createRaftRig({ accentColor = 0x7dd3fc, label = 'PLAYER' } = {}) {
+    const raftGroup = new THREE.Group();
+    const plankMat = new THREE.MeshStandardMaterial({
+        color: 0xb5843a,
+        roughness: 0.85,
+        metalness: 0.0,
+    });
+
+    const plankW = 0.38;
+    const plankH = 0.12;
+    const plankL = 3.2;
+    const gap = 0.04;
+    const totalW = 7 * (plankW + gap) - gap;
+
+    for (let index = 0; index < 7; index += 1) {
+        const plankGeometry = new THREE.BoxGeometry(plankW, plankH, plankL);
+        const plankMesh = new THREE.Mesh(plankGeometry, plankMat);
+        plankMesh.position.x = -totalW / 2 + index * (plankW + gap) + plankW / 2;
+        plankMesh.castShadow = true;
+        plankMesh.receiveShadow = true;
+        raftGroup.add(plankMesh);
+    }
+
+    const braceMat = new THREE.MeshStandardMaterial({ color: 0x8b5e2a, roughness: 0.9 });
+    for (const braceZ of [-0.9, 0.9]) {
+        const braceGeometry = new THREE.BoxGeometry(totalW + 0.1, 0.09, plankW);
+        const braceMesh = new THREE.Mesh(braceGeometry, braceMat);
+        braceMesh.position.set(0, -(plankH / 2 + 0.045), braceZ);
+        braceMesh.castShadow = true;
+        raftGroup.add(braceMesh);
+    }
+
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0xd4a55a, roughness: 0.7 });
+    const poleGeometry = new THREE.CylinderGeometry(0.045, 0.055, 0.9, 6);
+    const pole = new THREE.Mesh(poleGeometry, poleMat);
+    pole.position.set(0, 0.5, -1.4);
+    raftGroup.add(pole);
+
+    const avatarGroup = new THREE.Group();
+    const avatarAccent = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.45 });
+    const avatarCloth = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.7 });
+
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.42, 6, 10), avatarCloth);
+    body.position.set(0, 0.5, 0.15);
+    avatarGroup.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 18, 18), new THREE.MeshStandardMaterial({ color: 0xf4d7b5, roughness: 0.9 }));
+    head.position.set(0, 0.98, 0.18);
+    avatarGroup.add(head);
+
+    const marker = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 10, 24), avatarAccent);
+    marker.rotation.x = Math.PI / 2;
+    marker.position.set(0, 1.26, 0.18);
+    avatarGroup.add(marker);
+
+    avatarGroup.traverse((object) => {
+        if (object.isMesh) {
+            object.castShadow = true;
+            object.receiveShadow = true;
+        }
+    });
+
+    raftGroup.add(avatarGroup);
+    raftGroup.add(createPlayerBadge(label, accentColor));
+
+    raftGroup.renderOrder = 2;
+    raftGroup.traverse((object) => {
+        if (object.isMesh) {
+            object.renderOrder = 2;
+            object.material.depthWrite = true;
+        }
+    });
+
+    return raftGroup;
+}
+
+function NauticalMark({ size = 72, color = '#fefae0', accent = '#bc6c25' }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 96 96" fill="none" aria-hidden="true">
+            <circle cx="48" cy="48" r="28" stroke={color} strokeWidth="6" />
+            <circle cx="48" cy="48" r="7" fill={accent} stroke={color} strokeWidth="4" />
+            <path d="M48 6v20M48 70v20M6 48h20M70 48h20" stroke={color} strokeWidth="6" strokeLinecap="round" />
+            <path d="M18 18l14 14M64 64l14 14M78 18L64 32M32 64L18 78" stroke={color} strokeWidth="6" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+function createIsland({ position, scale = 1 } = {}) {
+    const islandGroup = new THREE.Group();
+    islandGroup.position.copy(position);
+
+    const sandMaterial = new THREE.MeshStandardMaterial({ color: 0xd8bf84, roughness: 0.95 });
+    const grassMaterial = new THREE.MeshStandardMaterial({ color: 0x4c8b49, roughness: 0.9 });
+    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x7a4b24, roughness: 0.95 });
+    const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x2f7d57, roughness: 0.88 });
+
+    const sandBase = new THREE.Mesh(new THREE.CylinderGeometry(3.8 * scale, 5.2 * scale, 1.8 * scale, 20), sandMaterial);
+    sandBase.castShadow = true;
+    sandBase.receiveShadow = true;
+    sandBase.position.y = 0.45 * scale;
+    islandGroup.add(sandBase);
+
+    const grassTop = new THREE.Mesh(new THREE.CylinderGeometry(2.7 * scale, 3.4 * scale, 0.9 * scale, 18), grassMaterial);
+    grassTop.castShadow = true;
+    grassTop.receiveShadow = true;
+    grassTop.position.y = 1.45 * scale;
+    islandGroup.add(grassTop);
+
+    for (let index = 0; index < 3; index += 1) {
+        const angle = (index / 3) * Math.PI * 2 + 0.4;
+        const palm = new THREE.Group();
+        palm.position.set(Math.cos(angle) * 1.2 * scale, 1.55 * scale, Math.sin(angle) * 1.2 * scale);
+        palm.rotation.z = (index - 1) * 0.08;
+
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * scale, 0.17 * scale, 2.2 * scale, 8), trunkMaterial);
+        trunk.position.y = 0.9 * scale;
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        palm.add(trunk);
+
+        for (let leafIndex = 0; leafIndex < 5; leafIndex += 1) {
+            const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.35 * scale, 1.6 * scale, 5), leafMaterial);
+            leaf.position.y = 2.15 * scale;
+            leaf.rotation.z = Math.PI / 2;
+            leaf.rotation.y = (leafIndex / 5) * Math.PI * 2;
+            leaf.rotation.x = 0.45;
+            leaf.castShadow = true;
+            palm.add(leaf);
+        }
+
+        islandGroup.add(palm);
+    }
+
+    return islandGroup;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    LANDSCAPE PROMPT
 ══════════════════════════════════════════════════════════════════ */
@@ -228,51 +399,70 @@ function LandscapePrompt() {
             position: 'fixed',
             inset: 0,
             zIndex: 9999,
-            background: 'radial-gradient(circle at 20% 18%, rgba(56,189,248,0.18), transparent 28%), radial-gradient(circle at 82% 22%, rgba(251,191,36,0.14), transparent 24%), linear-gradient(180deg, #07121d 0%, #091827 100%)',
+            background: 'rgba(6, 12, 23, 0.96)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#fff',
-            fontFamily: 'system-ui',
+            fontFamily: '"Courier New", monospace',
             textAlign: 'center',
             padding: '24px'
         }}>
             <div style={{
                 width: '100%',
                 maxWidth: 320,
-                borderRadius: 28,
-                border: '1px solid rgba(148, 163, 184, 0.18)',
-                background: 'linear-gradient(180deg, rgba(15,23,42,0.88), rgba(9,15,28,0.92))',
-                boxShadow: '0 24px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)',
-                backdropFilter: 'blur(14px)',
+                borderRadius: 6,
+                border: '8px solid #1a140f',
+                background: '#4b3628',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.4), inset 0 0 40px rgba(0,0,0,0.28)',
                 padding: '28px 24px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 16
+                gap: 18,
+                position: 'relative',
             }}>
+                {[0, 1, 2, 3].map((index) => (
+                    <div
+                        key={index}
+                        style={{
+                            position: 'absolute',
+                            width: 12,
+                            height: 12,
+                            background: '#221811',
+                            borderRadius: '50%',
+                            top: index < 2 ? 10 : 'auto',
+                            bottom: index >= 2 ? 10 : 'auto',
+                            left: index % 2 === 0 ? 10 : 'auto',
+                            right: index % 2 !== 0 ? 10 : 'auto',
+                            boxShadow: 'inset 2px 2px 2px rgba(255,255,255,0.1)',
+                        }}
+                    />
+                ))}
                 <div style={{
                     width: 96,
                     height: 96,
-                    borderRadius: 26,
-                    background: 'linear-gradient(180deg, rgba(14,116,144,0.22), rgba(15,23,42,0.08))',
-                    border: '1px solid rgba(125,211,252,0.18)',
+                    borderRadius: 24,
+                    background: '#5a4232',
+                    border: '2px solid rgba(212,163,115,0.35)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
                     animation: 'rpFloat 3s ease-in-out infinite'
                 }}>
-                    <img
-                        src="/images/rotate-device.svg"
-                        alt="Rotate device"
-                        style={{
-                            width: 74,
-                            height: 74,
-                            display: 'block',
-                            animation: 'rpTilt 1.8s ease-in-out infinite alternate'
-                        }}
-                    />
+                    <svg
+                        width="72"
+                        height="72"
+                        viewBox="0 0 72 72"
+                        fill="none"
+                        style={{ display: 'block', animation: 'rpTilt 1.8s ease-in-out infinite alternate' }}
+                    >
+                        <rect x="18" y="9" width="26" height="42" rx="6" stroke="#fefae0" strokeWidth="4" />
+                        <rect x="25" y="16" width="12" height="2.5" rx="1.25" fill="#fefae0" opacity="0.8" />
+                        <path d="M49 42c6-2 10-7 11-13" stroke="#d4a373" strokeWidth="4" strokeLinecap="round" />
+                        <path d="M53 19l8 9-11 4" stroke="#d4a373" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                 </div>
 
                 <div style={{
@@ -281,20 +471,22 @@ function LandscapePrompt() {
                     gap: 8,
                     padding: '6px 12px',
                     borderRadius: 999,
-                    background: 'rgba(56,189,248,0.12)',
-                    border: '1px solid rgba(125,211,252,0.18)',
-                    color: '#7dd3fc',
+                    background: 'rgba(188,108,37,0.12)',
+                    border: '1px solid rgba(212,163,115,0.18)',
+                    color: '#d4a373',
                     fontSize: 10,
                     fontWeight: 800,
                     letterSpacing: '0.24em',
                     textTransform: 'uppercase'
                 }}>
-                    Orientation Lock
+                    Deck Notice
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, lineHeight: 1.15 }}>Putar layar ke landscape</h2>
-                    <p style={{ margin: 0, color: 'rgba(226,232,240,0.7)', fontSize: 13, lineHeight: 1.6 }}>
+                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, lineHeight: 1.15, color: '#fefae0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Putar ke Landscape
+                    </h2>
+                    <p style={{ margin: 0, color: 'rgba(254,250,224,0.74)', fontSize: 13, lineHeight: 1.6, fontFamily: 'system-ui' }}>
                         Biar kontrol dan area bermain tampil penuh, buka mode horizontal lalu lanjutkan permainan.
                     </p>
                 </div>
@@ -322,6 +514,8 @@ const SkillsGame = () => {
     const gameRef = useRef({});
     const keysRef = useRef({});
     const stageRef = useRef('loading');
+    const networkRef = useRef({ channel: null, roomCode: null, playerId: null, remotePlayers: new Map(), unloadHandler: null, lastBroadcastAt: 0 });
+    const sessionInfoRef = useRef(null);
 
     // Swipe Look state
     const touchLookRef = useRef({ active: false, touchId: null, lastX: 0, lastY: 0 });
@@ -341,12 +535,17 @@ const SkillsGame = () => {
     const [joinCode, setJoinCode] = useState('');
     const [menuMessage, setMenuMessage] = useState('');
     const [sessionInfo, setSessionInfo] = useState(null);
+    const [roomPopulation, setRoomPopulation] = useState(1);
     const pausedRef = useRef(false);
 
     const syncStage = (stage) => {
         stageRef.current = stage;
         setGameStage(stage);
     };
+
+    useEffect(() => {
+        sessionInfoRef.current = sessionInfo;
+    }, [sessionInfo]);
 
     useEffect(() => {
         const check = () => {
@@ -485,6 +684,14 @@ const SkillsGame = () => {
         scene.add(ocean);
         updateLoading(34, 'Menggambar awan...');
 
+        const islands = [
+            createIsland({ position: new THREE.Vector3(-42, 0, -58), scale: 1.2 }),
+            createIsland({ position: new THREE.Vector3(68, 0, -36), scale: 0.95 }),
+            createIsland({ position: new THREE.Vector3(-74, 0, 44), scale: 1.35 }),
+            createIsland({ position: new THREE.Vector3(54, 0, 72), scale: 1.05 }),
+        ];
+        islands.forEach((island) => scene.add(island));
+
         /* ── PROCEDURAL CLOUDS ── */
         function makeCloud() {
             const cvs = document.createElement('canvas');
@@ -526,43 +733,10 @@ const SkillsGame = () => {
         updateLoading(48, 'Menyiapkan rakit...');
 
         /* ── SIMPLE RAFT (wooden planks) ── */
-        const raftGroup = new THREE.Group();
-        const plankMat = new THREE.MeshStandardMaterial({
-            color: 0xb5843a,
-            roughness: 0.85,
-            metalness: 0.0,
-        });
-        /* 7 planks side by side */
-        const plankW = 0.38, plankH = 0.12, plankL = 3.2, gap = 0.04;
-        const totalW = 7 * (plankW + gap) - gap;
-        for (let i = 0; i < 7; i++) {
-            const pg = new THREE.BoxGeometry(plankW, plankH, plankL);
-            const pm = new THREE.Mesh(pg, plankMat);
-            pm.position.x = -totalW / 2 + i * (plankW + gap) + plankW / 2;
-            pm.castShadow = pm.receiveShadow = true;
-            raftGroup.add(pm);
-        }
-        /* cross-brace planks (underneath) */
-        const braceMat = new THREE.MeshStandardMaterial({ color: 0x8b5e2a, roughness: 0.9 });
-        for (const bz of [-0.9, 0.9]) {
-            const bg = new THREE.BoxGeometry(totalW + 0.1, 0.09, plankW);
-            const bm = new THREE.Mesh(bg, braceMat);
-            bm.position.set(0, -(plankH / 2 + 0.045), bz);
-            bm.castShadow = true;
-            raftGroup.add(bm);
-        }
-        /* small bamboo/pole at front for steering grip */
-        const poleMat = new THREE.MeshStandardMaterial({ color: 0xd4a55a, roughness: 0.7 });
-        const poleG = new THREE.CylinderGeometry(0.045, 0.055, 0.9, 6);
-        const pole = new THREE.Mesh(poleG, poleMat);
-        pole.position.set(0, 0.5, -1.4);
-        raftGroup.add(pole);
-
-        /* ensure raft always renders over transparent water */
-        raftGroup.renderOrder = 2;
-        raftGroup.traverse(o => { if (o.isMesh) { o.renderOrder = 2; o.material.depthWrite = true; } });
-
+        const raftGroup = createRaftRig({ accentColor: 0x38bdf8, label: 'YOU' });
         scene.add(raftGroup);
+        const remotePlayersGroup = new THREE.Group();
+        scene.add(remotePlayersGroup);
         updateLoading(58, 'Mengukir papan skill...');
 
         /* ── SKILL BUOYS (Wooden Signboard Style) ── */
@@ -790,8 +964,8 @@ const SkillsGame = () => {
             raftGroup.rotation.y = player.heading + Math.PI;
 
             /* rock gently with waves */
-            raftGroup.rotation.x = Math.sin(time * 0.85 + 0.3) * 0.04;
-            raftGroup.rotation.z = Math.cos(time * 0.72) * 0.03;
+            raftGroup.rotation.x = Math.sin(time * 0.35 + 0.3) * 0.015;
+            raftGroup.rotation.z = Math.cos(time * 0.28) * 0.012;
 
             /* ── JUMP ── */
             const raftTop = surfaceH + 0.14;
@@ -830,10 +1004,49 @@ const SkillsGame = () => {
             /* ── buoy float ── */
             skillRefs.forEach(({ grp, orb, pl }, i) => {
                 const bx = grp.position.x, bz = grp.position.z;
-                grp.position.y = waveHeight(bx, bz, time) + Math.sin(time * 0.6 + i) * 0.12;
+                grp.position.y = waveHeight(bx, bz, time) + Math.sin(time * 0.28 + i) * 0.06;
                 orb.material.emissiveIntensity = 1.0 + Math.sin(time * 2 + i) * 0.7;
                 pl.intensity = 1.8 + Math.sin(time * 2 + i) * 0.7;
             });
+
+            networkRef.current.remotePlayers.forEach((entry) => {
+                if (!entry.targetState) {
+                    return;
+                }
+
+                entry.raft.position.x = THREE.MathUtils.lerp(entry.raft.position.x, entry.targetState.x, 0.14);
+                entry.raft.position.y = THREE.MathUtils.lerp(entry.raft.position.y, entry.targetState.y, 0.16);
+                entry.raft.position.z = THREE.MathUtils.lerp(entry.raft.position.z, entry.targetState.z, 0.14);
+
+                const currentHeading = entry.raft.userData.heading ?? entry.targetState.heading;
+                const nextHeading = THREE.MathUtils.lerp(currentHeading, entry.targetState.heading, 0.14);
+                entry.raft.userData.heading = nextHeading;
+                entry.raft.rotation.y = nextHeading + Math.PI;
+                entry.raft.rotation.x = Math.sin(time * 0.35 + entry.seed) * 0.015;
+                entry.raft.rotation.z = Math.cos(time * 0.28 + entry.seed) * 0.012;
+            });
+
+            const activeChannel = networkRef.current.channel;
+            if (
+                activeChannel &&
+                stageRef.current === 'playing' &&
+                sessionInfoRef.current?.mode === 'multiplayer' &&
+                time - networkRef.current.lastBroadcastAt > 0.08
+            ) {
+                networkRef.current.lastBroadcastAt = time;
+                activeChannel.postMessage({
+                    type: 'state',
+                    playerId: networkRef.current.playerId,
+                    role: sessionInfoRef.current.role,
+                    roomCode: sessionInfoRef.current.code,
+                    state: {
+                        x: raftGroup.position.x,
+                        y: raftGroup.position.y,
+                        z: raftGroup.position.z,
+                        heading: player.heading,
+                    },
+                });
+            }
 
             /* ── HUD raycasting ── */
             raycaster.setFromCamera(screenCenter, camera);
@@ -861,7 +1074,7 @@ const SkillsGame = () => {
         };
         window.addEventListener('resize', onResize);
 
-        gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onResize, player };
+        gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onResize, player, scene, remotePlayersGroup };
         updateLoading(100, 'World siap dimainkan');
         setLoaded(true);
         syncStage('menu');
@@ -880,6 +1093,7 @@ const SkillsGame = () => {
     function destroyGame() {
         const g = gameRef.current;
         gameRef.current.initSession = null;
+        closeRoomSession();
         if (!g.renderer) return;
         cancelAnimationFrame(g.animId);
         document.removeEventListener('mousemove', g.onMouseMove);
@@ -938,6 +1152,137 @@ const SkillsGame = () => {
         }
     };
 
+    const updateRoomPopulation = () => {
+        setRoomPopulation(networkRef.current.remotePlayers.size + (sessionInfoRef.current?.mode === 'multiplayer' ? 1 : 0));
+    };
+
+    const removeRemotePlayer = (playerId) => {
+        const remoteEntry = networkRef.current.remotePlayers.get(playerId);
+        if (!remoteEntry) {
+            return;
+        }
+
+        if (gameRef.current.remotePlayersGroup) {
+            gameRef.current.remotePlayersGroup.remove(remoteEntry.raft);
+        }
+
+        networkRef.current.remotePlayers.delete(playerId);
+        updateRoomPopulation();
+    };
+
+    const ensureRemotePlayer = (playerId, role) => {
+        const existingEntry = networkRef.current.remotePlayers.get(playerId);
+        if (existingEntry) {
+            return existingEntry;
+        }
+
+        const accentColor = role === 'host' ? 0x38bdf8 : 0xfacc15;
+        const raft = createRaftRig({
+            accentColor,
+            label: role === 'host' ? 'HOST' : 'PLAYER 2',
+        });
+        raft.position.set((networkRef.current.remotePlayers.size + 1) * 4, 0, 0);
+        raft.userData.heading = Math.PI;
+
+        if (gameRef.current.remotePlayersGroup) {
+            gameRef.current.remotePlayersGroup.add(raft);
+        }
+
+        const nextEntry = {
+            raft,
+            role,
+            targetState: null,
+            seed: Math.random() * Math.PI * 2,
+        };
+        networkRef.current.remotePlayers.set(playerId, nextEntry);
+        updateRoomPopulation();
+
+        return nextEntry;
+    };
+
+    const closeRoomSession = () => {
+        if (networkRef.current.channel && networkRef.current.playerId) {
+            networkRef.current.channel.postMessage({
+                type: 'leave',
+                playerId: networkRef.current.playerId,
+                roomCode: networkRef.current.roomCode,
+            });
+        }
+
+        if (networkRef.current.unloadHandler) {
+            window.removeEventListener('beforeunload', networkRef.current.unloadHandler);
+        }
+
+        if (networkRef.current.channel) {
+            networkRef.current.channel.close();
+        }
+
+        networkRef.current.remotePlayers.forEach((entry) => {
+            if (gameRef.current.remotePlayersGroup) {
+                gameRef.current.remotePlayersGroup.remove(entry.raft);
+            }
+        });
+
+        networkRef.current = {
+            channel: null,
+            roomCode: null,
+            playerId: null,
+            remotePlayers: new Map(),
+            unloadHandler: null,
+            lastBroadcastAt: 0,
+        };
+        setRoomPopulation(1);
+    };
+
+    const openRoomSession = (nextSessionInfo) => {
+        closeRoomSession();
+
+        if (nextSessionInfo.mode !== 'multiplayer' || !nextSessionInfo.code || typeof window.BroadcastChannel === 'undefined') {
+            return;
+        }
+
+        const roomCode = nextSessionInfo.code;
+        const playerId = `${nextSessionInfo.role}-${Math.random().toString(36).slice(2, 10)}`;
+        const channel = new BroadcastChannel(`skills-world:${roomCode}`);
+
+        const handleLeave = () => {
+            channel.postMessage({
+                type: 'leave',
+                playerId,
+                roomCode,
+            });
+        };
+
+        channel.onmessage = (event) => {
+            const message = event.data;
+            if (!message || message.roomCode !== roomCode || message.playerId === playerId) {
+                return;
+            }
+
+            if (message.type === 'leave') {
+                removeRemotePlayer(message.playerId);
+                return;
+            }
+
+            if (message.type === 'state' && message.state) {
+                const remoteEntry = ensureRemotePlayer(message.playerId, message.role);
+                remoteEntry.targetState = message.state;
+            }
+        };
+
+        window.addEventListener('beforeunload', handleLeave);
+
+        networkRef.current = {
+            channel,
+            roomCode,
+            playerId,
+            remotePlayers: new Map(),
+            unloadHandler: handleLeave,
+            lastBroadcastAt: 0,
+        };
+        setRoomPopulation(1);
+    };
+
     const startGameplay = async (nextSessionInfo) => {
         setSessionInfo(nextSessionInfo);
         setMenuMessage('');
@@ -945,6 +1290,12 @@ const SkillsGame = () => {
         setShowHelp(true);
         pausedRef.current = false;
         setPaused(false);
+        if (nextSessionInfo.mode === 'multiplayer') {
+            openRoomSession(nextSessionInfo);
+        } else {
+            closeRoomSession();
+            setRoomPopulation(1);
+        }
         syncStage('playing');
         await requestMobileFullscreen();
     };
@@ -1018,17 +1369,33 @@ const SkillsGame = () => {
 
             {/* Loading */}
             {!loaded && (
-                <div style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'radial-gradient(circle at 20% 18%, rgba(56,189,248,0.18), transparent 28%), radial-gradient(circle at 82% 22%, rgba(251,191,36,0.12), transparent 24%), linear-gradient(160deg,#000c20,#001840)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: 22, backdropFilter: 'blur(10px)' }}>
-                    <div style={{ fontSize: 58, filter: 'drop-shadow(0 0 22px #00bfff)', animation: 'skillsLoaderFloat 2.8s ease-in-out infinite' }}>🌊</div>
+                <div style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(6, 12, 23, 0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: 22, backdropFilter: 'blur(10px)' }}>
+                    <div style={{
+                        width: 118,
+                        height: 118,
+                        borderRadius: 999,
+                        border: '2px solid rgba(212,163,115,0.3)',
+                        background: '#4b3628',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
+                        animation: 'skillsLoaderFloat 2.8s ease-in-out infinite'
+                    }}>
+                        <div style={{ animation: 'skillsLoaderSpin 8s linear infinite' }}>
+                            <NauticalMark size={68} />
+                        </div>
+                    </div>
                     <div style={{ textAlign: 'center', maxWidth: 360, paddingInline: 20 }}>
-                        <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: 3 }}>SKILLS WORLD</div>
-                        <div style={{ fontSize: 12, opacity: 0.62, marginTop: 6 }}>{loadingLabel}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 5, color: '#d4a373', marginBottom: 10 }}>SHIP LOG BOOTING</div>
+                        <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 3, color: '#fefae0', fontFamily: '"Courier New", monospace' }}>RAFT ADVENTURE</div>
+                        <div style={{ fontSize: 12, opacity: 0.72, marginTop: 10, color: '#fefae0' }}>{loadingLabel}</div>
                     </div>
                     <div style={{ width: 240, maxWidth: '80vw', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.35)' }}>
-                            <div style={{ height: '100%', width: `${loadingProgress}%`, background: 'linear-gradient(90deg,#0ea5e9,#38bdf8,#93c5fd)', borderRadius: 99, boxShadow: '0 0 20px rgba(56,189,248,0.55)', transition: 'width 280ms ease' }} />
+                        <div style={{ height: 10, background: 'rgba(26,20,15,0.9)', borderRadius: 999, overflow: 'hidden', border: '1px solid rgba(212,163,115,0.18)' }}>
+                            <div style={{ height: '100%', width: `${loadingProgress}%`, background: '#bc6c25', borderRadius: 999, boxShadow: '0 0 12px rgba(188,108,37,0.45)', transition: 'width 280ms ease' }} />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: '"Courier New", monospace', fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.78)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: '"Courier New", monospace', fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'rgba(254,250,224,0.78)' }}>
                             <span>Booting</span>
                             <span>{loadingProgress}%</span>
                         </div>
@@ -1037,6 +1404,10 @@ const SkillsGame = () => {
                         @keyframes skillsLoaderFloat {
                             0%, 100% { transform: translateY(0); }
                             50% { transform: translateY(-8px); }
+                        }
+                        @keyframes skillsLoaderSpin {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
                         }
                     `}</style>
                 </div>
@@ -1116,6 +1487,30 @@ const SkillsGame = () => {
                 </div>
             )}
 
+            {loaded && gameStage === 'playing' && sessionInfo?.mode === 'multiplayer' && (
+                <div style={{
+                    position: 'absolute',
+                    top: 18,
+                    left: 18,
+                    zIndex: 120,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    border: '1px solid rgba(148,163,184,0.16)',
+                    background: 'rgba(8, 15, 31, 0.82)',
+                    color: '#fff',
+                    backdropFilter: 'blur(8px)',
+                }}>
+                    <div style={{ fontSize: 11, letterSpacing: '0.24em', textTransform: 'uppercase', color: sessionInfo.role === 'host' ? '#7dd3fc' : '#fde68a', fontWeight: 800 }}>
+                        {sessionInfo.role === 'host' ? 'Host Room' : 'Player 2'}
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '0.18em' }}>{sessionInfo.code}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(226,232,240,0.72)' }}>{roomPopulation} pemain terhubung</div>
+                </div>
+            )}
+
             {/* HUD */}
             {hud && gameStage === 'playing' && (
                 <div style={{ position: 'absolute', top: '58%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,8,25,0.9)', backdropFilter: 'blur(16px)', border: `1px solid ${hud.color}55`, borderRadius: 14, padding: '10px 24px', color: '#fff', textAlign: 'center', pointerEvents: 'none', zIndex: 20 }}>
@@ -1146,47 +1541,65 @@ const SkillsGame = () => {
                     position: 'absolute',
                     inset: 0,
                     zIndex: 100,
-                    background: 'rgba(5, 10, 20, 0.72)',
+                    background: 'rgba(0,2,8,0.8)',
                     backdropFilter: 'blur(12px)',
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: isMobile ? 'stretch' : 'center',
                     justifyContent: 'center',
-                    padding: isMobile ? '20px' : '32px',
+                    padding: isMobile ? '16px' : '32px',
+                    overflowY: 'auto',
                 }}>
                     <div style={{
                         width: '100%',
                         maxWidth: 540,
-                        borderRadius: 28,
-                        border: '1px solid rgba(148, 163, 184, 0.16)',
-                        background: '#0b1324',
-                        boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+                        margin: isMobile ? 'auto 0' : '0',
+                        borderRadius: 4,
+                        border: '8px solid #1a140f',
+                        background: '#4b3628',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.36)',
                         padding: isMobile ? '24px' : '32px',
+                        maxHeight: isMobile ? 'calc(100dvh - 32px)' : 'none',
+                        overflowY: isMobile ? 'auto' : 'visible',
                         color: '#fff',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 22,
+                        position: 'relative',
                     }}>
+                        {[0, 1, 2, 3].map((index) => (
+                            <div
+                                key={index}
+                                style={{
+                                    position: 'absolute',
+                                    width: 12,
+                                    height: 12,
+                                    background: '#222',
+                                    borderRadius: '50%',
+                                    top: index < 2 ? 10 : 'auto',
+                                    bottom: index >= 2 ? 10 : 'auto',
+                                    left: index % 2 === 0 ? 10 : 'auto',
+                                    right: index % 2 !== 0 ? 10 : 'auto',
+                                    boxShadow: 'inset 2px 2px 2px rgba(255,255,255,0.1)',
+                                }}
+                            />
+                        ))}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <div style={{
                                 display: 'inline-flex',
                                 alignSelf: 'flex-start',
-                                padding: '6px 12px',
-                                borderRadius: 999,
-                                border: '1px solid rgba(125,211,252,0.16)',
-                                background: '#10213a',
-                                color: '#7dd3fc',
-                                fontSize: 11,
+                                color: '#d4a373',
+                                fontSize: 13,
                                 fontWeight: 800,
-                                letterSpacing: '0.24em',
+                                letterSpacing: '0.36em',
                                 textTransform: 'uppercase',
                             }}>
-                                Skills World
+                                {menuView === 'main' ? 'Ship Log Ready' : menuView === 'multiplayer' ? 'Multiplayer Dock' : 'Room Manifest'}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <h1 style={{ margin: 0, fontSize: isMobile ? 28 : 34, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                                    {menuView === 'main' ? 'Main Menu' : menuView === 'multiplayer' ? 'Multiplayer Lobby' : 'Room Ready'}
+                                <h1 style={{ margin: 0, fontSize: isMobile ? 28 : 34, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fefae0', fontFamily: '"Courier New", monospace' }}>
+                                    {menuView === 'main' ? 'Raft Adventure' : menuView === 'multiplayer' ? 'Crew Setup' : 'Room Ready'}
                                 </h1>
-                                <p style={{ margin: 0, color: 'rgba(226,232,240,0.72)', fontSize: 14, lineHeight: 1.7 }}>
+                                <p style={{ margin: 0, color: 'rgba(254,250,224,0.72)', fontSize: 14, lineHeight: 1.7, fontFamily: 'system-ui' }}>
                                     {menuView === 'main'
                                         ? 'Pilih mode bermain dulu. Setelah itu baru karakter bisa mulai berlayar.'
                                         : menuView === 'multiplayer'
@@ -1203,17 +1616,19 @@ const SkillsGame = () => {
                                     onClick={() => void handleSinglePlayer()}
                                     style={{
                                         padding: '22px 20px',
-                                        borderRadius: 22,
-                                        border: '1px solid rgba(56,189,248,0.22)',
-                                        background: '#10213a',
-                                        color: '#fff',
+                                        borderRadius: 4,
+                                        border: '2px solid #bc6c25',
+                                        background: '#bc6c25',
+                                        color: '#fefae0',
                                         textAlign: 'left',
                                         cursor: 'pointer',
+                                        boxShadow: '0 4px 0 #603813',
+                                        fontFamily: '"Courier New", monospace',
                                     }}
                                 >
-                                    <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7dd3fc', fontWeight: 800 }}>Solo</div>
-                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Single Player</div>
-                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(226,232,240,0.72)', lineHeight: 1.6 }}>
+                                    <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#f6d7b0', fontWeight: 800 }}>Solo</div>
+                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Resume Voyage</div>
+                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(254,250,224,0.78)', lineHeight: 1.6, fontFamily: 'system-ui' }}>
                                         Langsung masuk ke world dan eksplor skill sendiri.
                                     </div>
                                 </button>
@@ -1223,17 +1638,18 @@ const SkillsGame = () => {
                                     onClick={() => { setMenuMessage(''); setMenuView('multiplayer'); }}
                                     style={{
                                         padding: '22px 20px',
-                                        borderRadius: 22,
-                                        border: '1px solid rgba(148,163,184,0.16)',
-                                        background: '#111827',
-                                        color: '#fff',
+                                        borderRadius: 4,
+                                        border: '2px solid #8fb8d8',
+                                        background: 'transparent',
+                                        color: '#d7efff',
                                         textAlign: 'left',
                                         cursor: 'pointer',
+                                        fontFamily: '"Courier New", monospace',
                                     }}
                                 >
                                     <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#fde68a', fontWeight: 800 }}>Party</div>
-                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Multiplayer</div>
-                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(226,232,240,0.72)', lineHeight: 1.6 }}>
+                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Main Menu</div>
+                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(254,250,224,0.78)', lineHeight: 1.6, fontFamily: 'system-ui' }}>
                                         Buat room dan share kode ke player 2 untuk masuk bareng.
                                     </div>
                                 </button>
@@ -1242,11 +1658,11 @@ const SkillsGame = () => {
 
                         {menuView === 'multiplayer' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.1fr 0.9fr', gap: 16 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
                                     <div style={{
-                                        borderRadius: 22,
-                                        border: '1px solid rgba(56,189,248,0.18)',
-                                        background: '#0f1b33',
+                                        borderRadius: 4,
+                                        border: '2px solid rgba(143,184,216,0.28)',
+                                        background: 'rgba(255,255,255,0.03)',
                                         padding: '20px',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -1264,14 +1680,16 @@ const SkillsGame = () => {
                                             onClick={handleCreateGame}
                                             style={{
                                                 padding: '14px 16px',
-                                                borderRadius: 16,
+                                                borderRadius: 4,
                                                 border: 'none',
-                                                background: '#38bdf8',
-                                                color: '#07111f',
+                                                background: '#bc6c25',
+                                                color: '#fefae0',
                                                 fontWeight: 900,
                                                 fontSize: 14,
                                                 textTransform: 'uppercase',
                                                 cursor: 'pointer',
+                                                boxShadow: '0 4px 0 #603813',
+                                                fontFamily: '"Courier New", monospace',
                                             }}
                                         >
                                             Generate Code
@@ -1279,9 +1697,9 @@ const SkillsGame = () => {
                                     </div>
 
                                     <div style={{
-                                        borderRadius: 22,
-                                        border: '1px solid rgba(148,163,184,0.16)',
-                                        background: '#111827',
+                                        borderRadius: 4,
+                                        border: '2px solid rgba(143,184,216,0.22)',
+                                        background: 'rgba(255,255,255,0.03)',
                                         padding: '20px',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -1302,15 +1720,17 @@ const SkillsGame = () => {
                                             style={{
                                                 width: '100%',
                                                 padding: '14px 16px',
-                                                borderRadius: 16,
-                                                border: '1px solid rgba(255,255,255,0.12)',
-                                                background: '#09111f',
-                                                color: '#fff',
-                                                fontSize: 18,
+                                                borderRadius: 4,
+                                                border: '2px solid rgba(143,184,216,0.16)',
+                                                background: 'rgba(10,10,10,0.22)',
+                                                color: '#fefae0',
+                                                fontSize: isMobile ? 16 : 18,
                                                 fontWeight: 800,
-                                                letterSpacing: '0.28em',
+                                                letterSpacing: isMobile ? '0.18em' : '0.28em',
                                                 textTransform: 'uppercase',
                                                 outline: 'none',
+                                                minWidth: 0,
+                                                fontFamily: '"Courier New", monospace',
                                             }}
                                         />
                                         <button
@@ -1318,14 +1738,15 @@ const SkillsGame = () => {
                                             onClick={handleJoinGame}
                                             style={{
                                                 padding: '14px 16px',
-                                                borderRadius: 16,
-                                                border: '1px solid rgba(148,163,184,0.18)',
-                                                background: '#1f2937',
-                                                color: '#e2e8f0',
+                                                borderRadius: 4,
+                                                border: '2px solid #8fb8d8',
+                                                background: 'transparent',
+                                                color: '#d7efff',
                                                 fontWeight: 900,
                                                 fontSize: 14,
                                                 textTransform: 'uppercase',
                                                 cursor: 'pointer',
+                                                fontFamily: '"Courier New", monospace',
                                             }}
                                         >
                                             Masuk Dengan Code
@@ -1339,11 +1760,13 @@ const SkillsGame = () => {
                                     style={{
                                         alignSelf: 'flex-start',
                                         padding: '12px 16px',
-                                        borderRadius: 14,
-                                        border: '1px solid rgba(148,163,184,0.16)',
-                                        background: '#111827',
-                                        color: 'rgba(226,232,240,0.8)',
+                                        borderRadius: 4,
+                                        border: '2px solid #6f4e37',
+                                        background: 'transparent',
+                                        color: '#d4a373',
                                         cursor: 'pointer',
+                                        fontFamily: '"Courier New", monospace',
+                                        textTransform: 'uppercase',
                                     }}
                                 >
                                     Kembali
@@ -1354,9 +1777,9 @@ const SkillsGame = () => {
                         {menuView === 'multiplayer-room' && sessionInfo && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                                 <div style={{
-                                    borderRadius: 24,
-                                    border: '1px solid rgba(148,163,184,0.16)',
-                                    background: '#0f1b33',
+                                    borderRadius: 4,
+                                    border: '2px solid rgba(143,184,216,0.22)',
+                                    background: 'rgba(255,255,255,0.03)',
                                     padding: '22px',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -1375,12 +1798,14 @@ const SkillsGame = () => {
                                                 onClick={() => void handleCopyCode()}
                                                 style={{
                                                     padding: '12px 16px',
-                                                    borderRadius: 14,
-                                                    border: '1px solid rgba(56,189,248,0.2)',
-                                                    background: '#10213a',
-                                                    color: '#7dd3fc',
+                                                    borderRadius: 4,
+                                                    border: '2px solid #8fb8d8',
+                                                    background: 'transparent',
+                                                    color: '#d7efff',
                                                     fontWeight: 800,
                                                     cursor: 'pointer',
+                                                    fontFamily: '"Courier New", monospace',
+                                                    textTransform: 'uppercase',
                                                 }}
                                             >
                                                 Copy Code
@@ -1401,14 +1826,16 @@ const SkillsGame = () => {
                                         style={{
                                             flex: 1,
                                             padding: '16px 18px',
-                                            borderRadius: 16,
+                                            borderRadius: 4,
                                             border: 'none',
-                                            background: sessionInfo.role === 'host' ? '#38bdf8' : '#e2e8f0',
-                                            color: '#07111f',
+                                            background: '#bc6c25',
+                                            color: '#fefae0',
                                             fontWeight: 900,
                                             fontSize: 15,
                                             textTransform: 'uppercase',
                                             cursor: 'pointer',
+                                            boxShadow: '0 4px 0 #603813',
+                                            fontFamily: '"Courier New", monospace',
                                         }}
                                     >
                                         {sessionInfo.role === 'host' ? 'Start As Host' : 'Join As Player 2'}
@@ -1418,12 +1845,14 @@ const SkillsGame = () => {
                                         onClick={() => { setMenuMessage(''); setMenuView('multiplayer'); }}
                                         style={{
                                             padding: '16px 18px',
-                                            borderRadius: 16,
-                                            border: '1px solid rgba(148,163,184,0.16)',
-                                            background: '#111827',
-                                            color: 'rgba(226,232,240,0.8)',
+                                            borderRadius: 4,
+                                            border: '2px solid #8fb8d8',
+                                            background: 'transparent',
+                                            color: '#d7efff',
                                             fontWeight: 800,
                                             cursor: 'pointer',
+                                            fontFamily: '"Courier New", monospace',
+                                            textTransform: 'uppercase',
                                         }}
                                     >
                                         Ganti Room
@@ -1434,9 +1863,10 @@ const SkillsGame = () => {
 
                         <div style={{
                             minHeight: 24,
-                            color: menuMessage ? '#bae6fd' : 'rgba(226,232,240,0.48)',
+                            color: menuMessage ? '#d7efff' : 'rgba(254,250,224,0.58)',
                             fontSize: 13,
                             lineHeight: 1.6,
+                            fontFamily: 'system-ui',
                         }}>
                             {menuMessage || 'Host bisa generate kode room, lalu player 2 masuk memakai kode yang sama.'}
                         </div>
@@ -1488,6 +1918,8 @@ const SkillsGame = () => {
                                     setShowHelp(true);
                                     setMenuMessage('');
                                     setMenuView('main');
+                                    setSessionInfo(null);
+                                    closeRoomSession();
                                     syncStage('menu');
                                 }}
                                 style={{
