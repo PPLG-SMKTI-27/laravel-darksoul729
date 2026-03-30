@@ -103,86 +103,14 @@ const FauxProjectCard = ({ project, index }) => {
     );
 };
 
-const ChainModel = ({ mirrored = false }) => {
-    const chainData = useMemo(() => {
-        return [
-            { position: new THREE.Vector3(2.36, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
-            { position: new THREE.Vector3(1.98, 0.02, 0), rotation: [Math.PI / 2, 0, 0.16], scale: [2.55, 0.72, 1] },
-            { position: new THREE.Vector3(1.56, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
-            { position: new THREE.Vector3(1.16, 0.02, 0), rotation: [Math.PI / 2, 0, 0.14], scale: [2.55, 0.72, 1] },
-            { position: new THREE.Vector3(0.72, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
-            { position: new THREE.Vector3(0.32, 0.02, 0), rotation: [Math.PI / 2, 0, 0.12], scale: [2.55, 0.72, 1] },
-            { position: new THREE.Vector3(-0.1, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
-            { position: new THREE.Vector3(-0.5, 0.02, 0), rotation: [Math.PI / 2, 0, 0.1], scale: [2.55, 0.72, 1] },
-            { position: new THREE.Vector3(-0.94, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
-            { position: new THREE.Vector3(-1.34, 0.02, 0), rotation: [Math.PI / 2, 0, 0.08], scale: [2.55, 0.72, 1] },
-            { position: new THREE.Vector3(-1.78, 0, 0), rotation: [0, 0, 0], scale: [2.7, 0.72, 1] },
-        ];
-    }, []);
 
-    return (
-        <group scale={mirrored ? [-1, 1, 1] : [1, 1, 1]}>
-            {chainData.map((link, index) => (
-                <group
-                    key={index}
-                    position={link.position}
-                    rotation={link.rotation}
-                >
-                    <mesh scale={link.scale} castShadow receiveShadow>
-                        <torusGeometry args={[0.128, 0.034, 16, 40]} />
-                        <meshPhysicalMaterial
-                            color="#dce2eb"
-                            metalness={0.62}
-                            roughness={0.24}
-                            clearcoat={0.88}
-                            reflectivity={0.92}
-                        />
-                    </mesh>
-                </group>
-            ))}
-
-            <mesh position={[2.9, 0, 0]} rotation={[0, Math.PI / 2, 0]} castShadow receiveShadow>
-                <cylinderGeometry args={[0.05, 0.05, 0.18, 20]} />
-                <meshPhysicalMaterial color="#cfd7e3" metalness={0.42} roughness={0.26} clearcoat={0.74} />
-            </mesh>
-            <mesh position={[2.68, 0, 0]} rotation={[0, 0, 0]} castShadow receiveShadow scale={[1.4, 0.95, 1]}>
-                <torusGeometry args={[0.082, 0.022, 14, 28]} />
-                <meshPhysicalMaterial color="#e2e8f0" metalness={0.5} roughness={0.25} clearcoat={0.78} />
-            </mesh>
-        </group>
-    );
-};
-
-const ChainDecoration3D = ({ side = 'left' }) => {
-    const isLeft = side === 'left';
-
-    return (
-        <div className={`pointer-events-none absolute top-1/2 hidden h-[150px] w-[360px] -translate-y-1/2 lg:block ${isLeft ? 'right-full -mr-4' : 'left-full -ml-4'}`}>
-            <Canvas
-                camera={{ position: [0.14, 2.1, 1.42], fov: 20 }}
-                dpr={[1, 1.5]}
-                frameloop="demand"
-                shadows
-                gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }}
-            >
-                <ambientLight intensity={1.15} />
-                <directionalLight position={[4, 4, 5]} intensity={1.5} castShadow shadow-mapSize={[512, 512]} />
-                <directionalLight position={[-3, -2, 2]} intensity={0.38} color="#94a3b8" />
-                <group rotation={[-0.58, 0, 0]}>
-                    <ChainModel mirrored={!isLeft} />
-                </group>
-            </Canvas>
-        </div>
-    );
-};
 
 const FauxShelf = ({ projects }) => {
     const primaryProject = projects[0];
 
     return (
         <div className="relative overflow-visible rounded-[2.4rem] border-[4px] border-[#eef2f8] bg-[linear-gradient(180deg,#d8dde6_0%,#c3cad5_42%,#b1bccb_100%)] p-4 shadow-[inset_0_3px_0_rgba(255,255,255,0.96),inset_0_-8px_14px_rgba(100,116,139,0.24),12px_12px_0_rgba(148,163,184,0.5),0_22px_44px_rgba(15,23,42,0.14)] md:p-6">
-            <ChainDecoration3D side="left" />
-            <ChainDecoration3D side="right" />
+
             <div className="absolute left-18 top-[-14px] h-3.5 w-20 rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#c7cfda_100%)] shadow-[0_2px_0_rgba(255,255,255,0.6)]" />
             <div className="absolute inset-x-5 top-2 h-6 rounded-full bg-white/60 blur-md" />
             <div className="absolute inset-y-5 left-[-10px] w-2 rounded-l-full bg-[linear-gradient(180deg,#94a3b8_0%,#64748b_100%)] opacity-80" />

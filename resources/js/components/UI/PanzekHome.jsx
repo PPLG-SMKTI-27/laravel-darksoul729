@@ -22,7 +22,8 @@ import {
     SkipBack,
     Send,
     Volume2,
-    Zap
+    Zap,
+    Image as ImageIcon
 } from 'lucide-react';
 
 const TerminalApp = () => {
@@ -147,24 +148,87 @@ const SettingsApp = ({ performanceMode, setPerformanceMode }) => {
     );
 };
 
-const CameraApp = () => {
+const CameraApp = ({ onCapture }) => {
     const [shutter, setShutter] = useState(false);
+    const [stream, setStream] = useState(null);
+    const [error, setError] = useState(null);
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+
+    useEffect(() => {
+        let currentStream = null;
+        const startCamera = async () => {
+            try {
+                const mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user' },
+                    audio: false
+                });
+                setStream(mediaStream);
+                currentStream = mediaStream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = mediaStream;
+                }
+            } catch (err) {
+                console.error("Camera error:", err);
+                setError(err.name === 'NotAllowedError' ? 'Permission Denied' : 'Camera Error');
+            }
+        };
+
+        startCamera();
+
+        return () => {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
 
     const triggerShutter = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+
         setShutter(true);
-        setTimeout(() => setShutter(false), 100);
+        setTimeout(() => setShutter(false), 150);
+
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        onCapture?.(dataUrl);
+
+        // Success Haptic/Sound feel
+        if (window.navigator?.vibrate) {
+            window.navigator.vibrate(20);
+        }
     };
 
     return (
         <div className="relative h-full bg-black flex items-center justify-center overflow-hidden">
-            {/* Viewfinder background (Mock) */}
-            <div className="absolute inset-0 opacity-40" style={{
-                backgroundImage: 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop")',
-                backgroundSize: 'cover'
-            }} />
+            {stream ? (
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="absolute inset-0 w-full h-full object-cover"
+                />
+            ) : (
+                <div className="flex flex-col items-center gap-3 text-white/50 px-6 text-center">
+                    <CameraIcon size={40} className="opacity-20 mb-2" />
+                    <p className="text-[10px] bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm">
+                        {error || 'Requesting Camera Access...'}
+                    </p>
+                </div>
+            )}
+
+            {/* Hidden canvas for capture */}
+            <canvas ref={canvasRef} className="hidden" />
 
             {/* Viewfinder UI */}
-            <div className="absolute inset-4 border border-white/20 flex flex-col justify-between p-2 pointer-events-none">
+            <div className="absolute inset-4 border border-white/20 flex flex-col justify-between p-2 pointer-events-none z-10">
                 <div className="flex justify-between items-start">
                     <div className="w-4 h-4 border-t-2 border-l-2 border-white/60" />
                     <div className="w-4 h-4 border-t-2 border-r-2 border-white/60" />
@@ -188,12 +252,84 @@ const CameraApp = () => {
             </AnimatePresence>
 
             {/* Shutter Button */}
-            <button
-                onClick={triggerShutter}
-                className="absolute bottom-6 w-12 h-12 rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition-transform"
-            >
-                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border border-white/10" />
-            </button>
+            {stream && (
+                <button
+                    onClick={triggerShutter}
+                    className="absolute bottom-20 w-14 h-14 rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition-transform z-20 shadow-xl"
+                >
+                    <div className="w-11 h-11 rounded-full bg-white/30 backdrop-blur-md border border-white/20" />
+                </button>
+            )}
+        </div>
+    );
+};
+
+const GalleryApp = () => {
+    const [images, setImages] = useState([]);
+    const [selectedImage, setSelectedImage] = useState(null);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('panzek_captured_photos');
+        if (stored) {
+            try {
+                setImages(JSON.parse(stored).reverse());
+            } catch (e) {
+                console.error("Gallery parse error", e);
+            }
+        }
+    }, []);
+
+    return (
+        <div className="flex flex-col h-full bg-zinc-950 text-white p-2">
+            <div className="flex items-center justify-between px-2 py-3 border-b border-white/5 mb-2">
+                <h4 className="text-[12px] font-black uppercase tracking-widest text-zinc-400">Captured</h4>
+                <ImageIcon size={14} className="text-zinc-500" />
+            </div>
+
+            {images.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 overflow-y-auto pr-1 flex-1 content-start pb-4">
+                    {images.map((img, i) => (
+                        <motion.div
+                            key={i}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="aspect-square bg-zinc-900 rounded-sm overflow-hidden cursor-pointer active:opacity-70 transition-opacity"
+                            onClick={() => setSelectedImage(img)}
+                        >
+                            <img src={img} alt="" className="w-full h-full object-cover" />
+                        </motion.div>
+                    ))}
+                </div>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center opacity-20 gap-2">
+                    <ImageIcon size={32} />
+                    <p className="text-[9px] font-bold">LENS EMPTY</p>
+                </div>
+            )}
+
+            {/* Fullscreen Viewer */}
+            <AnimatePresence>
+                {selectedImage && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed inset-0 z-[100] bg-black flex flex-col"
+                    >
+                        <div className="flex items-center p-4">
+                            <button
+                                onClick={() => setSelectedImage(null)}
+                                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white"
+                            >
+                                <ChevronLeft size={20} strokeWidth={3} />
+                            </button>
+                        </div>
+                        <div className="flex-1 flex items-center justify-center p-4">
+                            <img src={selectedImage} alt="Full view" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
@@ -309,15 +445,13 @@ const PanzekHome = ({ onNavigate }) => {
     }, []);
 
     const apps = useMemo(() => ([
-        { id: 1, name: 'Projects', icon: <FolderDot size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-blue-400 to-blue-600', action: () => onNavigate?.('/projects') },
-        { id: 2, name: 'Profile', icon: <UserIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-purple-400 to-purple-600', action: () => onNavigate?.('/about') },
-        { id: 3, name: 'Contact', icon: <Mail size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-green-400 to-green-600', action: () => onNavigate?.('/contact') },
         { id: 4, name: 'Settings', icon: <Settings size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-gray-500 to-gray-700', action: () => setActiveApp('Settings') },
         { id: 5, name: 'Terminal', icon: <TerminalIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-slate-700 to-slate-900', action: () => setActiveApp('Terminal') },
         { id: 6, name: 'Camera', icon: <CameraIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-yellow-400 to-yellow-600', action: () => setActiveApp('Camera') },
+        { id: 9, name: 'Gallery', icon: <ImageIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-orange-400 to-orange-600', action: () => setActiveApp('Gallery') },
         { id: 7, name: 'Messages', icon: <MessageCircle size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-emerald-400 to-emerald-600', action: () => setActiveApp('Messages') },
         { id: 8, name: 'Music', icon: <MusicIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-rose-400 to-rose-600', action: () => setActiveApp('Music') }
-    ]), [isCompactScreen, onNavigate]);
+    ]), [isCompactScreen]);
 
     const transitionProps = {
         type: 'spring',
@@ -334,7 +468,7 @@ const PanzekHome = ({ onNavigate }) => {
             transition={{ duration: performanceMode === 120 ? 0.3 : 0.5, ease: 'easeOut' }}
             className="absolute inset-0 bg-[#0a0a0a] z-10 overflow-hidden flex flex-col font-sans"
             style={{
-                backgroundImage: 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop")',
+                backgroundImage: 'url("https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1000&auto=format&fit=crop")',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
             }}
@@ -417,7 +551,20 @@ const PanzekHome = ({ onNavigate }) => {
                             <div className="flex-1 overflow-hidden">
                                 {activeApp === 'Settings' && <SettingsApp performanceMode={performanceMode} setPerformanceMode={setPerformanceMode} />}
                                 {activeApp === 'Terminal' && <TerminalApp />}
-                                {activeApp === 'Camera' && <CameraApp />}
+                                {activeApp === 'Camera' && (
+                                    <CameraApp onCapture={(img) => {
+                                        const stored = localStorage.getItem('panzek_captured_photos');
+                                        let photos = [];
+                                        if (stored) {
+                                            try { photos = JSON.parse(stored); } catch (e) { }
+                                        }
+                                        photos.push(img);
+                                        // Keep last 30 photos
+                                        if (photos.length > 30) photos.shift();
+                                        localStorage.setItem('panzek_captured_photos', JSON.stringify(photos));
+                                    }} />
+                                )}
+                                {activeApp === 'Gallery' && <GalleryApp />}
                                 {activeApp === 'Messages' && <MessagesApp />}
                                 {activeApp === 'Music' && <MusicApp />}
                             </div>
