@@ -208,6 +208,17 @@ void main() {
 }
 `;
 
+function generateRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+
+    for (let index = 0; index < 6; index += 1) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+
+    return code;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    LANDSCAPE PROMPT
 ══════════════════════════════════════════════════════════════════ */
@@ -310,11 +321,13 @@ const SkillsGame = () => {
     const mountRef = useRef(null);
     const gameRef = useRef({});
     const keysRef = useRef({});
+    const stageRef = useRef('loading');
 
     // Swipe Look state
     const touchLookRef = useRef({ active: false, touchId: null, lastX: 0, lastY: 0 });
 
     const [loaded, setLoaded] = useState(false);
+    const [gameStage, setGameStage] = useState('loading');
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [loadingLabel, setLoadingLabel] = useState('Menyiapkan lautan...');
     const [hud, setHud] = useState(null);
@@ -323,7 +336,17 @@ const SkillsGame = () => {
     const [isFullscreen, setIsFullscreen] = useState(() => typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false);
     const [showHelp, setShowHelp] = useState(true);
     const [paused, setPaused] = useState(false);
+    const [menuView, setMenuView] = useState('main');
+    const [roomCode, setRoomCode] = useState('');
+    const [joinCode, setJoinCode] = useState('');
+    const [menuMessage, setMenuMessage] = useState('');
+    const [sessionInfo, setSessionInfo] = useState(null);
     const pausedRef = useRef(false);
+
+    const syncStage = (stage) => {
+        stageRef.current = stage;
+        setGameStage(stage);
+    };
 
     useEffect(() => {
         const check = () => {
@@ -367,6 +390,7 @@ const SkillsGame = () => {
         const mount = mountRef.current;
         if (!mount) return;
 
+        syncStage('loading');
         setLoaded(false);
         setLoadingProgress(4);
         setLoadingLabel('Menyiapkan renderer...');
@@ -693,6 +717,9 @@ const SkillsGame = () => {
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('keydown', e => {
             if (e.code === 'Escape') {
+                if (stageRef.current !== 'playing') {
+                    return;
+                }
                 const nowPaused = !pausedRef.current;
                 pausedRef.current = nowPaused;
                 setPaused(nowPaused);
@@ -714,10 +741,10 @@ const SkillsGame = () => {
         /* ── ANIMATE ── */
         function animate() {
             animId = requestAnimationFrame(animate);
-            if (pausedRef.current) return; // freeze when paused
             const dt = Math.min(clock.getDelta(), 0.05);
             const time = clock.getElapsedTime();
             const keys = keysRef.current;
+            const controlsEnabled = stageRef.current === 'playing' && !pausedRef.current;
 
             /* update shader time */
             waterUniforms.uTime.value = time;
@@ -726,29 +753,35 @@ const SkillsGame = () => {
             /* ── manual look input check ── */
             // Handled by swipe & pointer lock
 
+            if (controlsEnabled) {
+                /* ── raft analog throttle & steer ── */
+                const throttle = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
 
-            /* ── raft analog throttle & steer ── */
-            const throttle = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+                if (Math.abs(throttle) > 0.02) {
+                    const targetAccel = throttle > 0 ? ACCEL : ACCEL * 0.6;
+                    player.speed += targetAccel * dt * throttle;
+                    player.speed = Math.max(-MAX_SPEED * 0.4, Math.min(MAX_SPEED, player.speed));
+                } else {
+                    const drag = player.speed > 0 ? -DECEL : DECEL;
+                    player.speed += drag * dt;
+                    if (Math.abs(player.speed) < 0.1) player.speed = 0;
+                }
 
-            if (Math.abs(throttle) > 0.02) {
-                const targetAccel = throttle > 0 ? ACCEL : ACCEL * 0.6;
-                player.speed += targetAccel * dt * throttle;
-                player.speed = Math.max(-MAX_SPEED * 0.4, Math.min(MAX_SPEED, player.speed));
+                const steer = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
+
+                if (Math.abs(player.speed) > 0.05) {
+                    player.heading += steer * TURN * dt * (player.speed / MAX_SPEED);
+                }
+
+                /* move raft */
+                raftGroup.position.x += Math.sin(player.heading) * player.speed * dt;
+                raftGroup.position.z += Math.cos(player.heading) * player.speed * dt;
             } else {
-                const drag = player.speed > 0 ? -DECEL : DECEL;
-                player.speed += drag * dt;
-                if (Math.abs(player.speed) < 0.1) player.speed = 0;
+                player.speed *= 0.92;
+                if (Math.abs(player.speed) < 0.05) {
+                    player.speed = 0;
+                }
             }
-
-            const steer = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
-
-            if (Math.abs(player.speed) > 0.05) {
-                player.heading += steer * TURN * dt * (player.speed / MAX_SPEED);
-            }
-
-            /* move raft */
-            raftGroup.position.x += Math.sin(player.heading) * player.speed * dt;
-            raftGroup.position.z += Math.cos(player.heading) * player.speed * dt;
 
             /* raft sits on water — raised above surface so planks stay solid */
             const rx = raftGroup.position.x, rz = raftGroup.position.z;
@@ -762,7 +795,7 @@ const SkillsGame = () => {
 
             /* ── JUMP ── */
             const raftTop = surfaceH + 0.14;
-            if (player.onGround && keys['Space']) {
+            if (controlsEnabled && player.onGround && keys['Space']) {
                 player.velY = JUMP;
                 player.onGround = false;
             }
@@ -805,7 +838,7 @@ const SkillsGame = () => {
             /* ── HUD raycasting ── */
             raycaster.setFromCamera(screenCenter, camera);
             const hits = raycaster.intersectObjects(allSprites);
-            setHud(hits.length > 0 && hits[0].distance < 28 ? hits[0].object.userData.skill : null);
+            setHud(controlsEnabled && hits.length > 0 && hits[0].distance < 28 ? hits[0].object.userData.skill : null);
 
             renderer.render(scene, camera);
         }
@@ -831,6 +864,7 @@ const SkillsGame = () => {
         gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onResize, player };
         updateLoading(100, 'World siap dimainkan');
         setLoaded(true);
+        syncStage('menu');
     }
 
     /* helpers */
@@ -904,6 +938,71 @@ const SkillsGame = () => {
         }
     };
 
+    const startGameplay = async (nextSessionInfo) => {
+        setSessionInfo(nextSessionInfo);
+        setMenuMessage('');
+        setMenuView('main');
+        setShowHelp(true);
+        pausedRef.current = false;
+        setPaused(false);
+        syncStage('playing');
+        await requestMobileFullscreen();
+    };
+
+    const handleSinglePlayer = async () => {
+        await startGameplay({
+            mode: 'single',
+            role: 'solo',
+            label: 'Single Player',
+        });
+    };
+
+    const handleCreateGame = () => {
+        const nextCode = generateRoomCode();
+        setRoomCode(nextCode);
+        setMenuMessage('Bagikan kode ini ke player 2 untuk masuk ke lobby yang sama.');
+        setMenuView('multiplayer-room');
+        setSessionInfo({
+            mode: 'multiplayer',
+            role: 'host',
+            code: nextCode,
+            label: 'Multiplayer Host',
+        });
+    };
+
+    const handleJoinGame = () => {
+        const normalizedCode = joinCode.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+
+        if (normalizedCode.length !== 6) {
+            setMenuMessage('Masukkan 6 karakter kode room terlebih dulu.');
+            return;
+        }
+
+        setJoinCode(normalizedCode);
+        setRoomCode(normalizedCode);
+        setMenuMessage(`Player 2 siap masuk ke room ${normalizedCode}.`);
+        setMenuView('multiplayer-room');
+        setSessionInfo({
+            mode: 'multiplayer',
+            role: 'guest',
+            code: normalizedCode,
+            label: 'Multiplayer Guest',
+        });
+    };
+
+    const handleCopyCode = async () => {
+        if (!roomCode || !navigator.clipboard?.writeText) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(roomCode);
+            setMenuMessage(`Kode ${roomCode} berhasil disalin.`);
+        } catch {
+            setMenuMessage('Browser menolak akses copy otomatis. Copy manual saja.');
+        }
+    };
+
     /* ── RENDER ── */
     if (isMobile && isPortrait) return <LandscapePrompt />;
 
@@ -944,7 +1043,7 @@ const SkillsGame = () => {
             )}
 
             {/* Crosshair */}
-            {loaded && (
+            {loaded && gameStage === 'playing' && (
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none', zIndex: 10 }}>
                     <svg width="22" height="22" viewBox="0 0 22 22">
                         <line x1="11" y1="1" x2="11" y2="8" stroke="rgba(255,255,255,0.7)" strokeWidth="1.3" />
@@ -956,7 +1055,7 @@ const SkillsGame = () => {
                 </div>
             )}
 
-            {isMobile && loaded && (
+            {isMobile && loaded && gameStage === 'playing' && (
                 <div style={{ position: 'absolute', top: 18, right: 18, display: 'flex', gap: 10, zIndex: 120 }}>
                     {!isFullscreen && (
                         <button
@@ -979,7 +1078,7 @@ const SkillsGame = () => {
                         </button>
                     )}
                     <button
-                        onClick={() => setPaused(true)}
+                        onClick={() => { pausedRef.current = true; setPaused(true); }}
                         style={{
                             padding: '10px 14px',
                             border: '2px solid rgba(255,255,255,0.24)',
@@ -1018,7 +1117,7 @@ const SkillsGame = () => {
             )}
 
             {/* HUD */}
-            {hud && (
+            {hud && gameStage === 'playing' && (
                 <div style={{ position: 'absolute', top: '58%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,8,25,0.9)', backdropFilter: 'blur(16px)', border: `1px solid ${hud.color}55`, borderRadius: 14, padding: '10px 24px', color: '#fff', textAlign: 'center', pointerEvents: 'none', zIndex: 20 }}>
                     <div style={{ fontSize: 24 }}>{hud.icon}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: hud.color }}>{hud.name}</div>
@@ -1028,7 +1127,7 @@ const SkillsGame = () => {
 
 
             {/* Help */}
-            {loaded && showHelp && !paused && (
+            {loaded && gameStage === 'playing' && showHelp && !paused && (
                 <>
                     <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,8,25,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0,180,255,0.2)', borderRadius: 14, padding: '12px 28px', color: '#fff', textAlign: 'center', pointerEvents: 'none', zIndex: 20, maxWidth: 380, lineHeight: 1.7 }}>
                         {isMobile
@@ -1042,7 +1141,310 @@ const SkillsGame = () => {
             )}
 
             {/* ── NAUTICAL PAUSE MENU ── */}
-            {paused && loaded && (
+            {loaded && gameStage === 'menu' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 100,
+                    background: 'rgba(5, 10, 20, 0.72)',
+                    backdropFilter: 'blur(12px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: isMobile ? '20px' : '32px',
+                }}>
+                    <div style={{
+                        width: '100%',
+                        maxWidth: 540,
+                        borderRadius: 28,
+                        border: '1px solid rgba(148, 163, 184, 0.16)',
+                        background: '#0b1324',
+                        boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+                        padding: isMobile ? '24px' : '32px',
+                        color: '#fff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 22,
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{
+                                display: 'inline-flex',
+                                alignSelf: 'flex-start',
+                                padding: '6px 12px',
+                                borderRadius: 999,
+                                border: '1px solid rgba(125,211,252,0.16)',
+                                background: '#10213a',
+                                color: '#7dd3fc',
+                                fontSize: 11,
+                                fontWeight: 800,
+                                letterSpacing: '0.24em',
+                                textTransform: 'uppercase',
+                            }}>
+                                Skills World
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <h1 style={{ margin: 0, fontSize: isMobile ? 28 : 34, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                    {menuView === 'main' ? 'Main Menu' : menuView === 'multiplayer' ? 'Multiplayer Lobby' : 'Room Ready'}
+                                </h1>
+                                <p style={{ margin: 0, color: 'rgba(226,232,240,0.72)', fontSize: 14, lineHeight: 1.7 }}>
+                                    {menuView === 'main'
+                                        ? 'Pilih mode bermain dulu. Setelah itu baru karakter bisa mulai berlayar.'
+                                        : menuView === 'multiplayer'
+                                            ? 'Host bisa buat room baru, player 2 tinggal masukkan kode room.'
+                                            : 'Bagikan room code ke player 2 atau masuk memakai kode yang sudah diberikan host.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {menuView === 'main' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => void handleSinglePlayer()}
+                                    style={{
+                                        padding: '22px 20px',
+                                        borderRadius: 22,
+                                        border: '1px solid rgba(56,189,248,0.22)',
+                                        background: '#10213a',
+                                        color: '#fff',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#7dd3fc', fontWeight: 800 }}>Solo</div>
+                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Single Player</div>
+                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(226,232,240,0.72)', lineHeight: 1.6 }}>
+                                        Langsung masuk ke world dan eksplor skill sendiri.
+                                    </div>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => { setMenuMessage(''); setMenuView('multiplayer'); }}
+                                    style={{
+                                        padding: '22px 20px',
+                                        borderRadius: 22,
+                                        border: '1px solid rgba(148,163,184,0.16)',
+                                        background: '#111827',
+                                        color: '#fff',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#fde68a', fontWeight: 800 }}>Party</div>
+                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Multiplayer</div>
+                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(226,232,240,0.72)', lineHeight: 1.6 }}>
+                                        Buat room dan share kode ke player 2 untuk masuk bareng.
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+
+                        {menuView === 'multiplayer' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.1fr 0.9fr', gap: 16 }}>
+                                    <div style={{
+                                        borderRadius: 22,
+                                        border: '1px solid rgba(56,189,248,0.18)',
+                                        background: '#0f1b33',
+                                        padding: '20px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 14,
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#7dd3fc', fontWeight: 800 }}>Host</div>
+                                            <div style={{ marginTop: 8, fontSize: 22, fontWeight: 800 }}>Create Game</div>
+                                        </div>
+                                        <p style={{ margin: 0, color: 'rgba(226,232,240,0.72)', fontSize: 13, lineHeight: 1.7 }}>
+                                            Buat room baru lalu kirim kode unik ke player 2.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateGame}
+                                            style={{
+                                                padding: '14px 16px',
+                                                borderRadius: 16,
+                                                border: 'none',
+                                                background: '#38bdf8',
+                                                color: '#07111f',
+                                                fontWeight: 900,
+                                                fontSize: 14,
+                                                textTransform: 'uppercase',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            Generate Code
+                                        </button>
+                                    </div>
+
+                                    <div style={{
+                                        borderRadius: 22,
+                                        border: '1px solid rgba(148,163,184,0.16)',
+                                        background: '#111827',
+                                        padding: '20px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 14,
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#fde68a', fontWeight: 800 }}>Player 2</div>
+                                            <div style={{ marginTop: 8, fontSize: 22, fontWeight: 800 }}>Join Game</div>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={joinCode}
+                                            onChange={(event) => {
+                                                setMenuMessage('');
+                                                setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
+                                            }}
+                                            placeholder="Masukkan kode"
+                                            style={{
+                                                width: '100%',
+                                                padding: '14px 16px',
+                                                borderRadius: 16,
+                                                border: '1px solid rgba(255,255,255,0.12)',
+                                                background: '#09111f',
+                                                color: '#fff',
+                                                fontSize: 18,
+                                                fontWeight: 800,
+                                                letterSpacing: '0.28em',
+                                                textTransform: 'uppercase',
+                                                outline: 'none',
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleJoinGame}
+                                            style={{
+                                                padding: '14px 16px',
+                                                borderRadius: 16,
+                                                border: '1px solid rgba(148,163,184,0.18)',
+                                                background: '#1f2937',
+                                                color: '#e2e8f0',
+                                                fontWeight: 900,
+                                                fontSize: 14,
+                                                textTransform: 'uppercase',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            Masuk Dengan Code
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => { setMenuMessage(''); setMenuView('main'); }}
+                                    style={{
+                                        alignSelf: 'flex-start',
+                                        padding: '12px 16px',
+                                        borderRadius: 14,
+                                        border: '1px solid rgba(148,163,184,0.16)',
+                                        background: '#111827',
+                                        color: 'rgba(226,232,240,0.8)',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    Kembali
+                                </button>
+                            </div>
+                        )}
+
+                        {menuView === 'multiplayer-room' && sessionInfo && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                                <div style={{
+                                    borderRadius: 24,
+                                    border: '1px solid rgba(148,163,184,0.16)',
+                                    background: '#0f1b33',
+                                    padding: '22px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 16,
+                                }}>
+                                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 14 }}>
+                                        <div>
+                                            <div style={{ fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', color: sessionInfo.role === 'host' ? '#7dd3fc' : '#fde68a', fontWeight: 800 }}>
+                                                {sessionInfo.role === 'host' ? 'Host Room' : 'Player 2 Joined'}
+                                            </div>
+                                            <div style={{ marginTop: 8, fontSize: 28, fontWeight: 900, letterSpacing: '0.22em' }}>{roomCode}</div>
+                                        </div>
+                                        {sessionInfo.role === 'host' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleCopyCode()}
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    borderRadius: 14,
+                                                    border: '1px solid rgba(56,189,248,0.2)',
+                                                    background: '#10213a',
+                                                    color: '#7dd3fc',
+                                                    fontWeight: 800,
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                Copy Code
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p style={{ margin: 0, color: 'rgba(226,232,240,0.72)', fontSize: 13, lineHeight: 1.7 }}>
+                                        {sessionInfo.role === 'host'
+                                            ? 'Kode room sudah siap dibagikan. Setelah player 2 dapat kodenya, host bisa mulai permainan.'
+                                            : 'Kode room sudah terpasang. Lanjutkan untuk masuk sebagai player 2.'}
+                                    </p>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => void startGameplay(sessionInfo)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '16px 18px',
+                                            borderRadius: 16,
+                                            border: 'none',
+                                            background: sessionInfo.role === 'host' ? '#38bdf8' : '#e2e8f0',
+                                            color: '#07111f',
+                                            fontWeight: 900,
+                                            fontSize: 15,
+                                            textTransform: 'uppercase',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        {sessionInfo.role === 'host' ? 'Start As Host' : 'Join As Player 2'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setMenuMessage(''); setMenuView('multiplayer'); }}
+                                        style={{
+                                            padding: '16px 18px',
+                                            borderRadius: 16,
+                                            border: '1px solid rgba(148,163,184,0.16)',
+                                            background: '#111827',
+                                            color: 'rgba(226,232,240,0.8)',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        Ganti Room
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{
+                            minHeight: 24,
+                            color: menuMessage ? '#bae6fd' : 'rgba(226,232,240,0.48)',
+                            fontSize: 13,
+                            lineHeight: 1.6,
+                        }}>
+                            {menuMessage || 'Host bisa generate kode room, lalu player 2 masuk memakai kode yang sama.'}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {paused && loaded && gameStage === 'playing' && (
                 <div style={{
                     position: 'absolute', inset: 0, zIndex: 100,
                     background: 'rgba(0,2,8,0.8)', backdropFilter: 'grayscale(1) blur(10px)',
@@ -1080,6 +1482,24 @@ const SkillsGame = () => {
                             </button>
 
                             <button
+                                onClick={() => {
+                                    pausedRef.current = false;
+                                    setPaused(false);
+                                    setShowHelp(true);
+                                    setMenuMessage('');
+                                    setMenuView('main');
+                                    syncStage('menu');
+                                }}
+                                style={{
+                                    padding: '16px', border: '2px solid #8fb8d8', background: 'rgba(143,184,216,0.08)', borderRadius: 4, cursor: 'pointer',
+                                    color: '#d7efff', fontSize: 16, fontWeight: 700, letterSpacing: 1,
+                                    fontFamily: '"Courier New", monospace', textTransform: 'uppercase'
+                                }}
+                            >
+                                Main Menu
+                            </button>
+
+                            <button
                                 onClick={() => { navigateWithCleanup('/'); }}
                                 style={{
                                     padding: '16px', border: '2px solid #603813', background: 'transparent', borderRadius: 4, cursor: 'pointer',
@@ -1099,7 +1519,7 @@ const SkillsGame = () => {
 
 
             {/* Mobile controls */}
-            {isMobile && loaded && (
+            {isMobile && loaded && gameStage === 'playing' && (
                 <DPad keys={keysRef.current} />
             )}
         </div>
