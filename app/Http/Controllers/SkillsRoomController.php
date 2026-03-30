@@ -131,6 +131,7 @@ class SkillsRoomController extends Controller
 
         SkillsRoom::query()
             ->doesntHave('players')
+            ->where('last_activity_at', '<', now()->subMinutes(10))
             ->delete();
     }
 
