@@ -3,6 +3,7 @@
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\SkillsRoomController;
 use Illuminate\Support\Facades\Route;
 
 // ==================== PUBLIC ROUTES ====================
@@ -24,6 +25,9 @@ Route::get('/project', [ProjectController::class, 'index']);
 Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])
     ->middleware('throttle:contact-submissions')
     ->name('contact.store');
+Route::post('/skills/rooms', [SkillsRoomController::class, 'store'])->name('skills.rooms.store');
+Route::post('/skills/rooms/join', [SkillsRoomController::class, 'join'])->name('skills.rooms.join');
+Route::post('/skills/rooms/sync', [SkillsRoomController::class, 'sync'])->name('skills.rooms.sync');
 
 // ==================== AUTHENTICATED ROUTES ====================
 Route::middleware('auth')->group(function () {

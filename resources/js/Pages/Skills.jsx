@@ -514,7 +514,7 @@ const SkillsGame = () => {
     const gameRef = useRef({});
     const keysRef = useRef({});
     const stageRef = useRef('loading');
-    const networkRef = useRef({ channel: null, roomCode: null, playerId: null, remotePlayers: new Map(), unloadHandler: null, lastBroadcastAt: 0 });
+    const networkRef = useRef({ roomCode: null, playerId: null, remotePlayers: new Map(), lastSyncAt: 0, syncInFlight: false });
     const sessionInfoRef = useRef(null);
 
     // Swipe Look state
@@ -536,6 +536,7 @@ const SkillsGame = () => {
     const [menuMessage, setMenuMessage] = useState('');
     const [sessionInfo, setSessionInfo] = useState(null);
     const [roomPopulation, setRoomPopulation] = useState(1);
+    const [menuBusy, setMenuBusy] = useState(false);
     const pausedRef = useRef(false);
 
     const syncStage = (stage) => {
@@ -1026,26 +1027,54 @@ const SkillsGame = () => {
                 entry.raft.rotation.z = Math.cos(time * 0.28 + entry.seed) * 0.012;
             });
 
-            const activeChannel = networkRef.current.channel;
-            if (
-                activeChannel &&
+            const shouldSyncRoom =
+                networkRef.current.playerId &&
                 stageRef.current === 'playing' &&
                 sessionInfoRef.current?.mode === 'multiplayer' &&
-                time - networkRef.current.lastBroadcastAt > 0.08
-            ) {
-                networkRef.current.lastBroadcastAt = time;
-                activeChannel.postMessage({
-                    type: 'state',
-                    playerId: networkRef.current.playerId,
-                    role: sessionInfoRef.current.role,
-                    roomCode: sessionInfoRef.current.code,
+                time - networkRef.current.lastSyncAt > 0.12 &&
+                !networkRef.current.syncInFlight;
+
+            if (shouldSyncRoom) {
+                networkRef.current.lastSyncAt = time;
+                networkRef.current.syncInFlight = true;
+
+                void postJson('/skills/rooms/sync', {
+                    code: sessionInfoRef.current.code,
+                    player_uuid: networkRef.current.playerId,
                     state: {
                         x: raftGroup.position.x,
                         y: raftGroup.position.y,
                         z: raftGroup.position.z,
                         heading: player.heading,
                     },
-                });
+                })
+                    .then((data) => {
+                        const seenPlayerIds = new Set();
+
+                        (data.players ?? []).forEach((remotePlayer) => {
+                            const remoteEntry = ensureRemotePlayer(
+                                remotePlayer.player_uuid,
+                                remotePlayer.role,
+                                remotePlayer.display_name,
+                            );
+                            remoteEntry.targetState = remotePlayer.state;
+                            seenPlayerIds.add(remotePlayer.player_uuid);
+                        });
+
+                        Array.from(networkRef.current.remotePlayers.keys()).forEach((playerId) => {
+                            if (!seenPlayerIds.has(playerId)) {
+                                removeRemotePlayer(playerId);
+                            }
+                        });
+
+                        setRoomPopulation(data.player_count ?? seenPlayerIds.size + 1);
+                    })
+                    .catch(() => {
+                        setMenuMessage('Koneksi room terputus. Coba masuk ulang ke room.');
+                    })
+                    .finally(() => {
+                        networkRef.current.syncInFlight = false;
+                    });
             }
 
             /* ── HUD raycasting ── */
@@ -1102,6 +1131,28 @@ const SkillsGame = () => {
         g.renderer.dispose();
         try { if (mountRef.current && g.renderer.domElement.parentNode === mountRef.current) mountRef.current.removeChild(g.renderer.domElement); } catch { }
     }
+
+    const postJson = async (url, payload = {}) => {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.message ?? 'Permintaan room gagal.');
+        }
+
+        return data;
+    };
 
     /* ── Touch Look Swipe Handler ── */
     const onTouchLookStart = (e) => {
@@ -1170,7 +1221,7 @@ const SkillsGame = () => {
         updateRoomPopulation();
     };
 
-    const ensureRemotePlayer = (playerId, role) => {
+    const ensureRemotePlayer = (playerId, role, displayName) => {
         const existingEntry = networkRef.current.remotePlayers.get(playerId);
         if (existingEntry) {
             return existingEntry;
@@ -1179,7 +1230,7 @@ const SkillsGame = () => {
         const accentColor = role === 'host' ? 0x38bdf8 : 0xfacc15;
         const raft = createRaftRig({
             accentColor,
-            label: role === 'host' ? 'HOST' : 'PLAYER 2',
+            label: displayName ?? (role === 'host' ? 'HOST' : 'CREW'),
         });
         raft.position.set((networkRef.current.remotePlayers.size + 1) * 4, 0, 0);
         raft.userData.heading = Math.PI;
@@ -1201,22 +1252,6 @@ const SkillsGame = () => {
     };
 
     const closeRoomSession = () => {
-        if (networkRef.current.channel && networkRef.current.playerId) {
-            networkRef.current.channel.postMessage({
-                type: 'leave',
-                playerId: networkRef.current.playerId,
-                roomCode: networkRef.current.roomCode,
-            });
-        }
-
-        if (networkRef.current.unloadHandler) {
-            window.removeEventListener('beforeunload', networkRef.current.unloadHandler);
-        }
-
-        if (networkRef.current.channel) {
-            networkRef.current.channel.close();
-        }
-
         networkRef.current.remotePlayers.forEach((entry) => {
             if (gameRef.current.remotePlayersGroup) {
                 gameRef.current.remotePlayersGroup.remove(entry.raft);
@@ -1224,78 +1259,70 @@ const SkillsGame = () => {
         });
 
         networkRef.current = {
-            channel: null,
             roomCode: null,
             playerId: null,
             remotePlayers: new Map(),
-            unloadHandler: null,
-            lastBroadcastAt: 0,
+            lastSyncAt: 0,
+            syncInFlight: false,
         };
         setRoomPopulation(1);
     };
 
-    const openRoomSession = (nextSessionInfo) => {
+    const openRoomSession = async (nextSessionInfo) => {
         closeRoomSession();
 
-        if (nextSessionInfo.mode !== 'multiplayer' || !nextSessionInfo.code || typeof window.BroadcastChannel === 'undefined') {
-            return;
+        if (nextSessionInfo.mode !== 'multiplayer' || !nextSessionInfo.code) {
+            return true;
         }
 
-        const roomCode = nextSessionInfo.code;
-        const playerId = `${nextSessionInfo.role}-${Math.random().toString(36).slice(2, 10)}`;
-        const channel = new BroadcastChannel(`skills-world:${roomCode}`);
-
-        const handleLeave = () => {
-            channel.postMessage({
-                type: 'leave',
-                playerId,
-                roomCode,
-            });
-        };
-
-        channel.onmessage = (event) => {
-            const message = event.data;
-            if (!message || message.roomCode !== roomCode || message.playerId === playerId) {
-                return;
-            }
-
-            if (message.type === 'leave') {
-                removeRemotePlayer(message.playerId);
-                return;
-            }
-
-            if (message.type === 'state' && message.state) {
-                const remoteEntry = ensureRemotePlayer(message.playerId, message.role);
-                remoteEntry.targetState = message.state;
-            }
-        };
-
-        window.addEventListener('beforeunload', handleLeave);
+        const data = await postJson('/skills/rooms/join', {
+            code: nextSessionInfo.code,
+            role: nextSessionInfo.role,
+        });
 
         networkRef.current = {
-            channel,
-            roomCode,
-            playerId,
+            roomCode: data.room.code,
+            playerId: data.player_uuid,
             remotePlayers: new Map(),
-            unloadHandler: handleLeave,
-            lastBroadcastAt: 0,
+            lastSyncAt: 0,
+            syncInFlight: false,
         };
-        setRoomPopulation(1);
+        (data.players ?? []).forEach((remotePlayer) => {
+            const remoteEntry = ensureRemotePlayer(
+                remotePlayer.player_uuid,
+                remotePlayer.role,
+                remotePlayer.display_name,
+            );
+            remoteEntry.targetState = remotePlayer.state;
+        });
+        setRoomPopulation(data.player_count ?? 1);
+
+        return true;
     };
 
     const startGameplay = async (nextSessionInfo) => {
-        setSessionInfo(nextSessionInfo);
         setMenuMessage('');
-        setMenuView('main');
-        setShowHelp(true);
-        pausedRef.current = false;
-        setPaused(false);
+        setMenuBusy(true);
+
         if (nextSessionInfo.mode === 'multiplayer') {
-            openRoomSession(nextSessionInfo);
+            try {
+                await openRoomSession(nextSessionInfo);
+            } catch (error) {
+                setMenuBusy(false);
+                setMenuMessage(error.message);
+                return;
+            }
         } else {
             closeRoomSession();
             setRoomPopulation(1);
         }
+
+        setSessionInfo(nextSessionInfo);
+        setMenuView('main');
+        setShowHelp(true);
+        pausedRef.current = false;
+        setPaused(false);
+        setMenuBusy(false);
         syncStage('playing');
         await requestMobileFullscreen();
     };
@@ -1308,17 +1335,26 @@ const SkillsGame = () => {
         });
     };
 
-    const handleCreateGame = () => {
-        const nextCode = generateRoomCode();
-        setRoomCode(nextCode);
-        setMenuMessage('Bagikan kode ini ke player 2 untuk masuk ke lobby yang sama.');
-        setMenuView('multiplayer-room');
-        setSessionInfo({
-            mode: 'multiplayer',
-            role: 'host',
-            code: nextCode,
-            label: 'Multiplayer Host',
-        });
+    const handleCreateGame = async () => {
+        setMenuBusy(true);
+        setMenuMessage('');
+
+        try {
+            const data = await postJson('/skills/rooms');
+            setRoomCode(data.code);
+            setMenuView('multiplayer-room');
+            setSessionInfo({
+                mode: 'multiplayer',
+                role: 'host',
+                code: data.code,
+                label: 'Multiplayer Host',
+            });
+            setMenuMessage('Room online siap. Bagikan kode ini ke pemain lain.');
+        } catch (error) {
+            setMenuMessage(error.message);
+        } finally {
+            setMenuBusy(false);
+        }
     };
 
     const handleJoinGame = () => {
@@ -1614,6 +1650,7 @@ const SkillsGame = () => {
                                 <button
                                     type="button"
                                     onClick={() => void handleSinglePlayer()}
+                                    disabled={menuBusy}
                                     style={{
                                         padding: '22px 20px',
                                         borderRadius: 4,
@@ -1636,6 +1673,7 @@ const SkillsGame = () => {
                                 <button
                                     type="button"
                                     onClick={() => { setMenuMessage(''); setMenuView('multiplayer'); }}
+                                    disabled={menuBusy}
                                     style={{
                                         padding: '22px 20px',
                                         borderRadius: 4,
@@ -1677,7 +1715,8 @@ const SkillsGame = () => {
                                         </p>
                                         <button
                                             type="button"
-                                            onClick={handleCreateGame}
+                                            onClick={() => void handleCreateGame()}
+                                            disabled={menuBusy}
                                             style={{
                                                 padding: '14px 16px',
                                                 borderRadius: 4,
@@ -1736,6 +1775,7 @@ const SkillsGame = () => {
                                         <button
                                             type="button"
                                             onClick={handleJoinGame}
+                                            disabled={menuBusy}
                                             style={{
                                                 padding: '14px 16px',
                                                 borderRadius: 4,
@@ -1823,6 +1863,7 @@ const SkillsGame = () => {
                                     <button
                                         type="button"
                                         onClick={() => void startGameplay(sessionInfo)}
+                                        disabled={menuBusy}
                                         style={{
                                             flex: 1,
                                             padding: '16px 18px',
@@ -1868,7 +1909,7 @@ const SkillsGame = () => {
                             lineHeight: 1.6,
                             fontFamily: 'system-ui',
                         }}>
-                            {menuMessage || 'Host bisa generate kode room, lalu player 2 masuk memakai kode yang sama.'}
+                            {menuBusy ? 'Menghubungkan room online...' : (menuMessage || 'Host bisa generate kode room, lalu pemain lain masuk memakai kode yang sama.')}
                         </div>
                     </div>
                 </div>
