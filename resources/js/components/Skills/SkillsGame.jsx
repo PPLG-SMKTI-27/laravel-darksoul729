@@ -33,19 +33,44 @@ function waveHeight(x, z, t) {
    SKILL DATA
 ══════════════════════════════════════════════════════════════════ */
 const SKILLS = [
-    { name: 'React', color: '#61DAFB', slug: 'react', category: 'Frontend' },
-    { name: 'Laravel', color: '#FF2D20', slug: 'laravel', category: 'Backend' },
-    { name: 'Three.js', color: '#FFFFFF', slug: 'threedotjs', category: '3D / Web' },
-    { name: 'JavaScript', color: '#F7DF1E', slug: 'javascript', category: 'Frontend' },
-    { name: 'PHP', color: '#8993BE', slug: 'php', category: 'Backend' },
-    { name: 'MySQL', color: '#4479A1', slug: 'mysql', category: 'Backend' },
-    { name: 'TailwindCSS', color: '#38BDF8', slug: 'tailwindcss', category: 'Frontend' },
-    { name: 'Vite', color: '#BD34FE', slug: 'vite', category: 'Tooling' },
-    { name: 'Node.js', color: '#539E43', slug: 'nodedotjs', category: 'Backend' },
-    { name: 'Git', color: '#F05032', slug: 'git', category: 'DevOps' },
-    { name: 'Docker', color: '#2496ED', slug: 'docker', category: 'DevOps' },
-    { name: 'CSS3', color: '#1572B6', slug: 'css3', category: 'Frontend' },
+    { name: 'React', color: '#61DAFB', iconSlug: 'react', category: 'Frontend' },
+    { name: 'Laravel', color: '#FF2D20', iconSlug: 'laravel', category: 'Backend' },
+    { name: 'Three.js', color: '#FFFFFF', iconSlug: 'threedotjs', category: '3D / Web' },
+    { name: 'JavaScript', color: '#F7DF1E', iconSlug: 'javascript', category: 'Frontend' },
+    { name: 'PHP', color: '#8993BE', iconSlug: 'php', category: 'Backend' },
+    { name: 'MySQL', color: '#4479A1', iconSlug: 'mysql', category: 'Backend' },
+    { name: 'TailwindCSS', color: '#38BDF8', iconSlug: 'tailwindcss', category: 'Frontend' },
+    { name: 'Vite', color: '#BD34FE', iconSlug: 'vite', category: 'Tooling' },
+    { name: 'Node.js', color: '#539E43', iconSlug: 'nodedotjs', category: 'Backend' },
+    { name: 'Git', color: '#F05032', iconSlug: 'git', category: 'DevOps' },
+    { name: 'Docker', color: '#2496ED', iconSlug: 'docker', category: 'DevOps' },
+    { name: 'CSS3', color: '#1572B6', iconSlug: 'css', category: 'Frontend' },
 ];
+
+function normalizeHexColor(color, fallbackColor = '#7dd3fc') {
+    const normalizedColor = typeof color === 'string' ? color.trim() : '';
+
+    return /^#[0-9a-fA-F]{6}$/.test(normalizedColor) ? normalizedColor : fallbackColor;
+}
+
+function parseHexColor(color, fallbackColor = '#7dd3fc') {
+    return Number.parseInt(normalizeHexColor(color, fallbackColor).slice(1), 16);
+}
+
+function normalizeSkill(skill, index = 0) {
+    const fallbackSkill = SKILLS[index % SKILLS.length] ?? SKILLS[0];
+    const fallbackColor = normalizeHexColor(fallbackSkill.color, '#7dd3fc');
+
+    return {
+        ...fallbackSkill,
+        ...skill,
+        name: typeof skill?.name === 'string' && skill.name.length > 0 ? skill.name : fallbackSkill.name,
+        color: normalizeHexColor(skill?.color, fallbackColor),
+        iconSlug: typeof skill?.iconSlug === 'string' && skill.iconSlug.length > 0 ? skill.iconSlug : (fallbackSkill.iconSlug ?? null),
+        category: typeof skill?.category === 'string' && skill.category.length > 0 ? skill.category : fallbackSkill.category,
+        icon: typeof skill?.icon === 'string' ? skill.icon : (fallbackSkill.icon ?? '⚓'),
+    };
+}
 
 /* ══════════════════════════════════════════════════════════════════
    SHADERS
@@ -558,6 +583,7 @@ const SkillsGame = () => {
     const [roomPopulation, setRoomPopulation] = useState(1);
     const [menuBusy, setMenuBusy] = useState(false);
     const pausedRef = useRef(false);
+    const renderCrashHandledRef = useRef(false);
 
     const syncStage = (stage) => {
         stageRef.current = stage;
@@ -781,15 +807,20 @@ const SkillsGame = () => {
 
         /* ── SKILL BUOYS (Wooden Signboard Style) ── */
         async function makeSkillCard(skill) {
+            const safeSkill = normalizeSkill(skill);
             const cvs = document.createElement('canvas');
             cvs.width = 512; cvs.height = 256;
             const ctx = cvs.getContext('2d');
+
+            if (!ctx) {
+                return new THREE.CanvasTexture(cvs);
+            }
 
             /* Clear */
             ctx.clearRect(0, 0, 512, 256);
 
             /* Weathered Wood Plank Background */
-            const hex = skill.color;
+            const hex = safeSkill.color;
             // Dark dry wood base
             ctx.fillStyle = '#2a1a10';
             rrect(ctx, 16, 16, 480, 224, 8); ctx.fill();
@@ -823,15 +854,17 @@ const SkillsGame = () => {
             ctx.beginPath(); ctx.arc(480, 224, 4, 0, Math.PI * 2); ctx.fill();
 
             /* Stenciled Brand Icon */
-            const iconUrl = `https://cdn.simpleicons.org/${skill.slug}/ffffff`; // White for stenciled look
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = iconUrl;
 
-            await new Promise((resolve) => {
-                img.onload = resolve;
-                img.onerror = resolve;
-            });
+            if (safeSkill.iconSlug) {
+                img.src = `https://cdn.simpleicons.org/${safeSkill.iconSlug}/ffffff`;
+
+                await new Promise((resolve) => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            }
 
             ctx.save();
             ctx.globalCompositeOperation = 'source-over';
@@ -842,17 +875,17 @@ const SkillsGame = () => {
                 ctx.drawImage(img, 88 - iconSize / 2, 122 - iconSize / 2, iconSize, iconSize);
             } else {
                 ctx.font = 'bold 80px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#eee';
-                ctx.fillText(skill.name[0], 88, 145);
+                ctx.fillText(safeSkill.name[0], 88, 145);
             }
             ctx.restore();
 
             // Text with weathered/etched feel
             ctx.font = 'bold 64px "Courier New", monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
             ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
-            ctx.fillText(skill.name.toUpperCase(), 185, 120);
+            ctx.fillText(safeSkill.name.toUpperCase(), 185, 120);
 
             ctx.font = '22px "Courier New", monospace'; ctx.fillStyle = hex; // Category gets the skill color
-            ctx.fillText(skill.category.toUpperCase(), 185, 160);
+            ctx.fillText(safeSkill.category.toUpperCase(), 185, 160);
 
             return new THREE.CanvasTexture(cvs);
         }
@@ -861,7 +894,7 @@ const SkillsGame = () => {
         const allSprites = [];
         const setupBuoys = async () => {
             for (let i = 0; i < SKILLS.length; i++) {
-                const skill = SKILLS[i];
+                const skill = normalizeSkill(SKILLS[i], i);
                 updateLoading(
                     58 + Math.round(((i + 1) / SKILLS.length) * 34),
                     `Memuat skill ${i + 1}/${SKILLS.length}: ${skill.name}...`
@@ -870,7 +903,7 @@ const SkillsGame = () => {
                 const dist = 28 + (i % 4) * 14;
                 const px = Math.cos(angle) * dist;
                 const pz = Math.sin(angle) * dist;
-                const hex = parseInt(skill.color.replace('#', ''), 16);
+                const hex = parseHexColor(skill.color);
                 const grp = new THREE.Group();
                 grp.position.set(px, 0, pz);
 
@@ -955,173 +988,190 @@ const SkillsGame = () => {
         /* ── ANIMATE ── */
         function animate() {
             animId = requestAnimationFrame(animate);
-            const dt = Math.min(clock.getDelta(), 0.05);
-            const time = clock.getElapsedTime();
-            const keys = keysRef.current;
-            const controlsEnabled = stageRef.current === 'playing' && !pausedRef.current;
+            try {
+                const dt = Math.min(clock.getDelta(), 0.05);
+                const time = clock.getElapsedTime();
+                const keys = keysRef.current;
+                const controlsEnabled = stageRef.current === 'playing' && !pausedRef.current;
 
-            /* update shader time */
-            waterUniforms.uTime.value = time;
-            skyMat.uniforms.uTime.value = time;
+                /* update shader time */
+                waterUniforms.uTime.value = time;
+                skyMat.uniforms.uTime.value = time;
 
-            /* ── manual look input check ── */
-            // Handled by swipe & pointer lock
+                /* ── manual look input check ── */
+                // Handled by swipe & pointer lock
 
-            if (controlsEnabled) {
-                /* ── raft analog throttle & steer ── */
-                const throttle = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+                if (controlsEnabled) {
+                    /* ── raft analog throttle & steer ── */
+                    const throttle = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
 
-                if (Math.abs(throttle) > 0.02) {
-                    const targetAccel = throttle > 0 ? ACCEL : ACCEL * 0.6;
-                    player.speed += targetAccel * dt * throttle;
-                    player.speed = Math.max(-MAX_SPEED * 0.4, Math.min(MAX_SPEED, player.speed));
+                    if (Math.abs(throttle) > 0.02) {
+                        const targetAccel = throttle > 0 ? ACCEL : ACCEL * 0.6;
+                        player.speed += targetAccel * dt * throttle;
+                        player.speed = Math.max(-MAX_SPEED * 0.4, Math.min(MAX_SPEED, player.speed));
+                    } else {
+                        const drag = player.speed > 0 ? -DECEL : DECEL;
+                        player.speed += drag * dt;
+                        if (Math.abs(player.speed) < 0.1) player.speed = 0;
+                    }
+
+                    const steer = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
+
+                    if (Math.abs(player.speed) > 0.05) {
+                        player.heading += steer * TURN * dt * (player.speed / MAX_SPEED);
+                    }
+
+                    /* move raft */
+                    raftGroup.position.x += Math.sin(player.heading) * player.speed * dt;
+                    raftGroup.position.z += Math.cos(player.heading) * player.speed * dt;
                 } else {
-                    const drag = player.speed > 0 ? -DECEL : DECEL;
-                    player.speed += drag * dt;
-                    if (Math.abs(player.speed) < 0.1) player.speed = 0;
+                    player.speed *= 0.92;
+                    if (Math.abs(player.speed) < 0.05) {
+                        player.speed = 0;
+                    }
                 }
 
-                const steer = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
+                /* raft sits on water — raised above surface so planks stay solid */
+                const rx = raftGroup.position.x, rz = raftGroup.position.z;
+                const surfaceH = waveHeight(rx, rz, time);
+                raftGroup.position.y = surfaceH + 0.15; // sit ON TOP of waves
+                raftGroup.rotation.y = player.heading + Math.PI;
 
-                if (Math.abs(player.speed) > 0.05) {
-                    player.heading += steer * TURN * dt * (player.speed / MAX_SPEED);
+                /* rock gently with waves */
+                raftGroup.rotation.x = Math.sin(time * 0.35 + 0.3) * 0.015;
+                raftGroup.rotation.z = Math.cos(time * 0.28) * 0.012;
+
+                /* ── JUMP ── */
+                const raftTop = surfaceH + 0.14;
+                if (controlsEnabled && player.onGround && keys['Space']) {
+                    player.velY = JUMP;
+                    player.onGround = false;
                 }
-
-                /* move raft */
-                raftGroup.position.x += Math.sin(player.heading) * player.speed * dt;
-                raftGroup.position.z += Math.cos(player.heading) * player.speed * dt;
-            } else {
-                player.speed *= 0.92;
-                if (Math.abs(player.speed) < 0.05) {
-                    player.speed = 0;
-                }
-            }
-
-            /* raft sits on water — raised above surface so planks stay solid */
-            const rx = raftGroup.position.x, rz = raftGroup.position.z;
-            const surfaceH = waveHeight(rx, rz, time);
-            raftGroup.position.y = surfaceH + 0.15; // sit ON TOP of waves
-            raftGroup.rotation.y = player.heading + Math.PI;
-
-            /* rock gently with waves */
-            raftGroup.rotation.x = Math.sin(time * 0.35 + 0.3) * 0.015;
-            raftGroup.rotation.z = Math.cos(time * 0.28) * 0.012;
-
-            /* ── JUMP ── */
-            const raftTop = surfaceH + 0.14;
-            if (controlsEnabled && player.onGround && keys['Space']) {
-                player.velY = JUMP;
-                player.onGround = false;
-            }
-            if (!player.onGround) {
-                player.velY += GRAVITY * dt;
-                player.camY += player.velY * dt;
-                if (player.camY <= raftTop + 1.1) {
+                if (!player.onGround) {
+                    player.velY += GRAVITY * dt;
+                    player.camY += player.velY * dt;
+                    if (player.camY <= raftTop + 1.1) {
+                        player.camY = raftTop + 1.1;
+                        player.velY = 0;
+                        player.onGround = true;
+                    }
+                } else {
                     player.camY = raftTop + 1.1;
-                    player.velY = 0;
-                    player.onGround = true;
-                }
-            } else {
-                player.camY = raftTop + 1.1;
-            }
-
-            /* ── camera on raft ── */
-            camera.position.set(
-                raftGroup.position.x,
-                player.camY,
-                raftGroup.position.z,
-            );
-            camera.rotation.order = 'YXZ';
-            camera.rotation.y = player.yaw;
-            camera.rotation.x = player.pitch;
-
-            /* ── clouds drift ── */
-            clouds.forEach(c => {
-                c.position.x += c.userData.speed * dt * 4;
-                if (Math.abs(c.position.x) > 600) c.position.x = c.userData.startX;
-            });
-
-            /* ── buoy float ── */
-            skillRefs.forEach(({ grp, orb, pl }, i) => {
-                const bx = grp.position.x, bz = grp.position.z;
-                grp.position.y = waveHeight(bx, bz, time) + Math.sin(time * 0.28 + i) * 0.06;
-                orb.material.emissiveIntensity = 1.0 + Math.sin(time * 2 + i) * 0.7;
-                pl.intensity = 1.8 + Math.sin(time * 2 + i) * 0.7;
-            });
-
-            networkRef.current.remotePlayers.forEach((entry) => {
-                if (!entry.targetState) {
-                    return;
                 }
 
-                entry.raft.position.x = THREE.MathUtils.lerp(entry.raft.position.x, entry.targetState.x, 0.14);
-                entry.raft.position.y = THREE.MathUtils.lerp(entry.raft.position.y, entry.targetState.y, 0.16);
-                entry.raft.position.z = THREE.MathUtils.lerp(entry.raft.position.z, entry.targetState.z, 0.14);
+                /* ── camera on raft ── */
+                camera.position.set(
+                    raftGroup.position.x,
+                    player.camY,
+                    raftGroup.position.z,
+                );
+                camera.rotation.order = 'YXZ';
+                camera.rotation.y = player.yaw;
+                camera.rotation.x = player.pitch;
 
-                const currentHeading = entry.raft.userData.heading ?? entry.targetState.heading;
-                const nextHeading = THREE.MathUtils.lerp(currentHeading, entry.targetState.heading, 0.14);
-                entry.raft.userData.heading = nextHeading;
-                entry.raft.rotation.y = nextHeading + Math.PI;
-                entry.raft.rotation.x = Math.sin(time * 0.35 + entry.seed) * 0.015;
-                entry.raft.rotation.z = Math.cos(time * 0.28 + entry.seed) * 0.012;
-            });
+                /* ── clouds drift ── */
+                clouds.forEach(c => {
+                    c.position.x += c.userData.speed * dt * 4;
+                    if (Math.abs(c.position.x) > 600) c.position.x = c.userData.startX;
+                });
 
-            const shouldSyncRoom =
-                networkRef.current.playerId &&
-                stageRef.current === 'playing' &&
-                sessionInfoRef.current?.mode === 'multiplayer' &&
-                time - networkRef.current.lastSyncAt > 0.12 &&
-                !networkRef.current.syncInFlight;
+                /* ── buoy float ── */
+                skillRefs.forEach(({ grp, orb, pl }, i) => {
+                    const bx = grp.position.x, bz = grp.position.z;
+                    grp.position.y = waveHeight(bx, bz, time) + Math.sin(time * 0.28 + i) * 0.06;
+                    orb.material.emissiveIntensity = 1.0 + Math.sin(time * 2 + i) * 0.7;
+                    pl.intensity = 1.8 + Math.sin(time * 2 + i) * 0.7;
+                });
 
-            if (shouldSyncRoom) {
-                networkRef.current.lastSyncAt = time;
-                networkRef.current.syncInFlight = true;
+                networkRef.current.remotePlayers.forEach((entry) => {
+                    if (!entry.targetState) {
+                        return;
+                    }
 
-                void postJson('/skills/rooms/sync', {
-                    code: sessionInfoRef.current.code,
-                    player_uuid: networkRef.current.playerId,
-                    state: {
-                        x: raftGroup.position.x,
-                        y: raftGroup.position.y,
-                        z: raftGroup.position.z,
-                        heading: player.heading,
-                    },
-                })
-                    .then((data) => {
-                        const seenPlayerIds = new Set();
+                    entry.raft.position.x = THREE.MathUtils.lerp(entry.raft.position.x, entry.targetState.x, 0.14);
+                    entry.raft.position.y = THREE.MathUtils.lerp(entry.raft.position.y, entry.targetState.y, 0.16);
+                    entry.raft.position.z = THREE.MathUtils.lerp(entry.raft.position.z, entry.targetState.z, 0.14);
 
-                        (data.players ?? []).forEach((remotePlayer) => {
-                            const remoteEntry = ensureRemotePlayer(
-                                remotePlayer.player_uuid,
-                                remotePlayer.role,
-                                remotePlayer.display_name,
-                            );
-                            remoteEntry.targetState = remotePlayer.state;
-                            seenPlayerIds.add(remotePlayer.player_uuid);
-                        });
+                    const currentHeading = entry.raft.userData.heading ?? entry.targetState.heading;
+                    const nextHeading = THREE.MathUtils.lerp(currentHeading, entry.targetState.heading, 0.14);
+                    entry.raft.userData.heading = nextHeading;
+                    entry.raft.rotation.y = nextHeading + Math.PI;
+                    entry.raft.rotation.x = Math.sin(time * 0.35 + entry.seed) * 0.015;
+                    entry.raft.rotation.z = Math.cos(time * 0.28 + entry.seed) * 0.012;
+                });
 
-                        Array.from(networkRef.current.remotePlayers.keys()).forEach((playerId) => {
-                            if (!seenPlayerIds.has(playerId)) {
-                                removeRemotePlayer(playerId);
-                            }
-                        });
+                const shouldSyncRoom =
+                    networkRef.current.playerId &&
+                    stageRef.current === 'playing' &&
+                    sessionInfoRef.current?.mode === 'multiplayer' &&
+                    time - networkRef.current.lastSyncAt > 0.12 &&
+                    !networkRef.current.syncInFlight;
 
-                        setRoomPopulation(data.player_count ?? seenPlayerIds.size + 1);
+                if (shouldSyncRoom) {
+                    networkRef.current.lastSyncAt = time;
+                    networkRef.current.syncInFlight = true;
+
+                    void postJson('/skills/rooms/sync', {
+                        code: sessionInfoRef.current.code,
+                        player_uuid: networkRef.current.playerId,
+                        state: {
+                            x: raftGroup.position.x,
+                            y: raftGroup.position.y,
+                            z: raftGroup.position.z,
+                            heading: player.heading,
+                        },
                     })
-                    .catch(() => {
-                        setMenuMessage('Koneksi room terputus. Coba masuk ulang ke room.');
-                    })
-                    .finally(() => {
-                        networkRef.current.syncInFlight = false;
-                    });
+                        .then((data) => {
+                            const seenPlayerIds = new Set();
+
+                            (data.players ?? []).forEach((remotePlayer) => {
+                                const remoteEntry = ensureRemotePlayer(
+                                    remotePlayer.player_uuid,
+                                    remotePlayer.role,
+                                    remotePlayer.display_name,
+                                );
+                                remoteEntry.targetState = remotePlayer.state;
+                                seenPlayerIds.add(remotePlayer.player_uuid);
+                            });
+
+                            Array.from(networkRef.current.remotePlayers.keys()).forEach((playerId) => {
+                                if (!seenPlayerIds.has(playerId)) {
+                                    removeRemotePlayer(playerId);
+                                }
+                            });
+
+                            setRoomPopulation(data.player_count ?? seenPlayerIds.size + 1);
+                        })
+                        .catch(() => {
+                            setMenuMessage('Koneksi room terputus. Coba masuk ulang ke room.');
+                        })
+                        .finally(() => {
+                            networkRef.current.syncInFlight = false;
+                        });
+                }
+
+                /* ── HUD raycasting ── */
+                raycaster.setFromCamera(screenCenter, camera);
+                const hits = raycaster.intersectObjects(allSprites);
+                const hoveredSkill = controlsEnabled && hits.length > 0 && hits[0].distance < 28
+                    ? normalizeSkill(hits[0].object.userData.skill)
+                    : null;
+                setHud(hoveredSkill);
+
+                renderer.render(scene, camera);
+            } catch (error) {
+                cancelAnimationFrame(animId);
+
+                if (!renderCrashHandledRef.current) {
+                    renderCrashHandledRef.current = true;
+                    pausedRef.current = true;
+                    setPaused(true);
+                    setMenuView('main');
+                    setMenuBusy(false);
+                    setMenuMessage('Render game berhenti karena data scene tidak valid. Coba buka ulang halaman ini.');
+                    console.error('SkillsGame render loop crashed:', error);
+                }
             }
-
-            /* ── HUD raycasting ── */
-            raycaster.setFromCamera(screenCenter, camera);
-            const hits = raycaster.intersectObjects(allSprites);
-            setHud(controlsEnabled && hits.length > 0 && hits[0].distance < 28 ? hits[0].object.userData.skill : null);
-
-            renderer.render(scene, camera);
         }
         animate();
 
@@ -1685,50 +1735,73 @@ const SkillsGame = () => {
                         </div>
 
                         {menuView === 'main' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
-                                <button
-                                    type="button"
-                                    onClick={() => void handleSinglePlayer()}
-                                    disabled={menuBusy}
-                                    style={{
-                                        padding: '22px 20px',
-                                        borderRadius: 4,
-                                        border: '2px solid #bc6c25',
-                                        background: '#bc6c25',
-                                        color: '#fefae0',
-                                        textAlign: 'left',
-                                        cursor: 'pointer',
-                                        boxShadow: '0 4px 0 #603813',
-                                        fontFamily: '"Courier New", monospace',
-                                    }}
-                                >
-                                    <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#f6d7b0', fontWeight: 800 }}>Solo</div>
-                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Resume Voyage</div>
-                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(254,250,224,0.78)', lineHeight: 1.6, fontFamily: 'system-ui' }}>
-                                        Langsung masuk ke world dan eksplor skill sendiri.
-                                    </div>
-                                </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleSinglePlayer()}
+                                        disabled={menuBusy}
+                                        style={{
+                                            padding: '22px 20px',
+                                            borderRadius: 4,
+                                            border: '2px solid #bc6c25',
+                                            background: '#bc6c25',
+                                            color: '#fefae0',
+                                            textAlign: 'left',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 4px 0 #603813',
+                                            fontFamily: '"Courier New", monospace',
+                                        }}
+                                    >
+                                        <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#f6d7b0', fontWeight: 800 }}>Solo</div>
+                                        <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Resume Voyage</div>
+                                        <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(254,250,224,0.78)', lineHeight: 1.6, fontFamily: 'system-ui' }}>
+                                            Langsung masuk ke world dan eksplor skill sendiri.
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => { setMenuMessage(''); setMenuView('multiplayer'); }}
+                                        disabled={menuBusy}
+                                        style={{
+                                            padding: '22px 20px',
+                                            borderRadius: 4,
+                                            border: '2px solid #8fb8d8',
+                                            background: 'transparent',
+                                            color: '#d7efff',
+                                            textAlign: 'left',
+                                            cursor: 'pointer',
+                                            fontFamily: '"Courier New", monospace',
+                                        }}
+                                    >
+                                        <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#fde68a', fontWeight: 800 }}>Party</div>
+                                        <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Main Menu</div>
+                                        <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(254,250,224,0.78)', lineHeight: 1.6, fontFamily: 'system-ui' }}>
+                                            Buat room dan share kode ke player 2 untuk masuk bareng.
+                                        </div>
+                                    </button>
+                                </div>
 
                                 <button
                                     type="button"
-                                    onClick={() => { setMenuMessage(''); setMenuView('multiplayer'); }}
-                                    disabled={menuBusy}
+                                    onClick={() => { navigateWithCleanup('/'); }}
                                     style={{
-                                        padding: '22px 20px',
+                                        padding: '14px 18px',
                                         borderRadius: 4,
-                                        border: '2px solid #8fb8d8',
-                                        background: 'transparent',
-                                        color: '#d7efff',
-                                        textAlign: 'left',
+                                        border: '2px solid #603813',
+                                        background: 'rgba(26,20,15,0.28)',
+                                        color: '#f6d7b0',
+                                        textAlign: 'center',
                                         cursor: 'pointer',
                                         fontFamily: '"Courier New", monospace',
+                                        fontSize: 15,
+                                        fontWeight: 800,
+                                        letterSpacing: '0.14em',
+                                        textTransform: 'uppercase',
                                     }}
                                 >
-                                    <div style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#fde68a', fontWeight: 800 }}>Party</div>
-                                    <div style={{ marginTop: 10, fontSize: 22, fontWeight: 900 }}>Main Menu</div>
-                                    <div style={{ marginTop: 8, fontSize: 13, color: 'rgba(254,250,224,0.78)', lineHeight: 1.6, fontFamily: 'system-ui' }}>
-                                        Buat room dan share kode ke player 2 untuk masuk bareng.
-                                    </div>
+                                    Home
                                 </button>
                             </div>
                         )}

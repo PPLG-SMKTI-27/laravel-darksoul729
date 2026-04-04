@@ -25,10 +25,10 @@ export const LocalAppearance = ({ windowId }) => {
             <div className="p-4 w-full h-full">
                 <AdminTerminalPanel title="Desktop Wallpaper" className="mb-0">
                     <div className="space-y-4">
-                        <p className="text-[13px] text-zinc-600">
+                        <p className="text-[12px] text-[#444] mb-3 leading-relaxed">
                             Choose a new random high-resolution wallpaper from the web or revert to the classic XFCE defaults.
                         </p>
-                        <div className="flex gap-3">
+                        <div className="flex gap-2">
                             <AdminTerminalButton tone="blue" onClick={setRandomWallpaper} icon={RefreshCw}>
                                 Fetch Random Wallpaper
                             </AdminTerminalButton>
@@ -37,8 +37,8 @@ export const LocalAppearance = ({ windowId }) => {
                             </AdminTerminalButton>
                         </div>
                         {os.wallpaper && (
-                            <div className="mt-4 rounded-[3px] border border-zinc-300 overflow-hidden relative shadow-sm inline-block">
-                                <img src={os.wallpaper} alt="Current Wallpaper" className="h-32 w-auto object-cover" />
+                            <div className="mt-4 rounded-[2px] border border-[#a0a0a0] overflow-hidden relative shadow-[inset_0_1px_3px_rgba(0,0,0,0.1),0_1px_0_rgba(255,255,255,0.8)] inline-block bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzhhYWGMYAEYB8RmROaABADeOQ8CXl/xfgAAAABJRU5ErkJggg==')] p-1">
+                                <img src={os.wallpaper} alt="Current Wallpaper" className="h-32 w-auto object-cover border border-[#888] rounded-[1px] shadow-sm" />
                             </div>
                         )}
                     </div>

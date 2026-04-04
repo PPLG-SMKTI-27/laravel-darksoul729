@@ -51,18 +51,18 @@ const AdminProjects = ({ windowId, projects: initialProjects }) => {
         key: project.id,
         cells: [
             <div className="space-y-1">
-                <div className="font-medium text-zinc-100">{project.title}</div>
-                <div className="line-clamp-2 text-sm text-zinc-500">{project.description}</div>
+                <div className="font-bold text-[#333]">{project.title}</div>
+                <div className="line-clamp-2 text-[12px] text-[#666] leading-tight">{project.description}</div>
             </div>,
-            <span className={project.status === 'published' ? 'text-emerald-300' : 'text-amber-300'}>{project.status}</span>,
+            <span className={project.status === 'published' ? 'font-bold text-emerald-700' : 'font-bold text-amber-700'}>{project.status}</span>,
             project.link ? (
-                <a className="break-all text-sky-300 hover:text-sky-200" href={project.link} target="_blank" rel="noreferrer">
+                <a className="break-all font-bold text-[#1A4B85] hover:text-[#2C62A8] hover:underline" href={project.link} target="_blank" rel="noreferrer">
                     {project.link}
                 </a>
             ) : (
-                <span className="text-zinc-600">-</span>
+                <span className="text-[#888]">-</span>
             ),
-            <span className="text-zinc-500">{new Date(project.created_at).toLocaleDateString()}</span>,
+            <span className="text-[#666]">{new Date(project.created_at).toLocaleDateString()}</span>,
             <div className="flex flex-wrap gap-2">
                 <AdminTerminalButton tone="blue" onClick={() => { if (window.__APP_NAVIGATE__) window.__APP_NAVIGATE__(`/admin/projects/${project.id}/edit`); else window.location.href = `/admin/projects/${project.id}/edit`; }}>
                     Edit

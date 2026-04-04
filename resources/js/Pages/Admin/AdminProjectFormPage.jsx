@@ -40,7 +40,6 @@ const AdminProjectFormPage = ({
             <form onSubmit={onSubmit}>
                 <AdminTerminalPanel
                     title={isEdit ? 'Project Mutation' : 'Project Creation'}
-                    command={isEdit ? '$ adminctl projects --update' : '$ adminctl projects --create'}
                     headerAction={
                         <AdminTerminalButton
                             type="submit"
@@ -92,7 +91,6 @@ const AdminProjectFormPage = ({
                             <div className="space-y-5">
                                 <AdminTerminalUpload imagePreview={imagePreview} onChange={onImageChange} error={errors.image?.[0]} />
                                 <div>
-                                    <div className="mb-2 text-[11px] uppercase tracking-[0.24em] text-zinc-500">Status</div>
                                     <AdminTerminalStatusPicker value={formData.status} onChange={onChange} />
                                 </div>
                             </div>

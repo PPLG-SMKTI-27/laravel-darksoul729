@@ -45,12 +45,22 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $email = $request->user()?->email;
+
         Auth::logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        if ($email) {
+            $request->session()->flash('show_sddm_login', true);
+            $request->session()->flash('sddm_user', $email);
+        }
+
+        return redirect()->route('login', [
+            'screen' => 'sddm',
+            'user' => $email,
+        ]);
     }
 }

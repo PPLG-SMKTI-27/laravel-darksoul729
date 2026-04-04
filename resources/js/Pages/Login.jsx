@@ -16,34 +16,37 @@ const BOOT_SEQUENCE = [
 
 const LinuxBootOverlay = ({ visible, onComplete }) => {
     const [visibleLines, setVisibleLines] = useState([]);
-    const [progress, setProgress] = useState(0);
+    const [isFinishing, setIsFinishing] = useState(false);
 
     const totalDuration = useMemo(() => {
         const maxDelay = Math.max(...BOOT_SEQUENCE.map((line) => line.delay));
-        return maxDelay + 1200;
+        return maxDelay + 900;
     }, []);
 
     useEffect(() => {
         if (!visible) {
             setVisibleLines([]);
-            setProgress(0);
+            setIsFinishing(false);
             return undefined;
         }
 
         const lineTimers = BOOT_SEQUENCE.map((line, index) => (
             setTimeout(() => {
                 setVisibleLines((current) => [...current, index]);
-                setProgress(Math.min(100, Math.round(((index + 1) / BOOT_SEQUENCE.length) * 88)));
             }, line.delay)
         ));
 
+        const fadeTimer = setTimeout(() => {
+            setIsFinishing(true);
+        }, totalDuration - 260);
+
         const doneTimer = setTimeout(() => {
-            setProgress(100);
             onComplete();
         }, totalDuration);
 
         return () => {
             lineTimers.forEach(clearTimeout);
+            clearTimeout(fadeTimer);
             clearTimeout(doneTimer);
         };
     }, [onComplete, totalDuration, visible]);
@@ -53,7 +56,7 @@ const LinuxBootOverlay = ({ visible, onComplete }) => {
     }
 
     return (
-        <div className="fixed inset-0 z-[120] overflow-hidden bg-[#0a0a0a] text-[#d4d4d8]">
+        <div className={`fixed inset-0 z-[120] overflow-hidden bg-[#0a0a0a] text-[#d4d4d8] transition-opacity duration-300 ${isFinishing ? 'opacity-0' : 'opacity-100'}`}>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_32%)]" />
             <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.12), rgba(255,255,255,0.12) 1px, transparent 1px, transparent 3px)' }} />
 
@@ -61,15 +64,6 @@ const LinuxBootOverlay = ({ visible, onComplete }) => {
                 className="relative flex h-full flex-col px-4 py-6 sm:px-6"
                 style={{ fontFamily: '"IBM Plex Mono", "Fira Code", "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace' }}
             >
-                <div className="mb-5 flex items-center justify-between text-[11px] uppercase tracking-[0.28em] text-zinc-500">
-                    <span>Boot Sequence</span>
-                    <span>{progress}%</span>
-                </div>
-
-                <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                    <div className="h-full rounded-full bg-[linear-gradient(90deg,#4ade80_0%,#a3e635_45%,#facc15_100%)] transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
-                </div>
-
                 <div className="flex-1 overflow-hidden">
                     <div className="space-y-2 text-[13px] leading-7 text-zinc-300 sm:text-[15px]">
                         {BOOT_SEQUENCE.map((line, index) => (
@@ -97,17 +91,104 @@ const LinuxBootOverlay = ({ visible, onComplete }) => {
     );
 };
 
+const SDDMOverlay = ({ visible, email, expectedPassword, onUnlock }) => {
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (!visible) {
+            setPassword('');
+            setError('');
+        }
+    }, [visible]);
+
+    if (!visible) {
+        return null;
+    }
+
+    const initials = (email || 'admin')
+        .split('@')[0]
+        .split(/[.\-_ ]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? '')
+        .join('') || 'AD';
+
+    const handleUnlock = (event) => {
+        event.preventDefault();
+
+        if (password !== expectedPassword) {
+            setError('Password salah. Masukkan password login yang sama.');
+            return;
+        }
+
+        setError('');
+        onUnlock();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[130] overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(242,243,221,0.35),_transparent_25%),linear-gradient(135deg,_#6f888f_0%,_#839ca0_24%,_#9bb2b4_52%,_#7e9598_100%)]" />
+            <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]" />
+
+            <div className="relative flex h-full items-center justify-center px-6">
+                <div className="w-full max-w-[360px] text-center" style={{ fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif' }}>
+                    <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-[linear-gradient(135deg,#f5f5f4_0%,#cbd5e1_100%)] text-3xl font-semibold text-slate-700 shadow-[0_10px_40px_rgba(0,0,0,0.18)]">
+                        {initials}
+                    </div>
+
+                    <p className="mb-5 text-sm font-medium text-white/85 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">
+                        {email || 'admin@panzekos'}
+                    </p>
+
+                    <form onSubmit={handleUnlock} className="mx-auto w-full max-w-[210px]">
+                        <div className="flex h-8 items-center overflow-hidden border border-black/35 bg-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_1px_4px_rgba(0,0,0,0.28)]">
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(event) => {
+                                    setPassword(event.target.value);
+                                    if (error) {
+                                        setError('');
+                                    }
+                                }}
+                                autoFocus
+                                className="h-full flex-1 bg-transparent px-2.5 text-[13px] text-white outline-none placeholder:text-white/35"
+                                placeholder="Password"
+                            />
+                            <button
+                                type="submit"
+                                className="flex h-full w-9 items-center justify-center border-l border-white/15 bg-white/5 text-lg text-white/85 transition hover:bg-white/10"
+                                aria-label="Unlock session"
+                            >
+                                ›
+                            </button>
+                        </div>
+                    </form>
+
+                    <p className="mt-3 min-h-5 text-[11px] text-rose-100/90">
+                        {error}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({});
     const [processing, setProcessing] = useState(false);
     const [bootVisible, setBootVisible] = useState(false);
+    const [sddmVisible, setSddmVisible] = useState(false);
     const [redirectPath, setRedirectPath] = useState('/dashboard');
+    const [confirmedPassword, setConfirmedPassword] = useState('');
 
     const startBootSequence = (path) => {
         localStorage.setItem('plastic_flash', JSON.stringify({ message: 'Welcome back, Commander!', type: 'success' }));
         setRedirectPath(path);
+        setConfirmedPassword(password);
         setBootVisible(true);
     };
 
@@ -175,6 +256,16 @@ const Login = () => {
             <LinuxBootOverlay
                 visible={bootVisible}
                 onComplete={() => {
+                    setBootVisible(false);
+                    setSddmVisible(true);
+                }}
+            />
+            <SDDMOverlay
+                visible={sddmVisible}
+                email={email}
+                expectedPassword={confirmedPassword}
+                onUnlock={() => {
+                    setSddmVisible(false);
                     window.location.href = redirectPath;
                 }}
             />
