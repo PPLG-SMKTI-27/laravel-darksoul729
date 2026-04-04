@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
 import MainLayout from '../Layout/MainLayout';
 import PlasticToast from '../UI/PlasticToast';
 
@@ -9,7 +8,29 @@ const contactChannels = [
     { label: 'Turnaround', symbol: '48', value: 'Reply in 1-2 days' },
 ];
 
-const Animated3DTitle = ({ text }) => {
+const contactAnimationStyles = `
+    @keyframes contactFloatLeft {
+        0%, 100% { transform: translate3d(0, 0, 0) rotate(-10deg); }
+        50% { transform: translate3d(0, -22px, 0) rotate(-12deg); }
+    }
+
+    @keyframes contactFloatRight {
+        0%, 100% { transform: translate3d(0, 0, 0) rotate(12deg); }
+        50% { transform: translate3d(0, 24px, 0) rotate(15deg); }
+    }
+
+    @keyframes contactLetterBounce {
+        0%, 100% { transform: translate3d(0, 0, 0); }
+        50% { transform: translate3d(0, -12px, 0); }
+    }
+
+    @keyframes contactFadeUp {
+        0% { opacity: 0; transform: translate3d(0, 24px, 0); }
+        100% { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+`;
+
+const Animated3DTitle = ({ text, reducedMotion }) => {
     // Volcanic/Genting specific palette
     const palette3D = [
         { front: '#ffdd44', drop: '#b08a11' }, // BRIGHT SUN YELLOW
@@ -43,25 +64,19 @@ const Animated3DTitle = ({ text }) => {
                         const colorSet = palette3D[idx % palette3D.length];
                         
                         return (
-                            <motion.span
+                            <span
                                 key={idx}
                                 className="block text-5xl md:text-6xl lg:text-[5.5rem] font-black uppercase"
                                 style={{
                                     color: colorSet.front,
                                     textShadow: generate3DShadow(colorSet.drop),
                                     marginLeft: char === 'I' ? '0.2rem' : '0.1rem',
-                                    marginRight: char === 'I' ? '0.2rem' : '0.1rem'
-                                }}
-                                animate={{ y: [0, -12, 0] }}
-                                transition={{
-                                    duration: 2.5,
-                                    repeat: Infinity,
-                                    ease: "easeInOut",
-                                    delay: idx * 0.1,
+                                    marginRight: char === 'I' ? '0.2rem' : '0.1rem',
+                                    animation: reducedMotion ? 'none' : `contactLetterBounce 2.5s ease-in-out ${idx * 0.1}s infinite`,
                                 }}
                             >
                                 {char}
-                            </motion.span>
+                            </span>
                         );
                     })}
                 </div>
@@ -108,12 +123,12 @@ const InputField = ({ label, name, type = 'text', value, onChange, error, isText
     );
 };
 
-const BentoModule = ({ children, delay = 0, className = "" }) => (
-    <motion.div 
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
+const BentoModule = ({ children, delay = 0, className = "", reducedMotion = false }) => (
+    <div
         className={`relative w-full rounded-[2.5rem] bg-[linear-gradient(145deg,#d26841_0%,#9e3e20_100%)] p-2 sm:p-4 shadow-[0_35px_80px_rgba(15,5,0,0.8),inset_0_4px_10px_rgba(255,188,150,0.5),inset_0_-8px_15px_rgba(100,20,5,0.6)] border border-[#e5825a]/50 ${className}`}
+        style={{
+            animation: reducedMotion ? 'none' : `contactFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s both`,
+        }}
     >
         <div className="pointer-events-none absolute inset-x-12 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#ffeedd]/50 to-transparent" />
         
@@ -125,7 +140,7 @@ const BentoModule = ({ children, delay = 0, className = "" }) => (
                 {children}
             </div>
         </div>
-    </motion.div>
+    </div>
 );
 
 const Contact = ({ page }) => {
@@ -139,8 +154,43 @@ const Contact = ({ page }) => {
     const [formErrors, setFormErrors] = useState({});
     const [submitState, setSubmitState] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const prefersReducedMotion = useReducedMotion();
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
     const csrf = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '' : '';
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            return undefined;
+        }
+
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const updatePreference = () => {
+            const saveData = navigator.connection?.saveData ?? false;
+            const isMobileViewport = window.innerWidth < 768;
+            const isCoarsePointer = window.matchMedia('(pointer: coarse)')?.matches ?? false;
+
+            setPrefersReducedMotion(mediaQuery.matches || saveData || isMobileViewport || isCoarsePointer);
+        };
+
+        updatePreference();
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', updatePreference);
+        } else {
+            mediaQuery.addListener(updatePreference);
+        }
+
+        window.addEventListener('resize', updatePreference);
+
+        return () => {
+            if (typeof mediaQuery.removeEventListener === 'function') {
+                mediaQuery.removeEventListener('change', updatePreference);
+            } else {
+                mediaQuery.removeListener(updatePreference);
+            }
+
+            window.removeEventListener('resize', updatePreference);
+        };
+    }, []);
 
     const validateForm = () => {
         const nextErrors = {};
@@ -252,6 +302,7 @@ const Contact = ({ page }) => {
     return (
         <MainLayout page={page} fullBleed>
             <div className="relative isolate min-h-screen overflow-x-hidden text-[#fff2e8] bg-[#29140c]">
+                <style>{contactAnimationStyles}</style>
                 {submitState && (
                     <PlasticToast
                         message={submitState.message}
@@ -273,32 +324,36 @@ const Contact = ({ page }) => {
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,214,170,0.12),transparent_35%),linear-gradient(180deg,rgba(40,15,5,0.2)_0%,rgba(20,5,0,0.85)_100%)]" />
                     
                     {/* 2 Floating Cards - Adapted to the new theme */}
-                    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-                        <motion.div 
-                            initial={prefersReducedMotion ? { opacity: 0.15 } : { opacity: 0.15, y: 0 }}
-                            animate={prefersReducedMotion ? {} : { y: [0, -30, 0], rotate: [-10, -12, -10] }}
-                            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute top-[20%] left-[5%] md:left-[10%] opacity-30 blur-[3px]"
-                        >
-                            <div className="w-32 h-32 md:w-48 md:h-48 rounded-[2rem] bg-gradient-to-br from-[#d46c43] to-[#802509] border-[3px] border-[#ffa37c]/20 shadow-[10px_15px_30px_rgba(0,0,0,0.6),inset_0_5px_15px_rgba(255,188,150,0.3)]" />
-                        </motion.div>
+                    {!prefersReducedMotion && (
+                        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                            <div
+                                className="absolute top-[20%] left-[5%] md:left-[10%] opacity-30 blur-[3px]"
+                                style={{
+                                    animation: 'contactFloatLeft 5s ease-in-out infinite',
+                                    willChange: 'transform',
+                                }}
+                            >
+                                <div className="w-32 h-32 md:w-48 md:h-48 rounded-[2rem] bg-gradient-to-br from-[#d46c43] to-[#802509] border-[3px] border-[#ffa37c]/20 shadow-[10px_15px_30px_rgba(0,0,0,0.6),inset_0_5px_15px_rgba(255,188,150,0.3)]" />
+                            </div>
 
-                        <motion.div 
-                            initial={prefersReducedMotion ? { opacity: 0.15 } : { opacity: 0.15, y: 0 }}
-                            animate={prefersReducedMotion ? {} : { y: [0, 35, 0], rotate: [12, 15, 12] }}
-                            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                            className="absolute bottom-[20%] right-[3%] md:right-[8%] opacity-30 blur-[4px]"
-                        >
-                            <div className="w-40 h-40 md:w-64 md:h-64 rounded-[2.5rem] bg-gradient-to-tr from-[#9e3e20] to-[#501300] border-[2px] border-[#d26841]/20 shadow-[-10px_-15px_30px_rgba(0,0,0,0.7),inset_0_-5px_15px_rgba(200,60,20,0.4)]" />
-                        </motion.div>
-                    </div>
+                            <div
+                                className="absolute bottom-[20%] right-[3%] md:right-[8%] opacity-30 blur-[4px]"
+                                style={{
+                                    animation: 'contactFloatRight 6s ease-in-out 1s infinite',
+                                    willChange: 'transform',
+                                }}
+                            >
+                                <div className="w-40 h-40 md:w-64 md:h-64 rounded-[2.5rem] bg-gradient-to-tr from-[#9e3e20] to-[#501300] border-[2px] border-[#d26841]/20 shadow-[-10px_-15px_30px_rgba(0,0,0,0.7),inset_0_-5px_15px_rgba(200,60,20,0.4)]" />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="relative z-10 w-full max-w-[1300px] mx-auto min-h-screen px-4 py-24 sm:px-6 lg:px-8">
                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
                       
                       {/* Top Left: Title */}
-                      <BentoModule delay={0.1} className="lg:col-span-7">
+                      <BentoModule delay={0.1} className="lg:col-span-7" reducedMotion={prefersReducedMotion}>
                          <div className="flex-grow flex flex-col items-center justify-center text-center py-6">
                              <div className="inline-flex items-center gap-3 rounded-full border border-[#d46c43]/40 bg-[#2d1b13]/80 px-4 py-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-[#ffb071] shadow-[0_4px_10px_rgba(0,0,0,0.5),inset_0_2px_5px_rgba(255,176,113,0.2)] mb-8">
                                  <span className="relative flex h-2 w-2">
@@ -308,7 +363,7 @@ const Contact = ({ page }) => {
                                  SADSA UPLINK COMMS
                              </div>
 
-                             <Animated3DTitle text="SAY HELLO" />
+                             <Animated3DTitle text="SAY HELLO" reducedMotion={prefersReducedMotion} />
 
                              <p className="mt-10 max-w-lg mx-auto text-[1rem] sm:text-[1.1rem] font-medium leading-relaxed text-[#f3d9ce]/70 text-center">
                                  Drop your inquiries, briefs, or just say hi. We are ready to transform your ideas into tangible realities. The system is online and ready for transmission.
@@ -317,7 +372,7 @@ const Contact = ({ page }) => {
                       </BentoModule>
                       
                       {/* Top Right: Info */}
-                      <BentoModule delay={0.2} className="lg:col-span-5">
+                      <BentoModule delay={0.2} className="lg:col-span-5" reducedMotion={prefersReducedMotion}>
                          <div className="flex-grow flex flex-col justify-center gap-4 py-4">
                              {contactChannels.map((channel) => (
                                  <div key={channel.label} className="relative flex flex-col items-center text-center bg-[#150703]/30 px-6 py-6 rounded-[1.5rem] border border-[#30160d] hover:bg-[#1a0a04] transition-colors shadow-[inset_0_4px_10px_rgba(0,0,0,0.4)] overflow-hidden">
@@ -330,7 +385,7 @@ const Contact = ({ page }) => {
                       </BentoModule>
                       
                       {/* Bottom: The Form */}
-                      <BentoModule delay={0.3} className="lg:col-span-12">
+                      <BentoModule delay={0.3} className="lg:col-span-12" reducedMotion={prefersReducedMotion}>
                           <form onSubmit={handleSubmit} className="w-full flex-grow flex flex-col justify-center py-4" noValidate>
                                <input type="hidden" name="_token" value={csrf} />
                                

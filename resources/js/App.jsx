@@ -1,30 +1,60 @@
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { cleanupPageRuntime } from './lib/pageTransitionCleanup';
-import { AdminDesktop, OSContext } from './UI/AdminTerminal';
-import { LocalTerminal, LocalAppearance } from './UI/AdminApps';
 
-const LandingPage = React.lazy(() => import('./Pages/LandingPage'));
-const About = React.lazy(() => import('./Pages/About'));
-const Contact = React.lazy(() => import('./Pages/Contact'));
-const Feature = React.lazy(() => import('./Pages/Feature'));
-const Skills = React.lazy(() => import('./Pages/Skills'));
-const Projects = React.lazy(() => import('./Pages/Projects'));
-const Login = React.lazy(() => import('./Pages/Login'));
-const Dashboard = React.lazy(() => import('./Pages/Admin/Dashboard'));
-const AdminProjects = React.lazy(() => import('./Pages/Admin/AdminProjects'));
-const AdminProjectCreate = React.lazy(() => import('./Pages/Admin/AdminProjectCreate'));
-const AdminProjectEdit = React.lazy(() => import('./Pages/Admin/AdminProjectEdit'));
-const AdminMessages = React.lazy(() => import('./Pages/Admin/AdminMessages'));
+const pageLoaders = {
+    LandingPage: () => import('./Pages/LandingPage'),
+    About: () => import('./Pages/About'),
+    Contact: () => import('./Pages/Contact'),
+    Feature: () => import('./Pages/Feature'),
+    Skills: () => import('./Pages/Skills'),
+    Projects: () => import('./Pages/Projects'),
+    Login: () => import('./Pages/Login'),
+};
 
-const AdminComponents = {
-    'Admin/Dashboard': Dashboard,
-    'Dashboard': Dashboard,
-    'AdminProjects': AdminProjects,
-    'AdminProjectCreate': AdminProjectCreate,
-    'AdminProjectEdit': AdminProjectEdit,
-    'AdminMessages': AdminMessages,
-    'LocalTerminal': LocalTerminal,
-    'LocalAppearance': LocalAppearance,
+const adminModuleLoaders = {
+    'Admin/Dashboard': () => import('./Pages/Admin/Dashboard'),
+    Dashboard: () => import('./Pages/Admin/Dashboard'),
+    AdminProjects: () => import('./Pages/Admin/AdminProjects'),
+    AdminProjectCreate: () => import('./Pages/Admin/AdminProjectCreate'),
+    AdminProjectEdit: () => import('./Pages/Admin/AdminProjectEdit'),
+    AdminMessages: () => import('./Pages/Admin/AdminMessages'),
+    LocalTerminal: () => import('./UI/AdminApps').then((module) => ({ default: module.LocalTerminal })),
+    LocalAppearance: () => import('./UI/AdminApps').then((module) => ({ default: module.LocalAppearance })),
+};
+
+const loadAdminDesktop = () => import('./UI/AdminTerminal').then((module) => ({ default: module.AdminDesktop }));
+
+const moduleCache = new Map();
+
+const resolveDefaultExport = (module) => module.default || module;
+
+const loadCachedModule = async (cacheKey, loader) => {
+    const cachedModule = moduleCache.get(cacheKey);
+    if (cachedModule) {
+        return cachedModule;
+    }
+
+    const loadedModule = resolveDefaultExport(await loader());
+    moduleCache.set(cacheKey, loadedModule);
+    return loadedModule;
+};
+
+const loadPageComponent = async (page) => {
+    const loader = pageLoaders[page];
+    if (!loader) {
+        return null;
+    }
+
+    return loadCachedModule(`page:${page}`, loader);
+};
+
+const loadAdminComponent = async (page) => {
+    const loader = adminModuleLoaders[page];
+    if (!loader) {
+        return null;
+    }
+
+    return loadCachedModule(`admin:${page}`, loader);
 };
 
 const isAdminRoute = (page) => page?.startsWith('Admin') || page === 'Dashboard';
@@ -74,6 +104,9 @@ const App = ({ initialPage, initialProps }) => {
     const [currentPage, setCurrentPage] = useState(initialPage);
     const [currentProps, setCurrentProps] = useState(initialProps);
     const [windows, setWindows] = useState([]);
+    const [resolvedPageComponent, setResolvedPageComponent] = useState(null);
+    const [resolvedAdminDesktop, setResolvedAdminDesktop] = useState(null);
+    const [resolvedAdminComponents, setResolvedAdminComponents] = useState({});
 
     const routeCacheRef = useRef(new Map());
     const navigationControllerRef = useRef(null);
@@ -140,6 +173,73 @@ const App = ({ initialPage, initialProps }) => {
             }]);
         }
     }, [cacheCurrentRoute, initialPage, initialProps]);
+
+    useEffect(() => {
+        let isCancelled = false;
+
+        if (isAdminRoute(currentPage)) {
+            setResolvedPageComponent(null);
+
+            void loadAdminDesktop().then((component) => {
+                if (!isCancelled) {
+                    setResolvedAdminDesktop(() => component);
+                }
+            });
+
+            return () => {
+                isCancelled = true;
+            };
+        }
+
+        setResolvedAdminDesktop(null);
+        setResolvedPageComponent(null);
+
+        void loadPageComponent(currentPage).then((component) => {
+            if (!isCancelled) {
+                setResolvedPageComponent(() => component);
+            }
+        });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [currentPage]);
+
+    useEffect(() => {
+        if (!isAdminRoute(currentPage)) {
+            return undefined;
+        }
+
+        const pendingWindowPages = [...new Set(windows.map((windowItem) => windowItem.page))].filter((page) => !resolvedAdminComponents[page]);
+
+        if (pendingWindowPages.length === 0) {
+            return undefined;
+        }
+
+        let isCancelled = false;
+
+        void Promise.all(
+            pendingWindowPages.map(async (page) => [page, await loadAdminComponent(page)]),
+        ).then((entries) => {
+            if (isCancelled) {
+                return;
+            }
+
+            setResolvedAdminComponents((current) => {
+                const next = { ...current };
+                entries.forEach(([page, component]) => {
+                    if (component) {
+                        next[page] = component;
+                    }
+                });
+                return next;
+            });
+        });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [currentPage, resolvedAdminComponents, windows]);
 
     const applyRoutePayload = useCallback((targetUrl, payload, { replace = false, preserveScroll = false, skipHistory = false } = {}) => {
         setCurrentPage(payload.page);
@@ -305,6 +405,12 @@ const App = ({ initialPage, initialProps }) => {
             const payload = await fetchRoutePayload(targetUrl);
             if (payload) {
                 routeCacheRef.current.set(cacheKey, payload);
+                if (isAdminRoute(payload.page)) {
+                    void loadAdminDesktop();
+                    void loadAdminComponent(payload.page);
+                } else {
+                    void loadPageComponent(payload.page);
+                }
             }
         } catch (error) {
             // Ignore prefetch failures
@@ -397,51 +503,46 @@ const App = ({ initialPage, initialProps }) => {
 
     // Load admin OS if the active page dictates so
     if (isAdminRoute(currentPage)) {
+        const AdminDesktop = resolvedAdminDesktop;
+
+        if (!AdminDesktop) {
+            return <AppLoadingFallback />;
+        }
+
         return (
-            <Suspense fallback={<AppLoadingFallback />}>
-                <AdminDesktop
-                    windows={windows}
-                    closeWindow={closeWindow}
-                    focusWindow={focusWindow}
-                    minimizeWindow={minimizeWindow}
-                    setTitle={setTitle}
-                    navigateMenu={navigate}
-                >
-                    {windows.filter((win) => !win.isMinimized).map(win => {
-                        const Component = AdminComponents[win.page];
-                        return Component ? <Component key={win.id} windowId={win.id} {...win.props} /> : null;
-                    })}
-                </AdminDesktop>
-            </Suspense>
+            <AdminDesktop
+                windows={windows}
+                closeWindow={closeWindow}
+                focusWindow={focusWindow}
+                minimizeWindow={minimizeWindow}
+                setTitle={setTitle}
+                navigateMenu={navigate}
+            >
+                {windows.filter((win) => !win.isMinimized).map(win => {
+                    const Component = resolvedAdminComponents[win.page];
+                    return Component ? <Component key={win.id} windowId={win.id} {...win.props} /> : null;
+                })}
+            </AdminDesktop>
         );
     }
 
-    const renderPage = () => {
-        switch (currentPage) {
-            case 'LandingPage': return <LandingPage page={currentPage} props={currentProps} />;
-            case 'About': return <About page={currentPage} />;
-            case 'Contact': return <Contact page={currentPage} />;
-            case 'Feature': return <Feature page={currentPage} />;
-            case 'Skills': return <Skills page={currentPage} />;
-            case 'Projects': return <Projects page={currentPage} props={currentProps} />;
-            case 'Login': return <Login page={currentPage} />;
-            default:
-                return (
-                    <div className="flex items-center justify-center min-h-screen bg-red-100">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl text-center">
-                            <h1 className="text-4xl font-black text-rose-500 mb-4">404</h1>
-                            <p className="font-bold text-slate-500">Page "{currentPage}" not found.</p>
-                        </div>
-                    </div>
-                );
-        }
-    };
+    if (!pageLoaders[currentPage]) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-red-100">
+                <div className="rounded-3xl bg-white p-8 text-center shadow-xl">
+                    <h1 className="mb-4 text-4xl font-black text-rose-500">404</h1>
+                    <p className="font-bold text-slate-500">Page "{currentPage}" not found.</p>
+                </div>
+            </div>
+        );
+    }
 
-    return (
-        <Suspense fallback={<AppLoadingFallback />}>
-            {renderPage()}
-        </Suspense>
-    );
+    if (!resolvedPageComponent) {
+        return <AppLoadingFallback />;
+    }
+
+    const PageComponent = resolvedPageComponent;
+    return <PageComponent page={currentPage} props={currentProps} />;
 };
 
 export default App;

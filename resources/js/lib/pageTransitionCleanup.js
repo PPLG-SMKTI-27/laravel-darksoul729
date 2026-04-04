@@ -1,8 +1,3 @@
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
-
 const loseCanvasContexts = () => {
     document.querySelectorAll('canvas').forEach((canvas) => {
         const context = canvas.getContext('webgl2')
@@ -22,14 +17,6 @@ export const cleanupPageRuntime = ({ lenis } = {}) => {
     window.dispatchEvent(new Event('unlock-scroll'));
 
     lenis?.stop?.();
-
-    ScrollTrigger.getAll().forEach((trigger) => {
-        trigger.kill();
-    });
-
-    gsap.globalTimeline.getChildren(true, true, true).forEach((animation) => {
-        animation.kill();
-    });
 
     document.getAnimations?.().forEach((animation) => {
         animation.cancel();

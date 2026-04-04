@@ -1,17 +1,9 @@
-import React, { Suspense, useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Lenis from 'lenis';
 import { BadgeInfo, BriefcaseBusiness, House, LogIn, LogOut, Mail, Menu, Sparkles, X } from 'lucide-react';
 import PlasticToast from '../UI/PlasticToast';
 import PlasticModal from '../UI/PlasticModal';
 import { cleanupPageRuntime, navigateWithCleanup } from '../lib/pageTransitionCleanup';
-
-const Footer = React.lazy(() => import('../components/Footer'));
-const SoilFooter = React.lazy(() => import('../components/SoilFooter'));
-
-gsap.registerPlugin(ScrollTrigger);
 
 const NAV_THEMES = {
     default: {
@@ -73,6 +65,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isTouchOptimized, setIsTouchOptimized] = useState(false);
     const [shouldMountFooter, setShouldMountFooter] = useState(false);
+    const [footerComponent, setFooterComponent] = useState(null);
     const prefersReducedMotion = useReducedMotion();
 
     const lenisRef = useRef(null);
@@ -102,6 +95,10 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
         const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
         const saveData = navigator.connection?.saveData ?? false;
         const shouldDisableSmoothScroll = prefersReducedMotion || saveData || isCoarsePointer || standalone || LENIS_DISABLED_PAGES.has(page);
+        let isDisposed = false;
+        let rafId = 0;
+        let lenisInstance = null;
+        let detachScrollTrigger = null;
 
         const lockScroll = () => {
             lenisRef.current?.stop?.();
@@ -125,32 +122,50 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             };
         }
 
-        const lenis = new Lenis({
-            duration: 1.2,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            direction: 'vertical',
-            gestureDirection: 'vertical',
-            smooth: true,
-            mouseMultiplier: 1,
-            smoothTouch: false,
-            touchMultiplier: 2,
-        });
+        (async () => {
+            const [{ default: gsap }, { ScrollTrigger }, { default: Lenis }] = await Promise.all([
+                import('gsap'),
+                import('gsap/ScrollTrigger'),
+                import('lenis'),
+            ]);
 
-        lenisRef.current = lenis;
-        let rafId = 0;
+            if (isDisposed) {
+                return;
+            }
 
-        const raf = (time) => {
-            lenis.raf(time);
+            gsap.registerPlugin(ScrollTrigger);
+
+            const lenis = new Lenis({
+                duration: 1.2,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                direction: 'vertical',
+                gestureDirection: 'vertical',
+                smooth: true,
+                mouseMultiplier: 1,
+                smoothTouch: false,
+                touchMultiplier: 2,
+            });
+
+            lenisInstance = lenis;
+            lenisRef.current = lenis;
+
+            const raf = (time) => {
+                lenis.raf(time);
+                rafId = requestAnimationFrame(raf);
+            };
+
             rafId = requestAnimationFrame(raf);
-        };
-
-        rafId = requestAnimationFrame(raf);
-
-        lenis.on('scroll', ScrollTrigger.update);
+            lenis.on('scroll', ScrollTrigger.update);
+            detachScrollTrigger = () => {
+                lenis.off('scroll', ScrollTrigger.update);
+            };
+        })();
 
         return () => {
+            isDisposed = true;
             cancelAnimationFrame(rafId);
-            lenis.destroy();
+            detachScrollTrigger?.();
+            lenisInstance?.destroy();
             lenisRef.current = null;
             window.removeEventListener('lock-scroll', lockScroll);
             window.removeEventListener('unlock-scroll', unlockScroll);
@@ -217,6 +232,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
     useEffect(() => {
         if (standalone || hideFooter) {
             setShouldMountFooter(false);
+            setFooterComponent(null);
             return undefined;
         }
 
@@ -242,6 +258,30 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
 
         return () => observer.disconnect();
     }, [hideFooter, page, standalone]);
+
+    useEffect(() => {
+        if (standalone || hideFooter || !shouldMountFooter) {
+            return undefined;
+        }
+
+        let isCancelled = false;
+
+        const loadFooterComponent = async () => {
+            const module = page === 'Projects'
+                ? await import('../components/SoilFooter')
+                : await import('../components/Footer');
+
+            if (!isCancelled) {
+                setFooterComponent(() => module.default);
+            }
+        };
+
+        void loadFooterComponent();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [hideFooter, page, shouldMountFooter, standalone]);
 
     // Logout Logic
     const isLoggedIn = page === 'Dashboard' || (page && page.startsWith('Admin'));
@@ -335,7 +375,8 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
     const mobileSidebarActionClassName = isTouchOptimized
         ? 'border-slate-200 bg-white text-[#22324a] shadow-none'
         : currentTheme.sidebarAction;
-    const navFontStyle = { fontFamily: '"Space Grotesk", sans-serif' };
+    const navFontStyle = { fontFamily: '"Space Grotesk", "Trebuchet MS", "Segoe UI", sans-serif' };
+    const FooterComponent = footerComponent;
     const getNavAccent = (itemName) => {
         return NAV_ITEM_ACCENTS[itemName] || NAV_ITEM_ACCENTS.Home;
     };
@@ -699,10 +740,8 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             {!standalone && !hideFooter && <div ref={footerSentinelRef} className="h-px w-full" aria-hidden="true" />}
 
             {/* Footer */}
-            {!standalone && !hideFooter && shouldMountFooter && (
-                <Suspense fallback={null}>
-                    {page === 'Projects' ? <SoilFooter /> : <Footer page={page} />}
-                </Suspense>
+            {!standalone && !hideFooter && shouldMountFooter && FooterComponent && (
+                page === 'Projects' ? <FooterComponent /> : <FooterComponent page={page} />
             )}
         </div>
     );
