@@ -16,10 +16,15 @@ export default defineConfig({
         react(),
     ],
     build: {
+        modulePreload: false,
         rollupOptions: {
             output: {
                 manualChunks(id) {
                     const normalizedId = id.replaceAll('\\', '/');
+
+                    if (normalizedId.includes('vite/preload-helper')) {
+                        return 'preload-helper';
+                    }
 
                     if (!normalizedId.includes('node_modules')) {
                         return undefined;

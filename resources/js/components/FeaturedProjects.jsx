@@ -29,9 +29,9 @@ const Animated3DTitle = ({ text }) => {
     let globalIndex = 0;
 
     return (
-        <h2 className="flex flex-wrap gap-4 md:gap-7 items-center justify-center md:justify-start">
+        <h2 className="flex flex-wrap items-center justify-center gap-3 md:justify-start md:gap-7">
             {words.map((word, wIdx) => (
-                <div key={wIdx} className="flex pb-4">
+                <div key={wIdx} className="flex pb-3 md:pb-4">
                     {word.split('').map((char, cIdx) => {
                         const idx = globalIndex++;
                         const colorSet = palette3D[idx % palette3D.length];
@@ -39,12 +39,12 @@ const Animated3DTitle = ({ text }) => {
                         return (
                             <motion.span
                                 key={idx}
-                                className="block text-5xl md:text-6xl lg:text-[4.5rem] font-black uppercase"
+                                className="block text-[2.55rem] leading-none md:text-6xl lg:text-[4.5rem] font-black uppercase"
                                 style={{
                                     color: colorSet.front,
                                     textShadow: generate3DShadow(colorSet.drop),
-                                    marginLeft: char === 'I' ? '0.2rem' : '0.1rem',
-                                    marginRight: char === 'I' ? '0.2rem' : '0.1rem'
+                                    marginLeft: char === 'I' ? '0.12rem' : '0.04rem',
+                                    marginRight: char === 'I' ? '0.12rem' : '0.04rem'
                                 }}
                                 animate={{ y: [0, -12, 0] }}
                                 transition={{
@@ -70,13 +70,13 @@ const BlockLetters = ({ text }) => {
     const words = text.split(' ');
     
     return (
-        <div className="flex flex-col gap-2 mb-4">
+        <div className="mb-4 flex flex-col gap-2">
             {words.map((word, wordIdx) => (
-                <div key={wordIdx} className="flex flex-wrap items-center">
+                <div key={wordIdx} className="flex flex-wrap items-center gap-y-1">
                     {word.split('').map((char, i) => (
                         <span 
                             key={i} 
-                            className="text-[2rem] leading-none md:text-[2.5rem] font-black uppercase tracking-wide"
+                            className="text-[1.45rem] leading-none md:text-[2.5rem] font-black uppercase tracking-[0.08em] md:tracking-wide"
                             style={{ 
                                 color: colors[i % colors.length], 
                                 textShadow: `
@@ -86,7 +86,7 @@ const BlockLetters = ({ text }) => {
                                     0 4px 5px rgba(0,0,0,0.3),
                                     0 10px 15px rgba(0,0,0,0.1)
                                 `,
-                                marginRight: '1px',
+                                marginRight: '0.08rem',
                             }}
                         >
                             {char}
@@ -144,19 +144,19 @@ export default function FeaturedProjects({ repos = [] }) {
     }, [repos]);
 
     return (
-        <section className="featured-projects-shell relative z-10 w-full overflow-visible py-16 mb-20 px-4 md:px-8">
+        <section className="featured-projects-shell relative z-10 mb-20 w-full overflow-visible px-3 py-12 md:px-8 md:py-16">
             <div className="mx-auto max-w-[1400px]">
                 
                 {/* Header Title - 3D Hovering Letters */}
-                <div className="mb-6 md:mb-10 flex justify-center md:justify-start md:ml-6 mt-4 md:mt-0">
+                <div className="mt-2 mb-5 flex justify-center md:mt-0 md:mb-10 md:ml-6 md:justify-start">
                     <Animated3DTitle text="FEATURED PROJECTS" />
                 </div>
 
                 {/* THE MASSIVE ANALOGUE HARDWARE CONSOLE */}
-                <div className="relative w-full rounded-[2.5rem] border-[4px] border-[#eef2f8] bg-[#c3cad5] p-5 shadow-[inset_0_4px_0_rgba(255,255,255,0.95),inset_0_-8px_16px_rgba(100,116,139,0.3),0_20px_40px_rgba(15,23,42,0.15)] flex flex-col xl:flex-row gap-6 md:gap-8 overflow-visible">
+                <div className="relative flex w-full flex-col gap-5 overflow-visible rounded-[2rem] border-[4px] border-[#eef2f8] bg-[#c3cad5] p-3 shadow-[inset_0_4px_0_rgba(255,255,255,0.95),inset_0_-8px_16px_rgba(100,116,139,0.3),0_20px_40px_rgba(15,23,42,0.15)] md:gap-8 md:rounded-[2.5rem] md:p-5 xl:flex-row">
                     
                     {/* LEFT: Massive Inset Output Monitor */}
-                    <div className="relative flex-1 min-h-[450px] aspect-[3/4] xl:min-h-[550px] xl:aspect-auto rounded-[2rem] border-[4px] border-[#334155] bg-[linear-gradient(180deg,#20242b_0%,#16191f_50%,#0e1014_100%)] p-4 shadow-[inset_0_12px_24px_rgba(255,255,255,0.06),inset_0_-12px_24px_rgba(0,0,0,0.6)]">
+                    <div className="relative aspect-[5/7] min-h-[390px] flex-1 rounded-[1.6rem] border-[4px] border-[#334155] bg-[linear-gradient(180deg,#20242b_0%,#16191f_50%,#0e1014_100%)] p-3 shadow-[inset_0_12px_24px_rgba(255,255,255,0.06),inset_0_-12px_24px_rgba(0,0,0,0.6)] md:min-h-[450px] md:aspect-[3/4] md:rounded-[2rem] md:p-4 xl:min-h-[550px] xl:aspect-auto">
                          
                          {/* Power LED */}
                          <div className="absolute top-5 left-5 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_12px_#ef4444]" />
@@ -169,7 +169,7 @@ export default function FeaturedProjects({ repos = [] }) {
                          </div>
 
                          {/* The Glass Screen */}
-                         <div className="relative ml-6 mt-6 h-[calc(100%-1.5rem)] md:h-[calc(100%-2rem)] w-[calc(100%-1.5rem)] md:w-[calc(100%-2rem)] overflow-hidden rounded-xl border-2 border-slate-900/80 bg-[#0d1117] shadow-[inset_0_0_80px_rgba(0,0,0,0.8)]">
+                         <div className="relative ml-4 mt-5 h-[calc(100%-1.25rem)] w-[calc(100%-1rem)] overflow-hidden rounded-xl border-2 border-slate-900/80 bg-[#0d1117] shadow-[inset_0_0_80px_rgba(0,0,0,0.8)] md:ml-6 md:mt-6 md:h-[calc(100%-2rem)] md:w-[calc(100%-2rem)]">
                               
                               {/* Scanlines overlay */}
                               <div className="pointer-events-none absolute inset-0 z-20 opacity-20" style={{ background: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '100% 4px' }} />
@@ -182,7 +182,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                       animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
                                       exit={{ opacity: 0, filter: 'blur(8px)', scale: 1.05 }}
                                       transition={{ duration: 0.3 }}
-                                      className="relative z-10 flex h-full w-full flex-col justify-end p-8 md:p-14 group"
+                                      className="group relative z-10 flex h-full w-full flex-col justify-end p-5 md:p-14"
                                   >
                                       {/* Full Screen Background Image */}
                                       {projects[activeIndex].image && (
@@ -209,7 +209,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                       <div className={`absolute -top-20 -right-20 w-96 h-96 bg-gradient-to-bl ${projects[activeIndex].glow} blur-3xl opacity-40 rounded-full z-0 pointer-events-none`} />
                                       
                                       <div className="relative z-20 flex flex-col justify-end h-full w-full transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                                          <div className="mb-4 inline-flex flex-col gap-1 items-start">
+                                          <div className="mb-3 inline-flex flex-col items-start gap-1 md:mb-4">
                                               <span className="font-mono text-[10px] text-slate-300 uppercase tracking-widest drop-shadow-md">
                                                   [SYSTEM.OK] // MODULE_DATA_STREAM
                                               </span>
@@ -218,20 +218,20 @@ export default function FeaturedProjects({ repos = [] }) {
                                               </div>
                                           </div>
 
-                                          <h3 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black uppercase text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]" style={{ textShadow: `0 2px 4px rgba(0,0,0,0.8), 0 0 40px ${projects[activeIndex].cableColor}70` }}>
+                                          <h3 className="text-[2.15rem] leading-[0.95] md:text-6xl lg:text-7xl xl:text-8xl font-black uppercase text-white tracking-[-0.04em] drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] md:tracking-tighter" style={{ textShadow: `0 2px 4px rgba(0,0,0,0.8), 0 0 40px ${projects[activeIndex].cableColor}70` }}>
                                               {projects[activeIndex].title}
                                           </h3>
                                           
-                                          <p className="mt-4 md:mt-6 font-mono text-base md:text-lg leading-relaxed text-slate-200 max-w-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                                          <p className="mt-3 max-w-xl font-mono text-sm leading-relaxed text-slate-200 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] md:mt-6 md:max-w-2xl md:text-lg">
                                               &gt; {projects[activeIndex].description || "NO DATA GIVEN. RUNNING DEFAULT SEQUENCE."}
                                           </p>
 
-                                          <div className="mt-8 md:mt-10">
+                                          <div className="mt-6 md:mt-10">
                                               <button 
                                                   onClick={() => navigateWithCleanup(projects[activeIndex].link || '/projects')}
-                                                  className="group/btn flex items-center gap-3 font-mono text-lg md:text-xl font-bold uppercase tracking-widest text-white transition-all hover:text-[#4ade80] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                                                  className="group/btn flex items-center gap-3 font-mono text-sm font-bold uppercase tracking-[0.3em] text-white transition-all hover:text-[#4ade80] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] md:text-xl md:tracking-widest"
                                               >
-                                                  <span className="h-1 w-8 bg-white transition-all group-hover/btn:w-12 group-hover/btn:bg-[#4ade80]" />
+                                                  <span className="h-1 w-6 bg-white transition-all group-hover/btn:w-12 group-hover/btn:bg-[#4ade80] md:w-8" />
                                                   Execute Output
                                               </button>
                                           </div>
@@ -258,7 +258,7 @@ export default function FeaturedProjects({ repos = [] }) {
                     </div>
 
                     {/* RIGHT: Embossed Input Cartridges */}
-                    <div className="relative flex w-full flex-col gap-5 xl:w-[420px] shrink-0 justify-center">
+                    <div className="relative flex w-full shrink-0 flex-col justify-center gap-4 md:gap-5 xl:w-[420px]">
                         {projects.map((project, i) => {
                             const isActive = activeIndex === i;
                             return (
@@ -283,7 +283,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                         onClick={() => setActiveIndex(i)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        className="group relative z-10 w-full overflow-hidden rounded-[1.8rem] border-[3px] border-white/90 p-6 md:p-8 transition-colors text-left"
+                                        className="group relative z-10 w-full overflow-hidden rounded-[1.45rem] border-[3px] border-white/90 p-4 text-left transition-colors md:rounded-[1.8rem] md:p-8"
                                         style={{
                                             background: isActive ? 'linear-gradient(160deg, #ffffff 0%, #f4f7fb 100%)' : 'linear-gradient(160deg, #f1f4f9 0%, #e2e8f0 100%)',
                                             boxShadow: isActive 
@@ -291,7 +291,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                                 : 'inset 0 4px 0 rgba(255,255,255,0.7), inset 0 -4px 8px rgba(100,116,139,0.1), 0 8px 16px rgba(15,23,42,0.05)',
                                         }}
                                     >
-                                        <div className="mb-4 flex items-center gap-3 border-b border-slate-200 pb-3">
+                                        <div className="mb-3 flex items-center gap-3 border-b border-slate-200 pb-3 md:mb-4">
                                             {/* Status LED */}
                                             <div 
                                                 className="h-4 w-4 rounded-full border border-white/50"
@@ -306,11 +306,11 @@ export default function FeaturedProjects({ repos = [] }) {
                                         </div>
 
                                         {/* Multicolored 3D Typography exactly like reference */}
-                                        <div className="my-6">
+                                        <div className="my-4 md:my-6">
                                             <BlockLetters text={project.title} />
                                         </div>
 
-                                        <div className="mt-8 flex items-center justify-between">
+                                        <div className="mt-5 flex items-center justify-between md:mt-8">
                                             <div className="h-2 flex-1 max-w-[120px] rounded-full bg-slate-200 shadow-inner overflow-hidden">
                                                 <div 
                                                     className="h-full w-full rounded-full transition-transform duration-700 ease-out"
