@@ -51,14 +51,14 @@ const AdminMessages = ({ windowId, messages: initialMessages }) => {
         key: message.id,
         cells: [
             <div className="space-y-1">
-                <div className="font-medium text-zinc-100">{message.name}</div>
-                <a href={`mailto:${message.email}`} className="break-all text-sky-300 hover:text-sky-200">
+                <div className="font-bold text-[#333]">{message.name}</div>
+                <a href={`mailto:${message.email}`} className="break-all font-bold text-[#1A4B85] hover:text-[#2C62A8] hover:underline">
                     {message.email}
                 </a>
             </div>,
-            <span className={message.is_read ? 'text-zinc-500' : 'text-emerald-300'}>{message.is_read ? 'read' : 'new'}</span>,
-            <div className="line-clamp-3 text-sm text-zinc-400">{message.message}</div>,
-            <span className="text-zinc-500">{new Date(message.created_at).toLocaleDateString()}</span>,
+            <span className={message.is_read ? 'text-[#666]' : 'font-bold text-emerald-700'}>{message.is_read ? 'read' : 'new'}</span>,
+            <div className="line-clamp-3 text-[12px] text-[#444] leading-tight">{message.message}</div>,
+            <span className="text-[#666]">{new Date(message.created_at).toLocaleDateString()}</span>,
             <div className="flex flex-wrap gap-2">
                 <AdminTerminalButton tone="green" onClick={() => { window.location.href = `mailto:${message.email}?subject=Re:%20Your%20Message`; }}>
                     Reply

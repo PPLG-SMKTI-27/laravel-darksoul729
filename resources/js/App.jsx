@@ -346,7 +346,12 @@ const App = ({ initialPage, initialProps }) => {
                 return;
             }
 
-            const anchor = event.target.closest('a[href]');
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target) {
+                return;
+            }
+
+            const anchor = target.closest('a[href]');
             if (!anchor || anchor.hasAttribute('download') || anchor.target === '_blank') {
                 return;
             }
@@ -363,7 +368,12 @@ const App = ({ initialPage, initialProps }) => {
         };
 
         const handlePointerPrefetch = (event) => {
-            const anchor = event.target.closest('a[href]');
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target) {
+                return;
+            }
+
+            const anchor = target.closest('a[href]');
             if (!anchor) return;
 
             const href = anchor.getAttribute('href');

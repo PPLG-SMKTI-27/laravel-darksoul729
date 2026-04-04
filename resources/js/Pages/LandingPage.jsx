@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, Suspense, useState, useEffect, useMemo } from 'react';
-import { motion, useAnimation, useMotionValue, useInView, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import { motion, useAnimation, useMotionValue, useInView, useReducedMotion } from 'framer-motion';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
@@ -543,6 +543,8 @@ const LandingPage = ({ page, props }) => {
     const { repos = [] } = props;
     const comp = useRef();
     const heroRobotRef = useRef(null);
+    const heroSectionRef = useRef(null);
+    const heroCloudBankRef = useRef(null);
     const profileHeaderRef = useRef(null);
     const featuredProjectsRef = useRef(null);
     const ctaPanelRef = useRef(null);
@@ -654,40 +656,64 @@ const LandingPage = ({ page, props }) => {
     const shouldRenderHeroRobot = isMobile || isHeroRobotInView;
     const shouldRenderFeaturedProjects = isMobile || isFeaturedProjectsInView;
 
-    const { scrollYProgress } = useScroll({
-        target: comp,
-        offset: ['start start', 'start 70%'],
-    });
-    const cloudBankY = useTransform(scrollYProgress, [0, 0.18], [220, 0]);
-    const cloudBankOpacity = useTransform(scrollYProgress, [0, 0.18], [0.18, 1]);
-    const cloudBankScale = useTransform(scrollYProgress, [0, 0.18], [1.08, 1]);
-
     useLayoutEffect(() => {
         let ctx = gsap.context(() => {
             // Profile Card Animation
-            gsap.from('.profile-card', {
-                scrollTrigger: {
-                    trigger: '.profile-section',
-                    start: 'top 80%',
-                },
-                y: 50,
-                opacity: 0,
-                duration: 0.8,
-                ease: 'power2.out'
-            });
+            const profileCard = comp.current?.querySelector('.profile-card');
+            const profileSection = comp.current?.querySelector('.profile-section');
+
+            if (profileCard && profileSection) {
+                gsap.from(profileCard, {
+                    scrollTrigger: {
+                        trigger: profileSection,
+                        start: 'top 80%',
+                    },
+                    y: 50,
+                    opacity: 0,
+                    duration: 0.8,
+                    ease: 'power2.out'
+                });
+            }
 
             // Projects Animation
-            gsap.from('.project-card', {
-                scrollTrigger: {
-                    trigger: '.projects-section',
-                    start: 'top 75%',
-                },
-                y: 80,
-                opacity: 0,
-                duration: 1,
-                stagger: 0.2,
-                ease: 'elastic.out(1, 0.8)'
-            });
+            const projectsSection = comp.current?.querySelector('.projects-section');
+            const featuredProjectsShell = comp.current?.querySelector('.featured-projects-shell');
+
+            if (projectsSection && featuredProjectsShell) {
+                gsap.from(featuredProjectsShell, {
+                    scrollTrigger: {
+                        trigger: projectsSection,
+                        start: 'top 75%',
+                    },
+                    y: 80,
+                    opacity: 0,
+                    duration: 1,
+                    ease: 'power3.out'
+                });
+            }
+
+            if (heroSectionRef.current && heroCloudBankRef.current) {
+                gsap.set(heroCloudBankRef.current, {
+                    yPercent: 0,
+                    opacity: 1,
+                    scale: 1,
+                    filter: 'blur(0px)',
+                });
+
+                gsap.to(heroCloudBankRef.current, {
+                    yPercent: -115,
+                    opacity: 0,
+                    scale: 0.94,
+                    filter: 'blur(10px)',
+                    ease: 'none',
+                    scrollTrigger: {
+                        trigger: heroSectionRef.current,
+                        start: 'top top',
+                        end: 'bottom top',
+                        scrub: 0.45,
+                    },
+                });
+            }
         }, comp);
         return () => ctx.revert();
     }, []);
@@ -806,9 +832,9 @@ const LandingPage = ({ page, props }) => {
                     className={`absolute rounded-full bg-gradient-to-r from-transparent via-white/50 to-transparent blur-[2px] ${isMobile ? 'left-[52%] top-[33%] h-[2px] w-[42px] opacity-16' : 'left-[46%] top-[54%] h-[2px] w-[170px] opacity-50'}`}
                 />
 
-                <motion.div
-                    style={{ y: cloudBankY, opacity: cloudBankOpacity, scale: cloudBankScale }}
-                    className="absolute inset-x-[-5%] bottom-[-8%] h-[34vh] min-h-[220px] origin-bottom"
+                <div
+                    ref={heroCloudBankRef}
+                    className="absolute inset-x-[-5%] bottom-[-8%] h-[34vh] min-h-[220px] origin-bottom will-change-transform"
                 >
                     <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-white via-white/95 to-transparent z-10" />
 
@@ -852,7 +878,7 @@ const LandingPage = ({ page, props }) => {
                     )}
 
                     <div className={`absolute inset-x-0 bottom-[4%] h-[24%] bg-[linear-gradient(180deg,rgba(191,219,254,0.22)_0%,rgba(255,255,255,0.8)_100%)] z-0 ${useLiteMobileScene ? 'blur-[12px]' : 'blur-[25px]'}`} />
-                </motion.div>
+                </div>
             </div>
 
             {/* Vertical Social Links */}
@@ -877,7 +903,7 @@ const LandingPage = ({ page, props }) => {
 
             <div ref={comp} className="flex flex-col gap-12 md:gap-16 pb-12 relative w-full">
                 {/* HERO SECTION: 2-Column Layout */}
-                <div className="relative z-20 mb-8 flex flex-col items-center justify-between gap-3 overflow-visible px-4 pt-2 md:mb-0 md:max-w-7xl md:flex-row md:items-center md:gap-4 md:px-6 md:pt-14 md:mx-auto md:w-full">
+                <div ref={heroSectionRef} className="relative z-20 mb-8 flex flex-col items-center justify-between gap-3 overflow-visible px-4 pt-2 md:mb-0 md:max-w-7xl md:flex-row md:items-center md:gap-4 md:px-6 md:pt-14 md:mx-auto md:w-full">
                     {/* Left: Text Content */}
                     <div className="flex flex-col items-center md:items-start text-center md:text-left z-10 w-full md:w-[46%] md:pl-10">
                         <motion.div
@@ -1314,7 +1340,7 @@ const LandingPage = ({ page, props }) => {
                     </div>
                 </div>
                 {/* NEW ARRIVALS PREVIEW (3D Cartridge Shelf) */}
-                <div ref={featuredProjectsRef} className="projects-section">
+                <div ref={featuredProjectsRef} className="projects-section relative">
                     {shouldRenderFeaturedProjects ? (
                         <Suspense fallback={<FeaturedProjectsFallback />}>
                             <FeaturedProjects repos={repos} />

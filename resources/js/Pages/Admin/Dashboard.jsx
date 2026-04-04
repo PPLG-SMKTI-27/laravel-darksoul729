@@ -13,9 +13,9 @@ const Dashboard = ({ windowId, stats, recentProjects }) => {
     const projectRows = (recentProjects || []).map((project) => ({
         key: project.id,
         cells: [
-            <div className="truncate font-medium text-zinc-100">{project.title}</div>,
-            <span className={project.status === 'published' ? 'text-emerald-300' : 'text-amber-300'}>{project.status}</span>,
-            <span className="text-zinc-500">{new Date(project.created_at).toLocaleDateString()}</span>,
+            <div className="truncate font-bold text-[#333]">{project.title}</div>,
+            <span className={project.status === 'published' ? 'text-emerald-700' : 'text-amber-700'}>{project.status}</span>,
+            <span className="text-[#666]">{new Date(project.created_at).toLocaleDateString()}</span>,
             <div className="flex flex-wrap gap-2">
                 <AdminTerminalButton tone="blue" onClick={() => { if (window.__APP_NAVIGATE__) window.__APP_NAVIGATE__(`/admin/projects/${project.id}/edit`); else window.location.href = `/admin/projects/${project.id}/edit`; }}>
                     Edit

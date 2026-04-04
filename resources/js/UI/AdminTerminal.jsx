@@ -37,11 +37,23 @@ export const OSContext = React.createContext({
     setWallpaper: (url) => { },
 });
 
-const XfceIcon = ({ Icon, tone, className }) => {
+const xfceIconColors = {
+    Dashboard: 'text-amber-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]',
+    AdminProjects: 'text-sky-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]',
+    Trash: 'text-zinc-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]',
+    AdminProjectCreate: 'text-emerald-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]',
+    AdminMessages: 'text-blue-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]',
+    Terminal: 'text-zinc-800 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]',
+    Appearance: 'text-indigo-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]',
+};
+
+const XfceIcon = ({ itemKey, Icon, className, size = 48 }) => {
+    const color = xfceIconColors[itemKey] || 'text-zinc-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]';
+
     return (
-        <span className={cx("relative flex items-center justify-center p-1", className)}>
-            <Icon size={40} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] opacity-90" strokeWidth={1.5} />
-        </span>
+        <div className={cx("flex items-center justify-center relative", className)} style={{ width: size, height: size }}>
+            <Icon size={size - 8} className={cx("absolute", color)} strokeWidth={1.5} />
+        </div>
     );
 };
 
@@ -54,11 +66,12 @@ const toneClassNames = {
 };
 
 const NAV_ITEMS = [
-    { key: 'Dashboard', label: 'Home', href: '/dashboard', icon: Home, tone: 'neutral' },
+    { key: 'Trash', label: 'Trash', href: '#trash', icon: Trash2, tone: 'neutral' },
     { key: 'AdminProjects', label: 'File System', href: '/admin/projects', icon: FolderKanban, tone: 'neutral' },
+    { key: 'Dashboard', label: 'Home', href: '/dashboard', icon: Home, tone: 'neutral' },
+    { key: 'Terminal', label: 'Terminal Emulator', href: '#terminal', icon: TerminalSquare, tone: 'neutral' },
     { key: 'AdminProjectCreate', label: 'New Project', href: '/admin/projects/create', icon: Plus, tone: 'green' },
     { key: 'AdminMessages', label: 'Mail', href: '/admin/messages', icon: Mail, tone: 'blue' },
-    { key: 'Terminal', label: 'Terminal Emulator', href: '#terminal', icon: TerminalSquare, tone: 'neutral' },
     { key: 'Appearance', label: 'Display Settings', href: '#appearance', icon: Monitor, tone: 'neutral' },
 ];
 
@@ -104,8 +117,8 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
     const handleLogout = async () => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         try {
-            await fetch('/logout', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' } });
-            window.location.href = '/';
+            const response = await fetch('/logout', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' } });
+            window.location.href = response.redirected ? response.url : '/login?screen=sddm';
         } catch (error) {
             console.error('Logout error:', error);
         }
@@ -123,6 +136,7 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
     };
 
     const activeWindow = [...windows].reverse().find((windowItem) => !windowItem.isMinimized) ?? null;
+    const sessionLabel = 'XFCE';
 
     useEffect(() => {
         const syncViewportMode = () => {
@@ -181,41 +195,67 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
 
     const desktopIcons = useMemo(() => {
         const positions = [
-            { top: '32px', left: '16px' },
-            { top: '112px', left: '16px' },
-            { top: '192px', left: '16px' },
-            { top: '272px', left: '16px' },
-            { top: '352px', left: '16px' },
-            { top: '432px', left: '16px' },
+            { top: '32px', left: '18px' },
+            { top: '116px', left: '18px' },
+            { top: '200px', left: '18px' },
+            { top: '284px', left: '18px' },
+            { top: '368px', left: '18px' },
+            { top: '452px', left: '18px' },
         ];
 
-        return NAV_ITEMS.map((item, index) => ({
+        const targetKeys = ['Trash', 'AdminProjects', 'Dashboard'];
+        const items = NAV_ITEMS.filter(n => targetKeys.includes(n.key));
+
+        return items.map((item, index) => ({
             ...item,
             isActive: activeWindow && (activeWindow.page === item.key || (activeWindow.page.includes('Project') && item.key === 'AdminProjects')),
-            position: positions[index] || { top: `${32 + index * 80}px`, left: '16px' },
+            position: positions[index] || { top: `${32 + index * 84}px`, left: '18px' },
         }));
     }, [activeWindow]);
 
     return (
         <OSContext.Provider value={osContextValue}>
-            <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-[#245D8B] font-sans selection:bg-sky-500/30 text-zinc-800">
+            <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-[#245D8B] font-sans selection:bg-sky-500/30 text-[#e0e0e0]">
                 {/* Desktop Background */}
                 <div
-                    className={cx("absolute inset-0 transition-all duration-500", !wallpaper ? "bg-[radial-gradient(circle_at_center,_#347BB7_0%,_#174876_100%)]" : "bg-cover bg-center bg-no-repeat")}
+                    className={cx(
+                        "absolute inset-0 transition-all duration-500 overflow-hidden",
+                        wallpaper
+                            ? "bg-cover bg-center bg-no-repeat"
+                            : "bg-[#1E5871]"
+                    )}
                     style={wallpaper ? { backgroundImage: `url(${wallpaper})` } : {}}
                 >
-                    {/* Subtle Graphic */}
                     {!wallpaper && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <svg viewBox="0 0 100 100" className="w-[450px] h-[450px] fill-current text-white/10 blur-[2px]">
-                                <polygon points="50,20 65,30 90,50 70,60 50,80 30,85 10,65 5,50 15,45 35,30" />
+                        <div className="absolute inset-0 z-0 flex items-center justify-center opacity-90 pointer-events-none">
+                            <svg className="absolute w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <linearGradient id="xfce-grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#256c87" stopOpacity="0.4" />
+                                        <stop offset="100%" stopColor="#1e5871" stopOpacity="0" />
+                                    </linearGradient>
+                                    <linearGradient id="xfce-grad2" x1="100%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stopColor="#81c496" stopOpacity="0.3" />
+                                        <stop offset="100%" stopColor="#1e5871" stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <rect width="100%" height="100%" fill="#1E5871" />
+                                <path d="M-100,-100 L400,800 L800,-100 Z" fill="url(#xfce-grad1)" />
+                                <path d="M1200,-100 L400,800 L1200,1200 Z" fill="url(#xfce-grad2)" />
+                                <circle cx="50%" cy="50%" r="40%" fill="none" stroke="#2a7795" strokeWidth="20" opacity="0.4" />
+                                <circle cx="50%" cy="50%" r="50%" fill="none" stroke="#81c496" strokeWidth="15" opacity="0.3" />
+                                <circle cx="50%" cy="50%" r="60%" fill="none" stroke="#8369a8" strokeWidth="10" opacity="0.3" />
+                            </svg>
+                            <svg className="relative w-48 h-48 drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] z-0" viewBox="0 0 512 512" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M473 349c-10-8-25-15-40-15-20 0-41 12-58 26 2-10 3-21 3-32 0-35-15-68-41-91-23-22-54-34-85-34-21 0-42 6-61 17-23-26-59-42-97-42-45 0-85 24-106 63l-14-11c-6-5-15-4-19 2-5 6-4 15 2 19l24 19c-13 17-22 37-25 59h-24c-8 0-14 6-14 14s6 14 14 14h22c2 17 8 34 16 49L3 416c-6 5-6 14-2 19 5 6 14 6 19 2l32-26c19 23 45 40 76 48v8c0 8 6 14 14 14s14-6 14-14v-4c22 3 44 1 65-5 24 18 53 29 84 29 20 0 39-4 57-11 50-20 86-63 94-118 6 4 13 8 20 8 20 0 37-14 50-31 5-6 4-15-2-19zm-389 57c-24-11-42-32-50-57l25 21c6 5 15 4 19-2 5-6 4-15-2-19l-34-29c4-27 15-51 32-69 22-25 54-38 87-38 23 0 46 7 66 19-27 14-49 37-62 65-43 9-78 39-95 80l-12-10c-6-5-15-4-19 2-5 6-4 15 2 19l31 25c-8 16-13 34-16 52-6-3-11-6-16-9zm215 54c-55 0-101-44-105-99h33c8 0 14-6 14-14s-6-14-14-14h-33c4-54 49-98 105-98 58 0 105 47 105 105s-47 106-105 106zm129-106c-11 8-20 18-24 18s-13-10-24-18c-3-2-3-5 0-7 11-8 20-18 24-18s13 10 24 18c3 2 3 5 0 7z"/>
+                                <circle cx="340" cy="280" r="16" fill="#1E5871" />
                             </svg>
                         </div>
                     )}
 
                     <div className="relative z-10 flex h-full flex-col">
                         <div className={cx(
-                            "flex items-center justify-between bg-[#2D2D2D]/95 border-b border-black/40 px-2 text-[12px] text-[#E0E0E0] shadow-[0_1px_3px_rgba(0,0,0,0.5)] z-40 shrink-0",
+                            "z-40 shrink-0 flex items-center justify-between bg-[#2d323a]/95 border-b border-[#1b1e23] px-1 text-[12px] text-[#f1f1f1] shadow-[0_1px_3px_rgba(0,0,0,0.5)]",
                             isMobileLandscape ? "h-[24px]" : "h-[26px]"
                         )}>
                             <div className="flex items-center h-full min-w-0">
@@ -223,28 +263,25 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                                     <button
                                         type="button"
                                         className={cx(
-                                            "flex h-full items-center gap-1.5 hover:bg-white/10 transition-colors cursor-default select-none group focus:outline-none shrink-0",
-                                            showApplicationsMenu ? "bg-white/10" : "",
+                                            "flex h-full items-center gap-1.5 transition-colors cursor-default select-none group focus:outline-none shrink-0 px-2",
+                                            showApplicationsMenu ? "bg-black/30" : "hover:bg-white/10",
                                             isMobileLandscape ? "px-2 text-[11px]" : "px-3"
                                         )}
                                         onClick={() => setShowApplicationsMenu((current) => !current)}
                                     >
-                                        <div className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-sky-500 text-white font-bold text-[9px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] group-active:bg-sky-600">
-                                            X
-                                        </div>
-                                        <span className="font-medium tracking-wide text-white">Applications</span>
+                                        <div className="w-[14px] h-[14px] flex items-center justify-center rounded-full bg-white/20 text-white font-bold text-[9px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">X</div>
+                                        <span className="font-medium tracking-wide">Applications</span>
                                     </button>
 
                                     {showApplicationsMenu && (
-                                        <div className="absolute left-0 top-full z-50 mt-[1px] min-w-[240px] overflow-hidden rounded-b-md border border-black/55 bg-[#efefef] shadow-[0_10px_24px_rgba(0,0,0,0.4)]">
-                                            <div className="border-b border-black/10 bg-[linear-gradient(180deg,#fafafa_0%,#e6e6e6_100%)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
+                                        <div className="absolute left-0 top-full z-50 min-w-[240px] overflow-hidden rounded-b-[3px] border border-[#1b1e23] bg-[#2d323a] shadow-[0_10px_24px_rgba(0,0,0,0.5)]">
+                                            <div className="border-b border-[#1b1e23] bg-[#2d323a] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9cb6d9]">
                                                 Applications
                                             </div>
 
                                             <div className="py-1">
                                                 {NAV_ITEMS.map((item) => {
                                                     const Icon = item.icon;
-
                                                     return (
                                                         <button
                                                             key={`applications-menu-${item.key}`}
@@ -253,7 +290,7 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                                                                 setShowApplicationsMenu(false);
                                                                 navigateMenu(item.href);
                                                             }}
-                                                            className="flex w-full items-center gap-3 px-3 py-2 text-left text-[12px] text-zinc-800 transition hover:bg-[#316ac5] hover:text-white"
+                                                            className="flex w-full items-center gap-3 px-3 py-2 text-left text-[12px] text-[#ddd] transition hover:bg-[#3e84c4] hover:text-white"
                                                         >
                                                             <Icon size={15} strokeWidth={2.1} />
                                                             <span className="flex-1">{item.label}</span>
@@ -261,7 +298,7 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                                                     );
                                                 })}
 
-                                                <div className="my-1 h-px bg-black/10" />
+                                                <div className="my-1 h-px bg-white/10" />
 
                                                 <button
                                                     type="button"
@@ -269,7 +306,7 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                                                         setShowApplicationsMenu(false);
                                                         setShowLogoutConfirm(true);
                                                     }}
-                                                    className="flex w-full items-center gap-3 px-3 py-2 text-left text-[12px] text-zinc-800 transition hover:bg-[#316ac5] hover:text-white"
+                                                    className="flex w-full items-center gap-3 px-3 py-2 text-left text-[12px] text-[#ddd] transition hover:bg-[#3e84c4] hover:text-white"
                                                 >
                                                     <LogOut size={15} strokeWidth={2.1} />
                                                     <span className="flex-1">Log Out</span>
@@ -278,17 +315,11 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                                         </div>
                                     )}
                                 </div>
-                                <div className={cx("h-[14px] w-px bg-white/20 shrink-0", isMobileLandscape ? "mx-0.5" : "mx-1")} />
-                                <button className={cx(
-                                    "flex h-full items-center hover:bg-white/10 transition-colors select-none cursor-default font-medium text-white focus:outline-none shrink-0",
-                                    isMobileLandscape ? "px-2 text-[11px]" : "px-3"
-                                )}>
-                                    Places
-                                </button>
+                                <div className="h-[14px] w-[1px] bg-white/10 shrink-0 mx-1" />
 
                                 <div className={cx(
-                                    "flex h-full items-center border-l border-white/20 gap-1 overflow-hidden",
-                                    isMobileLandscape ? "ml-1 pl-1 max-w-[40vw]" : "ml-2 pl-2 max-w-md"
+                                    "flex h-full items-center gap-[2px] overflow-hidden ml-1 text-[11px]",
+                                    isMobileLandscape ? "max-w-[40vw]" : "max-w-md"
                                 )}>
                                     {windows.map((win) => {
                                         const isFocused = activeWindow && activeWindow.id === win.id;
@@ -296,98 +327,81 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                                             <button
                                                 key={`task-${win.id}`}
                                                 className={cx(
-                                                    "flex h-[20px] items-center gap-1.5 border border-transparent rounded-[2px] transition-colors select-none focus:outline-none truncate",
-                                                    isMobileLandscape ? "max-w-[110px] px-2 text-[10px]" : "max-w-[150px] px-3 text-[11px]",
+                                                    "flex h-[22px] items-center gap-1.5 border border-transparent rounded-[2px] transition-colors select-none focus:outline-none truncate px-2",
+                                                    isMobileLandscape ? "max-w-[110px]" : "max-w-[150px]",
                                                     isFocused
-                                                        ? "bg-white/15 border-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] text-white"
+                                                        ? "bg-black/30 border-black/40 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                                                         : win.isMinimized
-                                                            ? "bg-black/15 text-white/45 hover:bg-white/8"
-                                                            : "hover:bg-white/10 text-white/70"
+                                                            ? "bg-black/10 text-white/45 hover:bg-white/5"
+                                                            : "bg-transparent hover:bg-white/10 text-white/70"
                                                 )}
                                                 onClick={() => focusWindow(win.id)}
                                             >
-                                                <span className="truncate">{win.title || win.page}</span>
+                                                <span className="truncate flex-1 text-left">{win.title || win.page}</span>
                                             </button>
                                         );
                                     })}
                                 </div>
                             </div>
 
-                            <div className="flex items-center h-full shrink-0">
-                                {!isMobileLandscape ? (
-                                    <div className="flex h-full items-center px-3 hover:bg-white/10 cursor-default select-none text-[11px] text-white/80 border-l border-white/10">
-                                        Workspace 1
-                                    </div>
-                                ) : null}
-                                {isMobileLandscape ? (
-                                    <button
-                                        type="button"
-                                        className="flex h-full items-center gap-1 border-l border-white/10 px-2 text-[11px] text-white/85 hover:bg-white/10"
-                                        onClick={toggleBrowserFullscreen}
-                                    >
-                                        <Maximize2 size={11} strokeWidth={2.4} />
-                                        <span>{isBrowserFullscreen ? 'Windowed' : 'Full'}</span>
+                            <div className="flex items-center h-full shrink-0 gap-3 px-2 text-[11px] text-white/90 font-medium select-none">
+                                <div>100%</div>
+                                <div>{(new Date()).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} {(new Date()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                {isMobileLandscape && (
+                                    <button onClick={toggleBrowserFullscreen} className="hover:text-white text-white/80 transition-colors ml-1">
+                                        <Maximize2 size={12} strokeWidth={2.4} />
                                     </button>
-                                ) : null}
-                                <div className={cx(
-                                    "flex h-full items-center hover:bg-white/10 cursor-default font-medium text-white border-l border-white/10",
-                                    isMobileLandscape ? "px-2 text-[11px]" : "px-3"
-                                )}>
-                                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </div>
-                                <button
-                                    className="flex h-full items-center px-2 hover:bg-rose-500 hover:text-white text-white cursor-default transition-colors border-l border-white/10 focus:outline-none"
-                                    onClick={() => setShowLogoutConfirm(true)}
-                                >
-                                    <LogOut size={13} strokeWidth={2.5} />
-                                </button>
+                                )}
                             </div>
                         </div>
 
                         <div className={cx("relative flex-1", isMobileLandscape ? "p-0 pb-[72px]" : "p-2")}>
-                            {!isMobileLandscape ? desktopIcons.map(({ key, label, icon: Icon, tone, isActive, position, href }) => (
+                            {desktopIcons.map(({ key, label, icon: Icon, isActive, position, href }) => (
                                 <button
                                     key={key}
                                     type="button"
                                     onDoubleClick={() => navigateMenu(href)}
                                     onClick={() => navigateMenu(href)}
-                                    className="group absolute flex w-[70px] flex-col items-center gap-1 rounded py-2 px-1 text-center border outline-none z-0"
+                                    className="group absolute flex w-[72px] flex-col items-center gap-1.5 rounded-[4px] px-1 py-1 text-center border outline-none z-0 hover:bg-white/10 hover:border-white/20 transition-colors"
                                     style={{
                                         ...position,
-                                        borderColor: 'transparent',
-                                        ...(isActive ? { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' } : {})
+                                        borderColor: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                                        backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent'
                                     }}
                                 >
-                                    <div className="group-active:opacity-80 transition-opacity">
-                                        <XfceIcon Icon={Icon} tone={tone} className="group-hover:opacity-100" />
-                                    </div>
-                                    <span className="text-[11px] font-medium leading-tight text-[#f1f1f1] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] break-words w-full select-none" style={{ textShadow: "1px 1px 1px #000, 0px 1px 2px #000" }}>
+                                    <XfceIcon itemKey={key} Icon={Icon} size={42} className={cx("transition-opacity", isActive ? "opacity-100" : "opacity-90")} />
+                                    <span className="w-full text-[11px] font-medium leading-[1.2] text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)] break-words text-center select-none" style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}>
                                         {label}
                                     </span>
                                 </button>
-                            )) : null}
+                            ))}
 
                             {children}
 
+                            {!isMobileLandscape ? (
+                                <div className="absolute inset-x-0 bottom-2 z-30 flex justify-center px-4 pointer-events-none">
+                                    <div className="flex h-[40px] items-center gap-1.5 px-1.5 rounded-[4px] bg-[#2D323A]/90 border border-[#1b1e23] shadow-[0_8px_16px_rgba(0,0,0,0.4)] pointer-events-auto backdrop-blur-md">
+                                        <button onClick={() => setShowApplicationsMenu(!showApplicationsMenu)} className="w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 transition-colors">
+                                            <div className="w-[20px] h-[20px] flex items-center justify-center rounded-full bg-white/20 text-white font-bold text-[13px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">X</div>
+                                        </button>
+                                        <div className="w-[1px] h-[20px] bg-white/10 mx-0.5" />
+                                        <button onClick={() => navigateMenu('#terminal')} className="w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 text-zinc-300 transition-colors"><TerminalSquare size={20} strokeWidth={1.5} /></button>
+                                        <button onClick={() => navigateMenu('/admin/projects')} className="w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 text-sky-400 transition-colors"><FolderKanban size={20} strokeWidth={1.5} /></button>
+                                        <button onClick={() => navigateMenu('/dashboard')} className="w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 text-amber-400 transition-colors"><Home size={20} strokeWidth={1.5} /></button>
+                                    </div>
+                                </div>
+                            ) : null}
+
                             {isMobileLandscape ? (
                                 <div className="absolute inset-x-2 bottom-2 z-30">
-                                    <div className="flex items-stretch gap-2 overflow-x-auto rounded-2xl border border-white/15 bg-[#1E1E1E]/88 px-2 py-2 shadow-[0_16px_35px_rgba(0,0,0,0.35)] backdrop-blur-md">
-                                        {desktopIcons.map(({ key, label, icon: Icon, isActive, href }) => (
-                                            <button
-                                                key={`dock-${key}`}
-                                                type="button"
-                                                onClick={() => navigateMenu(href)}
-                                                className={cx(
-                                                    "flex min-w-[84px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center transition",
-                                                    isActive
-                                                        ? "border-sky-300/60 bg-sky-400/20 text-white"
-                                                        : "border-white/10 bg-white/5 text-white/85 hover:bg-white/10"
-                                                )}
-                                            >
-                                                <XfceIcon Icon={Icon} className="p-0.5 [&_svg]:h-7 [&_svg]:w-7" />
-                                                <span className="text-[10px] font-medium leading-tight">{label}</span>
-                                            </button>
-                                        ))}
+                                    <div className="flex h-[40px] items-center gap-1.5 px-1.5 rounded-[4px] bg-[#2D323A]/95 border border-[#1b1e23] shadow-[0_8px_16px_rgba(0,0,0,0.4)] pointer-events-auto backdrop-blur-md overflow-x-auto">
+                                        <button onClick={() => setShowApplicationsMenu(!showApplicationsMenu)} className="min-w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 transition-colors shrink-0">
+                                            <div className="w-[20px] h-[20px] flex items-center justify-center rounded-full bg-white/20 text-white font-bold text-[13px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">X</div>
+                                        </button>
+                                        <div className="w-[1px] h-[20px] bg-white/10 mx-0.5 shrink-0" />
+                                        <button onClick={() => navigateMenu('#terminal')} className="min-w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 text-zinc-300 transition-colors shrink-0"><TerminalSquare size={20} strokeWidth={1.5} /></button>
+                                        <button onClick={() => navigateMenu('/admin/projects')} className="min-w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 text-sky-400 transition-colors shrink-0"><FolderKanban size={20} strokeWidth={1.5} /></button>
+                                        <button onClick={() => navigateMenu('/dashboard')} className="min-w-[32px] h-[32px] flex items-center justify-center rounded-[3px] hover:bg-white/10 active:bg-black/30 text-amber-400 transition-colors shrink-0"><Home size={20} strokeWidth={1.5} /></button>
                                     </div>
                                 </div>
                             ) : null}
@@ -405,7 +419,7 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                                             Rotate to Landscape
                                         </div>
                                         <p className="mt-3 text-sm leading-6 text-white/72">
-                                            Admin desktop only runs in landscape on mobile so the XFCE window manager can use the full screen area.
+                                            Admin desktop only runs in landscape on mobile so the XFCE desktop can use the full screen area.
                                         </p>
                                         <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm text-white/84">
                                             <RotateCw size={16} strokeWidth={2} />
@@ -420,7 +434,7 @@ export const AdminDesktop = ({ windows, closeWindow, focusWindow, minimizeWindow
                     <AdminTerminalConfirm
                         open={showLogoutConfirm}
                         title="Log Out"
-                        message="Are you sure you want to close the session and log out of the XFCE environment?"
+                        message={`Are you sure you want to close the session and log out of the XFCE environment?`}
                         confirmLabel="Log Out"
                         onCancel={() => setShowLogoutConfirm(false)}
                         onConfirm={handleLogout}
@@ -465,6 +479,8 @@ export const AdminWindow = ({
     const offset = (os.windows.findIndex(w => w.id === windowId) * 20) || 0;
     const [pos, setPos] = useState({ x: 150 + offset, y: 60 + offset });
     const [size, setSize] = useState({ w: initialWidth, h: initialHeight });
+    const minWindowWidth = 400;
+    const minWindowHeight = 300;
 
     useEffect(() => {
         const syncCompactSession = () => {
@@ -516,7 +532,7 @@ export const AdminWindow = ({
         document.addEventListener('mouseup', onMouseUp);
     };
 
-    const handleResizeDown = (e) => {
+    const handleResizeDown = (direction, e) => {
         if (useFullscreenLayout) return;
         focusObject();
         e.preventDefault();
@@ -525,11 +541,44 @@ export const AdminWindow = ({
         const startY = e.clientY;
         const startW = size.w;
         const startH = size.h;
+        const startLeft = pos.x;
+        const startTop = pos.y;
 
         const onMouseMove = (moveEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            const deltaY = moveEvent.clientY - startY;
+
+            let nextWidth = startW;
+            let nextHeight = startH;
+            let nextLeft = startLeft;
+            let nextTop = startTop;
+
+            if (direction.includes('right')) {
+                nextWidth = Math.max(minWindowWidth, startW + deltaX);
+            }
+
+            if (direction.includes('left')) {
+                nextWidth = Math.max(minWindowWidth, startW - deltaX);
+                nextLeft = startLeft + (startW - nextWidth);
+            }
+
+            if (direction.includes('bottom')) {
+                nextHeight = Math.max(minWindowHeight, startH + deltaY);
+            }
+
+            if (direction.includes('top')) {
+                nextHeight = Math.max(minWindowHeight, startH - deltaY);
+                nextTop = Math.max(0, startTop + (startH - nextHeight));
+            }
+
+            setPos({
+                x: nextLeft,
+                y: nextTop,
+            });
+
             setSize({
-                w: Math.max(400, startW + (moveEvent.clientX - startX)),
-                h: Math.max(300, startH + (moveEvent.clientY - startY))
+                w: nextWidth,
+                h: nextHeight,
             });
         };
         const onMouseUp = () => {
@@ -539,6 +588,17 @@ export const AdminWindow = ({
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     };
+
+    const resizeHandles = [
+        { key: 'top', direction: 'top', className: 'absolute left-3 right-3 top-0 h-1 cursor-n-resize z-50' },
+        { key: 'bottom', direction: 'bottom', className: 'absolute bottom-0 left-3 right-3 h-1 cursor-s-resize z-50' },
+        { key: 'left', direction: 'left', className: 'absolute left-0 top-3 bottom-3 w-1 cursor-w-resize z-50' },
+        { key: 'right', direction: 'right', className: 'absolute right-0 top-3 bottom-3 w-1 cursor-e-resize z-50' },
+        { key: 'top-left', direction: 'top-left', className: 'absolute left-0 top-0 h-3 w-3 cursor-nw-resize z-50' },
+        { key: 'top-right', direction: 'top-right', className: 'absolute right-0 top-0 h-3 w-3 cursor-ne-resize z-50' },
+        { key: 'bottom-left', direction: 'bottom-left', className: 'absolute bottom-0 left-0 h-3 w-3 cursor-sw-resize z-50' },
+        { key: 'bottom-right', direction: 'bottom-right', className: 'absolute bottom-0 right-0 h-3 w-3 cursor-se-resize z-50 flex items-end justify-end p-[2px]' },
+    ];
 
     return (
         <div
@@ -559,41 +619,42 @@ export const AdminWindow = ({
             <div
                 className={cx(
                     "flex items-center justify-between px-1 border-b select-none shrink-0",
-                    isCompactTouchSession ? "h-[30px]" : "h-[26px]",
+                    isCompactTouchSession ? "h-[30px]" : "h-[24px]",
                     isFocused
-                        ? "bg-[linear-gradient(180deg,#EBEBEB_0%,#C9C9C9_100%)] border-[#a9a9a9] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
-                        : "bg-[linear-gradient(180deg,#F5F5F5_0%,#E0E0E0_100%)] border-[#b5b5b5] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] opacity-80"
+                        ? "bg-[#D6D6D6] border-[#B5B5B5] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                        : "bg-[#E3E3E3] border-[#B5B5B5] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] opacity-90"
                 )}
                 onDoubleClick={() => setIsFullscreen(!useFullscreenLayout)}
                 onMouseDown={handleMouseDown}
             >
-                <div className="flex items-center gap-1.5 px-1.5 shrink-0 opacity-80 pointer-events-none">
-                    <Terminal size={12} strokeWidth={2.5} className={isFocused ? "text-[#333]" : "text-[#666]"} />
+                <div className="flex items-center gap-1.5 px-1.5 shrink-0 pointer-events-none">
+                    <Terminal size={12} strokeWidth={2.5} className={isFocused ? "text-[#333]" : "text-[#888]"} />
+                    <span className={cx(
+                        "text-[12px] font-bold tracking-wide pointer-events-none",
+                        isFocused ? "text-[#222]" : "text-[#777]"
+                    )} style={{ textShadow: isFocused ? '0 1px 0 rgba(255,255,255,0.6)' : 'none' }}>
+                        {title}
+                    </span>
                 </div>
-                <div className={cx(
-                    "flex-1 text-center truncate text-[12px] font-bold tracking-wide pointer-events-none",
-                    isFocused ? "text-[#333]" : "text-[#777]"
-                )} style={{ textShadow: '0 1px 0 rgba(255,255,255,0.6)' }}>
-                    {title}
-                </div>
+                <div className="flex-1" />
                 <div className="window-controls flex items-center gap-[2px] pr-0.5 shrink-0" onMouseDown={e => e.stopPropagation()}>
                     <button
                         type="button"
-                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[2px] border border-[#a0a0a0] bg-[linear-gradient(180deg,#F5F5F5_0%,#DCDCDC_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_1px_rgba(0,0,0,0.1)] hover:bg-[linear-gradient(180deg,#FFF_0%,#E4E4E4_100%)] active:bg-[linear-gradient(180deg,#CACACA_0%,#DCDCDC_100%)]"
+                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[2px] border border-[#A1A1A1] bg-[#DBDBDB] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),inset_0_-1px_1px_rgba(0,0,0,0.05),0_1px_1px_rgba(0,0,0,0.1)] hover:bg-[#EAEAEA] active:bg-[#C9C9C9]"
                         onClick={() => os.minimizeWindow(windowId)}
                     >
                         <Minus size={10} strokeWidth={4} className={!isFocused ? 'opacity-50' : ''} />
                     </button>
                     <button
                         type="button"
-                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[2px] border border-[#a0a0a0] bg-[linear-gradient(180deg,#F5F5F5_0%,#DCDCDC_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_1px_rgba(0,0,0,0.1)] hover:bg-[linear-gradient(180deg,#FFF_0%,#E4E4E4_100%)] active:bg-[linear-gradient(180deg,#CACACA_0%,#DCDCDC_100%)]"
+                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[2px] border border-[#A1A1A1] bg-[#DBDBDB] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),inset_0_-1px_1px_rgba(0,0,0,0.05),0_1px_1px_rgba(0,0,0,0.1)] hover:bg-[#EAEAEA] active:bg-[#C9C9C9]"
                         onClick={() => setIsFullscreen(!useFullscreenLayout)}
                     >
                         {useFullscreenLayout ? <Minimize2 size={10} strokeWidth={3} className={!isFocused ? 'opacity-50' : ''} /> : <Maximize2 size={10} strokeWidth={3} className={!isFocused ? 'opacity-50' : ''} />}
                     </button>
                     <button
                         type="button"
-                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[2px] border border-[#a0a0a0] bg-[linear-gradient(180deg,#F5F5F5_0%,#DCDCDC_100%)] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_1px_rgba(0,0,0,0.1)] hover:border-[#b34848] hover:bg-[linear-gradient(180deg,#E88686_0%,#C85050_100%)] hover:text-white active:bg-[linear-gradient(180deg,#B04444_0%,#C85050_100%)]"
+                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[2px] border border-[#A1A1A1] bg-[#DBDBDB] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),inset_0_-1px_1px_rgba(0,0,0,0.05),0_1px_1px_rgba(0,0,0,0.1)] hover:border-[#b34848] hover:bg-[#DF7373] hover:text-white active:bg-[#D55F5F]"
                         onClick={() => os.closeWindow(windowId)}
                     >
                         <X size={10} strokeWidth={4} className={!isFocused ? 'opacity-50' : ''} />
@@ -603,29 +664,31 @@ export const AdminWindow = ({
 
             {/* Menu bar */}
             {showMenuBar && (
-                <div className="flex h-6 items-center gap-4 bg-[#FAFAFA] border-b border-[#D4D4D4] px-2 text-[12px] text-zinc-700 select-none shrink-0">
-                    <span className="hover:bg-zinc-200 px-1.5 py-0.5 rounded-sm cursor-default">File</span>
-                    <span className="hover:bg-zinc-200 px-1.5 py-0.5 rounded-sm cursor-default">Edit</span>
-                    <span className="hover:bg-zinc-200 px-1.5 py-0.5 rounded-sm cursor-default">View</span>
-                    <span className="hover:bg-zinc-200 px-1.5 py-0.5 rounded-sm cursor-default">Help</span>
+                <div className="flex h-[24px] items-center gap-3 bg-[#EAEAEA] border-b border-[#D4D4D4] px-1 text-[11px] text-zinc-800 select-none shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,1)]">
+                    <span className="hover:border-[#96B4D6] hover:bg-[#DDE9F6] border border-transparent px-1.5 py-0.5 rounded-[3px] cursor-default leading-tight">File</span>
+                    <span className="hover:border-[#96B4D6] hover:bg-[#DDE9F6] border border-transparent px-1.5 py-0.5 rounded-[3px] cursor-default leading-tight">Edit</span>
+                    <span className="hover:border-[#96B4D6] hover:bg-[#DDE9F6] border border-transparent px-1.5 py-0.5 rounded-[3px] cursor-default leading-tight">View</span>
+                    <span className="hover:border-[#96B4D6] hover:bg-[#DDE9F6] border border-transparent px-1.5 py-0.5 rounded-[3px] cursor-default leading-tight">Help</span>
                 </div>
             )}
 
             {/* Toolbar */}
             {showToolbar && (
                 <div className={cx(
-                    "flex items-center gap-1 bg-[#FAFAFA] border-b border-[#E0E0E0] px-2 shrink-0",
-                    isCompactTouchSession ? "h-7" : "h-8"
+                    "flex items-center gap-1 bg-[#F5F5F5] border-b border-[#D0D0D0] px-2 shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,1)]",
+                    isCompactTouchSession ? "h-[30px]" : "h-[32px]"
                 )}>
-                    <div className="flex bg-[#EFEFEF] border border-[#D0D0D0] rounded-[2px] p-[1px]">
-                        <div className="p-1 px-1.5 rounded-[2px] opacity-50"><ChevronDown size={14} className="rotate-90" /></div>
-                        <div className="p-1 px-1.5 rounded-[2px] opacity-50"><ChevronDown size={14} className="-rotate-90" /></div>
+                    <div className="flex px-1 gap-1">
+                        <button className="p-1 px-[6px] hover:border-[#96B4D6] hover:bg-[#DDE9F6] border border-transparent rounded-[3px] cursor-default text-zinc-600"><ChevronDown size={14} className="rotate-90" strokeWidth={1.5} /></button>
+                        <button className="p-1 px-[6px] hover:border-[#96B4D6] hover:bg-[#DDE9F6] border border-transparent rounded-[3px] cursor-default text-zinc-600"><ChevronDown size={14} className="-rotate-90" strokeWidth={1.5} /></button>
                     </div>
-                    <div className="w-px h-5 bg-[#D0D0D0] mx-1"></div>
-                    <div className="p-1 px-1.5 hover:bg-zinc-200 rounded-[2px] cursor-default border border-transparent" onClick={() => os.navigateMenu('/dashboard')}><Home size={16} className="text-zinc-600" /></div>
-                    <div className="w-px h-5 bg-[#D0D0D0] mx-1"></div>
-                    <div className="flex-1 flex items-center bg-white border border-[#D0D0D0] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] rounded-[2px] h-[22px] px-2 text-[12px] text-zinc-600 truncate ml-1 select-none">
-                        <Terminal size={12} className="mr-2 opacity-50" />
+                    <div className="w-[1px] h-[20px] bg-[#D4D4D4] shadow-[1px_0_0_rgba(255,255,255,0.7)] mx-0.5"></div>
+                    <button className="p-1 px-1.5 hover:border-[#96B4D6] hover:bg-[#DDE9F6] border border-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] bg-transparent rounded-[3px] cursor-default text-zinc-600 focus:outline-none" onClick={() => os.navigateMenu('/dashboard')}>
+                        <Home size={14} />
+                    </button>
+                    <div className="w-[1px] h-[20px] bg-[#D4D4D4] shadow-[1px_0_0_rgba(255,255,255,0.7)] mx-0.5"></div>
+                    <div className="flex-1 flex items-center bg-white border border-[#B0B0B0] shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)] rounded-[3px] h-[24px] px-2 text-[11px] text-zinc-700 truncate ml-1 select-none focus-within:border-sky-500 focus-within:ring-1 focus-within:ring-sky-500/30">
+                        <Terminal size={12} className="mr-2 text-zinc-400" />
                         /admin/window/{windowId}
                     </div>
                 </div>
@@ -635,21 +698,23 @@ export const AdminWindow = ({
             <div className="flex-1 flex overflow-hidden text-zinc-800" style={showSidebar ? {} : { backgroundColor: 'transparent' }}>
                 {/* Sidebar */}
                 {showSidebar && (
-                    <div className="w-40 border-r border-[#D4D4D4] bg-[#F2F4F7] overflow-y-auto hidden md:block select-none shrink-0">
-                        <div className="text-[11px] font-bold text-zinc-500 uppercase px-3 py-2 pt-3">Places</div>
-                        {NAV_ITEMS.filter(item => item.href.startsWith('/')).map(nav => (
-                            <div
-                                key={nav.key}
-                                className={cx(
-                                    "flex items-center gap-2 px-3 py-1.5 text-[12px] cursor-default",
-                                    "text-zinc-700 hover:bg-[#e0e4eb]"
-                                )}
-                                onClick={() => os.navigateMenu(nav.href)}
-                            >
-                                <nav.icon size={14} className="text-[#7a92b3]" />
-                                <span className="truncate">{nav.label}</span>
-                            </div>
-                        ))}
+                    <div className="w-[160px] border-r border-[#C5C5C5] bg-[#F4F4F4] overflow-y-auto hidden md:block select-none shrink-0 shadow-[inset_-1px_0_0_rgba(255,255,255,0.6)]">
+                        <div className="text-[10px] font-bold text-zinc-500 uppercase px-3 py-1.5 pt-3">Places</div>
+                        <div className="flex flex-col px-1 pb-2">
+                            {NAV_ITEMS.filter(item => item.href.startsWith('/') || item.key === 'Trash').map(nav => (
+                                <button
+                                    key={nav.key}
+                                    className={cx(
+                                        "flex items-center gap-2.5 px-2 py-1 text-[12px] cursor-default rounded-[3px] border border-transparent mx-1 mb-[1px]",
+                                        "text-zinc-800 hover:bg-[#DDE9F6] hover:border-[#adc4e3] focus:outline-none"
+                                    )}
+                                    onClick={() => os.navigateMenu(nav.href)}
+                                >
+                                    <nav.icon size={16} className={nav.tone === 'blue' ? 'text-blue-500' : (nav.tone === 'green' ? 'text-emerald-500' : 'text-zinc-500')} />
+                                    <span className="truncate">{nav.label}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -723,14 +788,21 @@ export const AdminWindow = ({
                 </div>
             )}
 
-            {/* Resize Handle */}
+            {/* Resize Handles */}
             {!useFullscreenLayout && (
-                <div
-                    className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-transparent z-50 flex items-end justify-end p-[2px]"
-                    onMouseDown={handleResizeDown}
-                >
-                    <div className="w-1.5 h-1.5 border-r border-b border-zinc-400"></div>
-                </div>
+                <>
+                    {resizeHandles.map((handle) => (
+                        <div
+                            key={handle.key}
+                            className={handle.className}
+                            onMouseDown={(event) => handleResizeDown(handle.direction, event)}
+                        >
+                            {handle.key === 'bottom-right' ? (
+                                <div className="h-1.5 w-1.5 border-b border-r border-zinc-400" />
+                            ) : null}
+                        </div>
+                    ))}
+                </>
             )}
         </div>
     );
@@ -739,12 +811,11 @@ export const AdminWindow = ({
 // Expose the other components cleanly
 export const AdminTerminalPanel = ({ title, command, children, className = '', headerAction = null }) => {
     return (
-        <section className={cx('rounded border border-[#c4c4c4] bg-[#f9f9f9] p-4 shadow-sm mb-4', className)}>
-            {(title || command || headerAction) ? (
-                <div className="mb-3 flex flex-col gap-2 border-b border-[#e0e0e0] pb-2 sm:flex-row sm:items-center sm:justify-between">
+        <section className={cx('rounded border border-[#B5B5B5] bg-[#F2F2F2] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.8)] mb-4', className)}>
+            {(title || headerAction) ? (
+                <div className="mb-3 flex flex-col gap-2 border-b border-[#D4D4D4] pb-2 sm:flex-row sm:items-center sm:justify-between shadow-[0_1px_0_rgba(255,255,255,0.8)]">
                     <div>
-                        {command && <div className="text-[10px] uppercase font-mono tracking-wide text-zinc-500">{command}</div>}
-                        {title && <h2 className="text-[14px] font-semibold text-zinc-800 mb-0.5">{title}</h2>}
+                        {title && <h2 className="text-[13px] font-bold text-[#333] mb-0.5 tracking-wide" style={{ textShadow: '0 1px 0 rgba(255,255,255,0.8)' }}>{title}</h2>}
                     </div>
                     {headerAction}
                 </div>
@@ -758,18 +829,18 @@ export const AdminTerminalPanel = ({ title, command, children, className = '', h
 
 export const AdminTerminalStat = ({ label, value, hint, tone = 'neutral' }) => {
     const accents = {
-        neutral: 'border-[#c4c4c4] bg-white text-zinc-800',
-        blue: 'border-sky-200 bg-sky-50 text-sky-900',
-        green: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-        amber: 'border-amber-200 bg-amber-50 text-amber-900',
-        red: 'border-rose-200 bg-rose-50 text-rose-900',
+        neutral: 'bg-[#FDFDFD]',
+        blue: 'bg-[#EAF2FA]',
+        green: 'bg-[#EBF7EF]',
+        amber: 'bg-[#FDF9EA]',
+        red: 'bg-[#F9ECEB]',
     };
 
     return (
-        <div className={cx('rounded border p-3 shadow-sm', accents[tone] || accents.neutral)}>
-            <div className="text-[11px] font-medium uppercase text-zinc-500">{label}</div>
-            <div className="mt-1 text-2xl font-bold">{value}</div>
-            {hint && <div className="mt-1 text-[12px] opacity-75">{hint}</div>}
+        <div className={cx('rounded-[3px] border border-[#a0a0a0] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_1px_2px_rgba(0,0,0,0.05)]', accents[tone] || accents.neutral)}>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[#666]">{label}</div>
+            <div className="mt-1 text-2xl font-bold text-[#111]">{value}</div>
+            {hint && <div className="mt-1 text-[11px] opacity-90 text-[#555]">{hint}</div>}
         </div>
     );
 };
@@ -780,15 +851,15 @@ export const AdminTerminalAction = ({ icon: Icon, label, description, tone = 'ne
             type="button"
             onClick={onClick}
             className={cx(
-                'rounded border p-3 text-left transition shadow-sm bg-white',
+                'rounded-[3px] border p-2.5 text-left transition shadow-[0_1px_1px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.8)]',
                 toneClassNames[tone] || toneClassNames.neutral
             )}
         >
             <div className="flex items-start gap-3">
-                {Icon && <div className="p-1 rounded bg-black/5"><Icon size={16} strokeWidth={2} className="opacity-80" /></div>}
+                {Icon && <div className="p-1 rounded bg-black/5 border border-black/10 shadow-sm"><Icon size={16} strokeWidth={2} className="opacity-80" /></div>}
                 <div>
-                    <div className="text-[13px] font-semibold">{label}</div>
-                    <div className="mt-0.5 text-[12px] opacity-80">{description}</div>
+                    <div className="text-[12px] font-bold text-[#222] tracking-wide">{label}</div>
+                    <div className="mt-0.5 text-[11px] opacity-90 text-[#444] leading-tight">{description}</div>
                 </div>
             </div>
         </button>
@@ -801,19 +872,19 @@ export const AdminTerminalTable = ({ columns, rows, emptyLabel = 'No records fou
     }
 
     return (
-        <div className="overflow-hidden rounded border border-[#c4c4c4] bg-white shadow-sm">
-            <div className="hidden grid-cols-[repeat(var(--col-count),minmax(0,1fr))] bg-[#F0F0F0] border-b border-[#c4c4c4] md:grid" style={{ '--col-count': columns.length }}>
+        <div className="overflow-hidden rounded-[4px] border border-[#a0a0a0] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,1),0_1px_2px_rgba(0,0,0,0.05)]">
+            <div className="hidden grid-cols-[repeat(var(--col-count),minmax(0,1fr))] bg-[linear-gradient(180deg,#F5F5F5_0%,#E4E4E4_100%)] border-b border-[#a0a0a0] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] md:grid" style={{ '--col-count': columns.length }}>
                 {columns.map((column, i) => (
-                    <div key={column} className={cx("px-3 py-1.5 text-[11px] font-bold text-zinc-600 border-r border-[#d4d4d4] last:border-0", i === 0 ? "border-l-0" : "")}>{column}</div>
+                    <div key={column} className={cx("px-3 py-1.5 text-[11px] font-bold text-[#444] border-r border-[#bebebe] last:border-0 shadow-[1px_0_0_rgba(255,255,255,0.7)]", i === 0 ? "border-l-0" : "")} style={{ textShadow: '0 1px 0 rgba(255,255,255,0.8)' }}>{column}</div>
                 ))}
             </div>
 
-            <div className="divide-y divide-[#E0E0E0]">
+            <div className="divide-y divide-[#D4D4D4]">
                 {rows.map((row, rowIndex) => (
-                    <div key={row.key || rowIndex} className="grid md:grid-cols-[repeat(var(--col-count),minmax(0,1fr))] hover:bg-sky-50 transition-colors" style={{ '--col-count': columns.length }}>
+                    <div key={row.key || rowIndex} className="grid md:grid-cols-[repeat(var(--col-count),minmax(0,1fr))] hover:bg-[#DDE9F6] transition-colors" style={{ '--col-count': columns.length }}>
                         {row.cells.map((cell, cellIndex) => (
                             <div key={`${row.key || rowIndex}-${cellIndex}`} className={cx("min-w-0 px-3 py-2 border-r border-[#E0E0E0] md:last:border-0 flex items-center")}>
-                                <div className="mb-1 text-[11px] font-bold text-zinc-500 md:hidden">{columns[cellIndex]}</div>
+                                <div className="mb-1 text-[10px] font-bold text-zinc-500 md:hidden uppercase tracking-wider">{columns[cellIndex]}</div>
                                 <div className="text-[12px] text-zinc-800 truncate">{cell}</div>
                             </div>
                         ))}
@@ -823,7 +894,6 @@ export const AdminTerminalTable = ({ columns, rows, emptyLabel = 'No records fou
         </div>
     );
 };
-
 export const AdminTerminalField = ({
     label,
     name,
@@ -836,77 +906,77 @@ export const AdminTerminalField = ({
     ...props
 }) => {
     const fieldClassName = cx(
-        'w-full rounded-[3px] border border-[#a0a0a0] bg-white px-2.5 py-1.5 text-[13px] text-zinc-800 outline-none transition placeholder:text-zinc-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] mt-1',
+        'w-full rounded-[2px] border border-[#a0a0a0] bg-white px-2.5 py-1.5 text-[12px] text-[#333] outline-none transition focus:border-[#60a0f0] focus:ring-1 focus:ring-[#60a0f0] shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)] mt-1',
         as === 'textarea' ? 'min-h-[100px] resize-y' : '',
         className
     );
 
     return (
         <label className="block mb-3">
-            <div className="text-[12px] font-medium text-zinc-700">{label}</div>
+            <div className="text-[12px] font-bold text-[#444] px-0.5">{label}</div>
             {as === 'textarea' ? (
                 <textarea name={name} value={value} onChange={onChange} rows={rows} className={fieldClassName} {...props} />
             ) : (
                 <input name={name} value={value} onChange={onChange} className={fieldClassName} {...props} />
             )}
-            {error ? <div className="mt-1 text-[12px] text-rose-600">{error}</div> : null}
+            {error ? <div className="mt-1 text-[11px] font-bold text-[#b34848] tracking-wide">{error}</div> : null}
         </label>
     );
 };
 
 export const AdminTerminalStatusPicker = ({ value, onChange }) => {
     const items = [
-        { value: 'draft', label: 'Draft', description: 'hidden from public list', icon: SquarePen },
-        { value: 'published', label: 'Published', description: 'visible on public list', icon: Save },
+        { value: 'draft', label: 'Draft', description: 'Hidden from public', icon: SquarePen },
+        { value: 'published', label: 'Published', description: 'Visible to public', icon: Save },
     ];
 
     return (
-        <div className="grid gap-2 sm:grid-cols-2 mb-3">
-            {items.map((item) => {
-                const isActive = value === item.value;
-                const Icon = item.icon;
+        <div className="mb-3">
+             <div className="text-[12px] font-bold text-[#444] px-0.5 mb-1">Status</div>
+             <div className="flex gap-0 border border-[#a0a0a0] rounded-[2px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden w-fit">
+                 {items.map((item, index) => {
+                     const isActive = value === item.value;
+                     const Icon = item.icon;
 
-                return (
-                    <label
-                        key={item.value}
-                        className={cx(
-                            'cursor-pointer rounded-[3px] border p-2 transition shadow-sm',
-                            isActive
-                                ? 'border-sky-500 bg-sky-50 ring-1 ring-sky-500'
-                                : 'border-[#a0a0a0] bg-[#FAFAFA] hover:bg-white hover:border-[#808080]'
-                        )}
-                    >
-                        <input
-                            type="radio"
-                            name="status"
-                            value={item.value}
-                            checked={isActive}
-                            onChange={onChange}
-                            className="sr-only"
-                        />
-                        <div className="flex items-center gap-2">
-                            <Icon size={16} className={isActive ? "text-sky-600" : "text-zinc-500"} />
-                            <div>
-                                <div className="text-[13px] font-medium text-zinc-800">{item.label}</div>
-                            </div>
-                        </div>
-                    </label>
-                );
-            })}
+                     return (
+                         <label
+                             key={item.value}
+                             className={cx(
+                                 'cursor-pointer transition flex items-center gap-2 px-3 py-1.5',
+                                 isActive
+                                     ? 'bg-[linear-gradient(180deg,#D4E6FA_0%,#B8D5F6_100%)] text-[#1A4B85] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]'
+                                     : 'bg-[linear-gradient(180deg,#F8F8F8_0%,#E4E4E4_100%)] text-[#444] hover:bg-[linear-gradient(180deg,#FFFFFF_0%,#ECECEC_100%)]',
+                                 index > 0 ? 'border-l border-[#a0a0a0]' : ''
+                             )}
+                         >
+                             <input
+                                 type="radio"
+                                 name="status"
+                                 value={item.value}
+                                 checked={isActive}
+                                 onChange={onChange}
+                                 className="sr-only"
+                             />
+                             <Icon size={14} className={isActive ? "text-[#1A4B85]" : "text-[#666]"} strokeWidth={isActive ? 2.5 : 2} />
+                             <div className="text-[12px] font-bold" style={isActive ? { textShadow: '0 1px 0 rgba(255,255,255,0.6)' } : {}}>{item.label}</div>
+                         </label>
+                     );
+                 })}
+             </div>
         </div>
     );
 };
 
-export const AdminTerminalUpload = ({ imagePreview, onChange, error }) => {
+export const AdminTerminalUpload = ({ label, imagePreview, onChange, error }) => {
     return (
         <label className="block mb-3">
-            <div className="mb-1 text-[12px] font-medium text-zinc-700">Project cover image</div>
-            <div className="rounded-[3px] border border-dashed border-[#a0a0a0] bg-[#FAFAFA] p-3 transition hover:border-[#808080]">
-                <input type="file" accept="image/*" onChange={onChange} className="mb-2 block w-full text-[12px] text-zinc-600 file:mr-3 file:rounded-sm file:border file:border-[#b0b0b0] file:bg-[#e0e0e0] file:px-2 file:py-1 file:font-medium file:text-zinc-800 hover:file:bg-[#d0d0d0] cursor-pointer" />
+            <div className="mb-1 text-[12px] font-bold text-[#444]">{label || 'Upload file'}</div>
+            <div className="rounded-[3px] border border-[#a0a0a0] bg-[#FAFAFA] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] p-3 transition focus-within:border-sky-500 hover:border-[#808080]">
+                <input type="file" accept="image/*" onChange={onChange} className="mb-2 block w-full text-[12px] text-zinc-600 file:mr-3 file:rounded-[2px] file:border file:border-[#a0a0a0] file:bg-[linear-gradient(180deg,#F5F5F5_0%,#E0E0E0_100%)] file:px-3 file:py-1 file:font-bold file:text-[#333] file:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_1px_rgba(0,0,0,0.05)] hover:file:bg-[linear-gradient(180deg,#FAFAFA_0%,#E8E8E8_100%)] active:file:bg-[linear-gradient(180deg,#D0D0D0_0%,#E5E5E5_100%)] active:file:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] cursor-pointer" />
                 {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="max-h-56 mt-2 rounded border border-[#d0d0d0] bg-white p-1 shadow-sm object-contain" />
+                    <img src={imagePreview} alt="Preview" className="max-h-56 mt-2 rounded-[2px] border border-[#888] bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzhhYWGMYAEYB8RmROaABADeOQ8CXl/xfgAAAABJRU5ErkJggg==')] p-1 shadow-[0_1px_3px_rgba(0,0,0,0.2)] object-contain" />
                 ) : (
-                    <div className="rounded border border-[#e0e0e0] bg-white px-3 py-6 text-center text-[12px] text-zinc-500 shadow-sm mt-2">
+                    <div className="rounded-[2px] border border-dashed border-[#b0b0b0] bg-white px-3 py-6 text-center text-[12px] text-[#666] shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] mt-2">
                         No image selected. Upload PNG or JPG.
                     </div>
                 )}
@@ -918,13 +988,13 @@ export const AdminTerminalUpload = ({ imagePreview, onChange, error }) => {
 
 export const AdminTerminalNotice = ({ type = 'info', message }) => {
     const classNames = {
-        info: 'border-sky-200 bg-sky-50 text-sky-800',
-        success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-        error: 'border-rose-200 bg-rose-50 text-rose-800',
+        info: 'bg-[linear-gradient(180deg,#F0F6FC_0%,#E0EEFA_100%)] text-[#2C5282]',
+        success: 'bg-[linear-gradient(180deg,#F0FAF2_0%,#E0F5E6_100%)] text-[#276749]',
+        error: 'bg-[linear-gradient(180deg,#FEF2F2_0%,#FEE2E2_100%)] text-[#9B2C2C]',
     };
 
     return (
-        <div className={cx('rounded-[3px] border px-3 py-2 text-[12px] shadow-sm mb-3', classNames[type] || classNames.info)}>
+        <div className={cx('rounded-[3px] border border-[#a0a0a0] px-3 py-2 text-[12px] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_1px_rgba(0,0,0,0.05)] mb-3', classNames[type] || classNames.info)}>
             {message}
         </div>
     );
@@ -932,13 +1002,13 @@ export const AdminTerminalNotice = ({ type = 'info', message }) => {
 
 export const AdminTerminalEmpty = ({ title, description, action = null }) => {
     return (
-        <div className="rounded-[3px] border border-[#d0d0d0] bg-[#fdfdfd] px-4 py-8 text-center shadow-inner">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
-                <Inbox size={20} />
+        <div className="rounded-[4px] border border-[#a0a0a0] bg-[#FAFAFA] px-4 py-8 text-center shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(180deg,#F5F5F5_0%,#E0E0E0_100%)] text-[#888] shadow-[0_1px_2px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,1)] border border-[#c0c0c0]">
+                <Inbox size={26} strokeWidth={1.5} />
             </div>
-            <div className="mt-3 text-[14px] font-semibold text-zinc-800">{title}</div>
-            <div className="mx-auto mt-1 max-w-sm text-[12px] text-zinc-500">{description}</div>
-            {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
+            <div className="mt-4 text-[13px] font-bold text-[#333] tracking-wide" style={{ textShadow: '0 1px 0 rgba(255,255,255,0.8)' }}>{title}</div>
+            <div className="mx-auto mt-1 max-w-sm text-[12px] text-[#666]">{description}</div>
+            {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
         </div>
     );
 };

@@ -66,6 +66,7 @@ const LENIS_DISABLED_PAGES = new Set(['LandingPage', 'Projects', 'Contact', 'Fea
 
 const MainLayout = ({ children, page, standalone = false, hideNavigation = false, hideFooter = false, fullBleed = false }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isMobileTrayVisible, setIsMobileTrayVisible] = useState(true);
 
     // Notification & Modal State
     const [toast, setToast] = useState(null);
@@ -76,6 +77,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
 
     const lenisRef = useRef(null);
     const footerSentinelRef = useRef(null);
+    const lastScrollYRef = useRef(0);
 
     useEffect(() => {
         const updateTouchOptimization = () => {
@@ -167,6 +169,38 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             }
         }
     }, []);
+
+    useEffect(() => {
+        if (!isTouchOptimized) {
+            setIsMobileTrayVisible(true);
+            return undefined;
+        }
+
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+            const delta = currentScrollY - lastScrollYRef.current;
+
+            if (currentScrollY <= 24 || isMenuOpen) {
+                setIsMobileTrayVisible(true);
+                lastScrollYRef.current = currentScrollY;
+                return;
+            }
+
+            if (Math.abs(delta) < 12) {
+                return;
+            }
+
+            setIsMobileTrayVisible(delta < 0);
+            lastScrollYRef.current = currentScrollY;
+        };
+
+        lastScrollYRef.current = window.scrollY;
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [isMenuOpen, isTouchOptimized]);
 
     useEffect(() => {
         const handlePageHide = () => {
@@ -555,7 +589,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             {/* Mobile Data Cartridge */}
             {!hideNavigation && (
                 <div
-                    className={`lg:hidden fixed bottom-0 left-0 w-full z-[60] transform-gpu px-0 ${isTouchOptimized ? 'transition-none' : 'transition-transform duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]'} ${isMenuOpen ? 'translate-y-0' : 'translate-y-[calc(100%-3.5rem)]'}`}
+                    className={`lg:hidden fixed bottom-0 left-0 w-full z-[60] transform-gpu px-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isMenuOpen ? 'translate-y-0' : isMobileTrayVisible ? 'translate-y-[calc(100%-3.5rem)]' : 'translate-y-[calc(100%+1rem)]'}`}
                     style={{ ...navFontStyle, contain: 'layout paint style' }}
                 >
                     {(() => {

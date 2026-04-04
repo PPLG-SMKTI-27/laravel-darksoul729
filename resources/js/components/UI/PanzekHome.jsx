@@ -668,7 +668,7 @@ const MessagesApp = ({ onHome }) => {
                                 }
                             }}
                             placeholder="Ketik nama kamu"
-                        className="mt-2 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-3 text-[11px] font-semibold text-slate-800 outline-none transition focus:border-sky-300"
+                            className="mt-2 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-3 text-[11px] font-semibold text-slate-800 outline-none transition focus:border-sky-300"
                         />
                     </div>
 

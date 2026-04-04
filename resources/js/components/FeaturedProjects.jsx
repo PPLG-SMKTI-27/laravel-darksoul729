@@ -144,7 +144,7 @@ export default function FeaturedProjects({ repos = [] }) {
     }, [repos]);
 
     return (
-        <section className="relative z-10 w-full overflow-visible py-16 mb-20 px-4 md:px-8">
+        <section className="featured-projects-shell relative z-10 w-full overflow-visible py-16 mb-20 px-4 md:px-8">
             <div className="mx-auto max-w-[1400px]">
                 
                 {/* Header Title - 3D Hovering Letters */}
@@ -156,7 +156,7 @@ export default function FeaturedProjects({ repos = [] }) {
                 <div className="relative w-full rounded-[2.5rem] border-[4px] border-[#eef2f8] bg-[#c3cad5] p-5 shadow-[inset_0_4px_0_rgba(255,255,255,0.95),inset_0_-8px_16px_rgba(100,116,139,0.3),0_20px_40px_rgba(15,23,42,0.15)] flex flex-col xl:flex-row gap-6 md:gap-8 overflow-visible">
                     
                     {/* LEFT: Massive Inset Output Monitor */}
-                    <div className="relative flex-1 min-h-[450px] xl:min-h-[550px] rounded-[2rem] border-[4px] border-[#334155] bg-[linear-gradient(180deg,#20242b_0%,#16191f_50%,#0e1014_100%)] p-4 shadow-[inset_0_12px_24px_rgba(255,255,255,0.06),inset_0_-12px_24px_rgba(0,0,0,0.6)]">
+                    <div className="relative flex-1 min-h-[450px] aspect-[3/4] xl:min-h-[550px] xl:aspect-auto rounded-[2rem] border-[4px] border-[#334155] bg-[linear-gradient(180deg,#20242b_0%,#16191f_50%,#0e1014_100%)] p-4 shadow-[inset_0_12px_24px_rgba(255,255,255,0.06),inset_0_-12px_24px_rgba(0,0,0,0.6)]">
                          
                          {/* Power LED */}
                          <div className="absolute top-5 left-5 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_12px_#ef4444]" />
@@ -186,11 +186,11 @@ export default function FeaturedProjects({ repos = [] }) {
                                   >
                                       {/* Full Screen Background Image */}
                                       {projects[activeIndex].image && (
-                                          <div className="absolute inset-0 w-full h-full z-0 overflow-hidden rounded-lg">
+                                          <div className="absolute inset-0 z-0 overflow-hidden rounded-lg">
                                               <img 
                                                   src={projects[activeIndex].image} 
                                                   alt={projects[activeIndex].title}
-                                                  className="w-full h-full object-cover opacity-60 saturate-[0.8] group-hover:opacity-100 group-hover:saturate-100 transition-all duration-700 ease-out"
+                                                  className="absolute inset-0 h-full w-full object-cover object-center opacity-60 saturate-[0.8] group-hover:opacity-100 group-hover:saturate-100 transition-all duration-700 ease-out"
                                               />
                                               {/* Dark overlays to ensure text remains highly readable */}
                                               <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/70 to-transparent z-10 transition-all duration-500 opacity-90 group-hover:opacity-80" />
@@ -265,7 +265,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                 <div key={i} className="relative flex w-full items-center">
                                     
                                     {/* The Right Thick Cable Snaking Out! */}
-                                    <div className="hidden xl:block absolute right-[-60px] top-1/2 -mt-4 h-8 w-[80px]" style={{ zIndex: 0 }}>
+                                    <div className="hidden xl:block absolute top-1/2 left-full -mt-4 h-8 w-[calc(100vw-((100vw-1400px)/2)-420px)] min-w-[120px]" style={{ zIndex: 0 }}>
                                         <div 
                                             className="h-full w-full rounded-r-full border-y border-r border-black/20"
                                             style={{
