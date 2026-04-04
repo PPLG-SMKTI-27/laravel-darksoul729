@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -28,6 +29,11 @@ Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store']
 Route::post('/skills/rooms', [SkillsRoomController::class, 'store'])->name('skills.rooms.store');
 Route::post('/skills/rooms/join', [SkillsRoomController::class, 'join'])->name('skills.rooms.join');
 Route::post('/skills/rooms/sync', [SkillsRoomController::class, 'sync'])->name('skills.rooms.sync');
+Route::post('/chat/register', [ChatController::class, 'register'])->name('chat.register');
+Route::get('/chat/state/{deviceId}', [ChatController::class, 'state'])->name('chat.state');
+Route::get('/chat/users/search', [ChatController::class, 'search'])->name('chat.users.search');
+Route::post('/chat/contacts', [ChatController::class, 'storeContact'])->name('chat.contacts.store');
+Route::post('/chat/messages', [ChatController::class, 'storeMessage'])->name('chat.messages.store');
 
 // ==================== AUTHENTICATED ROUTES ====================
 Route::middleware('auth')->group(function () {

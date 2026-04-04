@@ -332,6 +332,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
     const [isAnimating, setIsAnimating] = useState(false);
     const [wideControlsEnabled, setWideControlsEnabled] = useState(calibrationMode);
     const [isTouchOptimized, setIsTouchOptimized] = useState(false);
+    const [isLowPowerMode, setIsLowPowerMode] = useState(false);
 
     const smoothedRef = useRef(0);
     const transitionTimelineRef = useRef(null);
@@ -343,6 +344,13 @@ const AboutExperience = ({ careerItems, debug = false }) => {
     const landingSequenceRef = useRef(0);
     const roomReadyRef = useRef(false);
     const targetProgressRef = useRef(0);
+    const transitionProgressRef = useRef(calibrationMode ? 1 : 0);
+    const roomRevealOpacityRef = useRef(calibrationMode ? 1 : 0);
+    const transitionShakeRef = useRef(0);
+    const depthCueProgressRef = useRef(0);
+    const cloudOpacityRef = useRef(calibrationMode ? 0 : 1);
+    const hazeOpacityRef = useRef(calibrationMode ? 0 : 0.18);
+    const worldLoadTRef = useRef(0);
 
     const cancelPrerenderWait = useCallback(() => {
         if (firstPrerenderRafRef.current) {
@@ -375,13 +383,55 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         setTargetProgress(clamped);
     }, []);
 
+    const setAnimatedState = useCallback((stateRef, setter, nextValue, threshold = 0.01) => {
+        if (Math.abs(nextValue - stateRef.current) <= threshold) {
+            return;
+        }
+
+        stateRef.current = nextValue;
+        setter(nextValue);
+    }, []);
+
+    const setTransitionProgressSafe = useCallback((nextValue) => {
+        setAnimatedState(transitionProgressRef, setTransitionProgress, nextValue, 0.003);
+    }, [setAnimatedState]);
+
+    const setRoomRevealOpacitySafe = useCallback((nextValue) => {
+        setAnimatedState(roomRevealOpacityRef, setRoomRevealOpacity, nextValue, 0.01);
+    }, [setAnimatedState]);
+
+    const setTransitionShakeSafe = useCallback((nextValue) => {
+        setAnimatedState(transitionShakeRef, setTransitionShake, nextValue, 0.015);
+    }, [setAnimatedState]);
+
+    const setDepthCueProgressSafe = useCallback((nextValue) => {
+        setAnimatedState(depthCueProgressRef, setDepthCueProgress, nextValue, 0.01);
+    }, [setAnimatedState]);
+
+    const setCloudOpacitySafe = useCallback((nextValue) => {
+        setAnimatedState(cloudOpacityRef, setCloudOpacity, nextValue, 0.01);
+    }, [setAnimatedState]);
+
+    const setHazeOpacitySafe = useCallback((nextValue) => {
+        setAnimatedState(hazeOpacityRef, setHazeOpacity, nextValue, 0.01);
+    }, [setAnimatedState]);
+
+    const setWorldLoadTSafe = useCallback((nextValue) => {
+        setAnimatedState(worldLoadTRef, setWorldLoadT, nextValue, 0.01);
+    }, [setAnimatedState]);
+
     useEffect(() => {
         const updateTouchOptimization = () => {
             const isMobileViewport = window.innerWidth < 768;
             const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
             const saveData = navigator.connection?.saveData ?? false;
+            const cores = navigator.hardwareConcurrency ?? 4;
+            const memory = navigator.deviceMemory ?? 4;
+            const touchOptimized = prefersReducedMotion || isMobileViewport || isCoarsePointer || saveData;
+            const lowPowerMode = touchOptimized || cores <= 6 || memory <= 6;
 
-            setIsTouchOptimized(prefersReducedMotion || isMobileViewport || isCoarsePointer || saveData);
+            setIsTouchOptimized(touchOptimized);
+            setIsLowPowerMode(lowPowerMode);
         };
 
         updateTouchOptimization();
@@ -391,6 +441,16 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             window.removeEventListener('resize', updateTouchOptimization);
         };
     }, [prefersReducedMotion]);
+
+    const renderProfile = useMemo(() => {
+        return {
+            dpr: isLowPowerMode ? [0.85, 1.2] : [1, 1.75],
+            directionalLightIntensity: isLowPowerMode ? 1.35 : 1.55,
+            ambientLightIntensity: isLowPowerMode ? 0.95 : 1.05,
+            hemisphereLightIntensity: isLowPowerMode ? 0.38 : 0.45,
+            environmentIntensity: isLowPowerMode ? 0 : 0.55,
+        };
+    }, [isLowPowerMode]);
 
     useEffect(() => {
         roomReadyRef.current = roomReady;
@@ -428,17 +488,24 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         setWaitingForRoom(false);
         setIsAnimating(false);
         setWideControlsEnabled(false);
+        transitionProgressRef.current = 1;
         setTransitionProgress(1);
+        roomRevealOpacityRef.current = 1;
         setRoomRevealOpacity(1);
+        transitionShakeRef.current = 0;
         setTransitionShake(0);
+        hazeOpacityRef.current = 0;
         setHazeOpacity(0);
+        cloudOpacityRef.current = 0;
         setCloudOpacity(0);
+        depthCueProgressRef.current = 1;
         setDepthCueProgress(1);
         setTargetProgressSafe(ARRIVAL_PROGRESS);
         setRequestedSpot('wide');
         setCurrentSpot('wide');
 
         setIsWorldLoading(true);
+        worldLoadTRef.current = 1;
         setWorldLoadT(1);
         const worldLoadState = { value: 1 };
         worldLoadTimelineRef.current = gsap.to(worldLoadState, {
@@ -446,23 +513,27 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             duration: 7.0,
             ease: 'power2.out',
             onUpdate: () => {
-                setWorldLoadT(worldLoadState.value);
+                setWorldLoadTSafe(worldLoadState.value);
             },
             onComplete: () => {
+                worldLoadTRef.current = 0;
                 setWorldLoadT(0);
                 setIsWorldLoading(false);
                 worldLoadTimelineRef.current = null;
             },
         });
-    }, [setTargetProgressSafe]);
+    }, [setTargetProgressSafe, setWorldLoadTSafe]);
 
     const continueLanding = useCallback(() => {
         fadeTimelineRef.current?.kill();
         setWaitingForRoom(false);
 
         const sequenceId = landingSequenceRef.current;
+        roomRevealOpacityRef.current = 0.22;
         setRoomRevealOpacity(0.22);
+        cloudOpacityRef.current = 1;
         setCloudOpacity(1);
+        hazeOpacityRef.current = 1;
         setHazeOpacity(1);
 
         const state = {
@@ -478,8 +549,11 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                     return;
                 }
 
+                roomRevealOpacityRef.current = 1;
                 setRoomRevealOpacity(1);
+                cloudOpacityRef.current = 1;
                 setCloudOpacity(1);
+                hazeOpacityRef.current = 1;
                 setHazeOpacity(1);
 
                 waitForTwoPrerenderFrames(sequenceId, () => {
@@ -505,9 +579,9 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                         duration: 0.7,
                         ease: 'power2.out',
                         onUpdate: () => {
-                            setHazeOpacity(revealState.haze);
-                            setCloudOpacity(revealState.clouds);
-                            setRoomRevealOpacity(revealState.room);
+                            setHazeOpacitySafe(revealState.haze);
+                            setCloudOpacitySafe(revealState.clouds);
+                            setRoomRevealOpacitySafe(revealState.room);
                         },
                     });
 
@@ -520,39 +594,39 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             transition: 1,
             duration: INTRO_LAND_DURATION * 0.9,
             ease: 'power3.out',
-            onUpdate: () => setTransitionProgress(state.transition),
+            onUpdate: () => setTransitionProgressSafe(state.transition),
         }, 0);
 
         landingTimeline.to(state, {
             depthCue: 1,
             duration: 0.55,
             ease: 'power2.out',
-            onUpdate: () => setDepthCueProgress(state.depthCue),
+            onUpdate: () => setDepthCueProgressSafe(state.depthCue),
         }, 0.2);
 
         landingTimeline.to(state, {
             shake: 1,
             duration: 0.16,
             ease: 'power2.out',
-            onUpdate: () => setTransitionShake(state.shake),
+            onUpdate: () => setTransitionShakeSafe(state.shake),
         }, 0.26);
 
         landingTimeline.to(state, {
             shake: 0,
             duration: 0.35,
             ease: 'power2.inOut',
-            onUpdate: () => setTransitionShake(state.shake),
+            onUpdate: () => setTransitionShakeSafe(state.shake),
         }, 0.42);
 
         landingTimeline.to(state, {
             room: 0.72,
             duration: INTRO_LAND_DURATION * 0.72,
             ease: 'power2.out',
-            onUpdate: () => setRoomRevealOpacity(state.room),
+            onUpdate: () => setRoomRevealOpacitySafe(state.room),
         }, 0.1);
 
         fadeTimelineRef.current = landingTimeline;
-    }, [completeTransitionToTour, waitForTwoPrerenderFrames]);
+    }, [completeTransitionToTour, setCloudOpacitySafe, setDepthCueProgressSafe, setHazeOpacitySafe, setRoomRevealOpacitySafe, setTransitionProgressSafe, setTransitionShakeSafe, waitForTwoPrerenderFrames]);
 
     useEffect(() => {
         if (!calibrationMode) {
@@ -565,11 +639,17 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         landingSequenceRef.current += 1;
         setPhase('tour');
         setTargetProgressSafe(SPOT_PROGRESS.wide);
+        transitionProgressRef.current = 1;
         setTransitionProgress(1);
+        roomRevealOpacityRef.current = 1;
         setRoomRevealOpacity(1);
+        transitionShakeRef.current = 0;
         setTransitionShake(0);
+        cloudOpacityRef.current = 0;
         setCloudOpacity(0);
+        hazeOpacityRef.current = 0;
         setHazeOpacity(0);
+        worldLoadTRef.current = 0;
         setWorldLoadT(0);
         setIsWorldLoading(false);
         setCurrentSpot('wide');
@@ -616,9 +696,13 @@ const AboutExperience = ({ careerItems, debug = false }) => {
         setRequestedSpot('wide');
         setCurrentSpot('wide');
         setTargetProgressSafe(SPOT_PROGRESS.wide);
+        roomRevealOpacityRef.current = 0;
         setRoomRevealOpacity(0);
+        transitionShakeRef.current = 0;
         setTransitionShake(0);
+        depthCueProgressRef.current = 0;
         setDepthCueProgress(0);
+        worldLoadTRef.current = 0;
         setWorldLoadT(0);
         setIsWorldLoading(false);
 
@@ -629,9 +713,13 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             room: 0,
         };
 
+        transitionProgressRef.current = state.transition;
         setTransitionProgress(state.transition);
+        hazeOpacityRef.current = state.haze;
         setHazeOpacity(state.haze);
+        cloudOpacityRef.current = state.clouds;
         setCloudOpacity(state.clouds);
+        roomRevealOpacityRef.current = state.room;
         setRoomRevealOpacity(state.room);
 
         const timeline = gsap.timeline({
@@ -649,7 +737,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             duration: INTRO_FALL_DURATION * 0.78,
             ease: 'power4.in',
             onUpdate: () => {
-                setTransitionProgress(state.transition);
+                setTransitionProgressSafe(state.transition);
             },
         });
 
@@ -659,8 +747,8 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             duration: INTRO_FALL_DURATION * 0.78,
             ease: 'power4.in',
             onUpdate: () => {
-                setHazeOpacity(state.haze);
-                setCloudOpacity(state.clouds);
+                setHazeOpacitySafe(state.haze);
+                setCloudOpacitySafe(state.clouds);
             },
         }, 0);
 
@@ -669,12 +757,12 @@ const AboutExperience = ({ careerItems, debug = false }) => {
             duration: INTRO_FALL_DURATION * 0.55,
             ease: 'power2.in',
             onUpdate: () => {
-                setRoomRevealOpacity(state.room);
+                setRoomRevealOpacitySafe(state.room);
             },
         }, INTRO_FALL_DURATION * 0.28);
 
         transitionTimelineRef.current = timeline;
-    }, [calibrationMode, cancelPrerenderWait, continueLanding, phase, setTargetProgressSafe]);
+    }, [calibrationMode, cancelPrerenderWait, continueLanding, phase, setCloudOpacitySafe, setHazeOpacitySafe, setRoomRevealOpacitySafe, setTargetProgressSafe, setTransitionProgressSafe]);
 
     const goToSpot = useCallback((nextSpot) => {
         if (calibrationMode || phase !== 'tour' || isAnimating || !nextSpot) {
@@ -827,17 +915,18 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                         opacity: canvasOpacity,
                         filter: `brightness(${phase === 'transition' ? 0.9 + 0.1 * depthCueProgress : 1})`,
                     }}
-                    dpr={[1, 1.75]}
+                    dpr={renderProfile.dpr}
                     camera={{ position: [0, 1.8, 7], fov: 46 }}
+                    gl={{ powerPreference: isLowPowerMode ? 'low-power' : 'high-performance', antialias: !isLowPowerMode }}
                     onCreated={({ gl, scene }) => {
                         gl.toneMappingExposure = 1.3;
                         scene.background = new THREE.Color('#8ec5ff');
                     }}
                 >
-                    <ambientLight intensity={1.05} />
-                    <directionalLight intensity={1.55} position={[5, 8, 5]} />
-                    <hemisphereLight intensity={0.45} color="#eaf5ff" groundColor="#9ec7ff" />
-                    <Environment preset="city" intensity={0.55} />
+                    <ambientLight intensity={renderProfile.ambientLightIntensity} />
+                    <directionalLight intensity={renderProfile.directionalLightIntensity} position={[5, 8, 5]} />
+                    <hemisphereLight intensity={renderProfile.hemisphereLightIntensity} color="#eaf5ff" groundColor="#9ec7ff" />
+                    {renderProfile.environmentIntensity > 0 && <Environment preset="city" intensity={renderProfile.environmentIntensity} />}
 
                     <Suspense fallback={null}>
                         <RoomTour
@@ -861,6 +950,7 @@ const AboutExperience = ({ careerItems, debug = false }) => {
                             requestedSpot={requestedSpot}
                             onSpotChange={setCurrentSpot}
                             onNavAnimatingChange={setIsAnimating}
+                            isLowPowerMode={isLowPowerMode}
                         />
                     </Suspense>
                 </Canvas>

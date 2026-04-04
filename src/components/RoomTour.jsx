@@ -259,6 +259,7 @@ const RoomTour = ({
     requestedSpot = 'wide',
     onSpotChange,
     onNavAnimatingChange,
+    isLowPowerMode = false,
 }) => {
     const { scene: loadedScene } = useGLTF('/3d/Room.glb');
     const roomScene = useMemo(() => {
@@ -404,6 +405,29 @@ const RoomTour = ({
             : phase === 'transition'
                 ? clamp01((transitionProgress - 0.8) / 0.18)
                 : 1;
+    const cloudDefinitions = useMemo(() => {
+        if (isLowPowerMode) {
+            return [
+                { seed: 1, scale: 5, volume: 96, color: '#f0f9ff', opacityPhase: [0.12, 0.15], speed: 0.2, position: [0, 20, -350], bounds: [400, 200, 50] },
+                { seed: 2, scale: 5, volume: 96, color: '#e0f2fe', opacityPhase: [0.16, 0.2], speed: 0.3, position: [350, 0, -100], bounds: [50, 250, 400] },
+                { seed: 3, scale: 5, volume: 96, color: '#bae6fd', opacityPhase: [0.12, 0.15], speed: 0.2, position: [-350, 30, -100], bounds: [50, 250, 400] },
+                { seed: 7, scale: 3.8, volume: 14, color: '#ffffff', opacityPhase: [0.06, 0.18], speed: 0.6, position: [-74, 120, 42], bounds: [32, 16, 28] },
+            ];
+        }
+
+        return [
+            { seed: 1, scale: 5, volume: 120, color: '#f0f9ff', opacityPhase: [0.12, 0.15], speed: 0.2, position: [0, 20, -350], bounds: [400, 200, 50] },
+            { seed: 2, scale: 5, volume: 120, color: '#e0f2fe', opacityPhase: [0.16, 0.2], speed: 0.3, position: [350, 0, -100], bounds: [50, 250, 400] },
+            { seed: 3, scale: 5, volume: 120, color: '#bae6fd', opacityPhase: [0.12, 0.15], speed: 0.2, position: [-350, 30, -100], bounds: [50, 250, 400] },
+            { seed: 4, scale: 5, volume: 100, color: '#ffffff', opacityPhase: [0.08, 0.1], speed: 0.2, position: [0, 300, -100], bounds: [400, 50, 400] },
+            { seed: 5, scale: 5, volume: 100, color: '#f8fafc', opacityPhase: [0.12, 0.15], speed: 0.3, position: [0, -250, -100], bounds: [400, 50, 400] },
+            { seed: 6, scale: 5, volume: 120, color: '#e0f2fe', opacityPhase: [0.08, 0.1], speed: 0.1, position: [0, 0, 400], bounds: [400, 250, 50] },
+            { seed: 7, scale: 3.8, volume: 20, color: '#ffffff', opacityPhase: [0.06, 0.34], speed: 0.6, position: [-74, 120, 42], bounds: [32, 16, 28] },
+            { seed: 8, scale: 4.4, volume: 24, color: '#f8fbff', opacityPhase: [0.04, 0.3], speed: 0.55, position: [-56, 92, 18], bounds: [28, 22, 24] },
+            { seed: 9, scale: 3.6, volume: 18, color: '#eef6ff', opacityPhase: [0.03, 0.24], speed: 0.48, position: [-44, 72, 0], bounds: [24, 16, 18] },
+            { seed: 10, scale: 4.1, volume: 20, color: '#ffffff', opacityPhase: [0.02, 0.2], speed: 0.42, position: [-58, 58, -18], bounds: [20, 18, 16] },
+        ];
+    }, [isLowPowerMode]);
 
     useEffect(() => {
         return () => {
@@ -1193,16 +1217,19 @@ const RoomTour = ({
                     </mesh>
                 </group>
                 <Clouds material={THREE.MeshBasicMaterial}>
-                    <Cloud seed={1} scale={5} volume={120} color="#f0f9ff" opacity={phase === 'transition' ? 0.12 : 0.15} speed={0.2} position={[0, 20, -350]} bounds={[400, 200, 50]} />
-                    <Cloud seed={2} scale={5} volume={120} color="#e0f2fe" opacity={phase === 'transition' ? 0.16 : 0.2} speed={0.3} position={[350, 0, -100]} bounds={[50, 250, 400]} />
-                    <Cloud seed={3} scale={5} volume={120} color="#bae6fd" opacity={phase === 'transition' ? 0.12 : 0.15} speed={0.2} position={[-350, 30, -100]} bounds={[50, 250, 400]} />
-                    <Cloud seed={4} scale={5} volume={100} color="#ffffff" opacity={phase === 'transition' ? 0.08 : 0.1} speed={0.2} position={[0, 300, -100]} bounds={[400, 50, 400]} />
-                    <Cloud seed={5} scale={5} volume={100} color="#f8fafc" opacity={phase === 'transition' ? 0.12 : 0.15} speed={0.3} position={[0, -250, -100]} bounds={[400, 50, 400]} />
-                    <Cloud seed={6} scale={5} volume={120} color="#e0f2fe" opacity={phase === 'transition' ? 0.08 : 0.1} speed={0.1} position={[0, 0, 400]} bounds={[400, 250, 50]} />
-                    <Cloud seed={7} scale={3.8} volume={20} color="#ffffff" opacity={phase === 'tour' ? 0.06 : 0.34} speed={0.6} position={[-74, 120, 42]} bounds={[32, 16, 28]} />
-                    <Cloud seed={8} scale={4.4} volume={24} color="#f8fbff" opacity={phase === 'tour' ? 0.04 : 0.3} speed={0.55} position={[-56, 92, 18]} bounds={[28, 22, 24]} />
-                    <Cloud seed={9} scale={3.6} volume={18} color="#eef6ff" opacity={phase === 'tour' ? 0.03 : 0.24} speed={0.48} position={[-44, 72, 0]} bounds={[24, 16, 18]} />
-                    <Cloud seed={10} scale={4.1} volume={20} color="#ffffff" opacity={phase === 'tour' ? 0.02 : 0.2} speed={0.42} position={[-58, 58, -18]} bounds={[20, 18, 16]} />
+                    {cloudDefinitions.map((cloud) => (
+                        <Cloud
+                            key={cloud.seed}
+                            seed={cloud.seed}
+                            scale={cloud.scale}
+                            volume={cloud.volume}
+                            color={cloud.color}
+                            opacity={phase === 'transition' ? cloud.opacityPhase[0] : cloud.opacityPhase[1]}
+                            speed={cloud.speed}
+                            position={cloud.position}
+                            bounds={cloud.bounds}
+                        />
+                    ))}
                 </Clouds>
             </>
             {tvScreenPlacement && (

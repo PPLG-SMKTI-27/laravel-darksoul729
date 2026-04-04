@@ -1,21 +1,23 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-const Robocop3D = (props) => {
-    const group = useRef();
-    const modelRef = useRef();
-    const { scene } = useGLTF('/3d/cicada_-_retro_cartoon_car.glb');
+const MODEL_PATH = '/3d/hero-spaceship.glb';
+
+const Robocop3D = ({ scale = 1.8, position = [-0.6, -1.0, 0], rotation = [0, 0, 0], ...groupProps }) => {
+    const { scene } = useGLTF(MODEL_PATH);
 
     const preparedScene = useMemo(() => {
         const clonedScene = scene.clone(true);
 
         clonedScene.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = false;
-                child.receiveShadow = false;
-                child.frustumCulled = true;
+            if (!child.isMesh) {
+                return;
             }
+
+            child.castShadow = false;
+            child.receiveShadow = false;
+            child.frustumCulled = true;
         });
 
         const box = new THREE.Box3().setFromObject(clonedScene);
@@ -29,21 +31,19 @@ const Robocop3D = (props) => {
 
         clonedScene.scale.setScalar(normalizedScale);
         clonedScene.position.set(-center.x * normalizedScale, -center.y * normalizedScale, -center.z * normalizedScale);
+
         return clonedScene;
     }, [scene]);
 
     return (
-        <group ref={group} {...props} dispose={null}>
-            <group
-                ref={modelRef}
-                scale={props.scale || 1.8}
-                position={props.position || [-0.6, -1.0, 0]}
-                rotation={props.rotation || [0, 0, 0]}
-            >
+        <group {...groupProps} dispose={null}>
+            <group scale={scale} position={position} rotation={rotation}>
                 <primitive object={preparedScene} />
             </group>
         </group>
     );
 };
+
+useGLTF.preload(MODEL_PATH);
 
 export default React.memo(Robocop3D);

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
 
 
 // ─── Screw component (matches footer corners) ────────────────────────────────
@@ -26,54 +27,80 @@ const NET_NODES = [
     { id: 9, x: 92, y: 75, label: 'DB-02', active: true },
 ];
 const NET_EDGES = [[0, 1], [0, 3], [1, 2], [1, 4], [3, 4], [3, 5], [4, 5], [4, 6], [5, 7], [6, 7], [7, 8], [7, 9]];
+const RADAR_SWEEP_PATH = `M60,60 L${60 + 56 * Math.cos(-Math.PI / 2)},${60 + 56 * Math.sin(-Math.PI / 2)} A56,56 0 0,1 ${60 + 56 * Math.cos(-Math.PI / 2 + Math.PI / 2.5)},${60 + 56 * Math.sin(-Math.PI / 2 + Math.PI / 2.5)} Z`;
+const EDGE_PACKETS = NET_EDGES.map(([a, b], index) => {
+    const startNode = NET_NODES[a];
+    const endNode = NET_NODES[b];
+    const packetProgress = 0.22 + (index % 4) * 0.18;
+
+    return {
+        key: `packet-${index}`,
+        cx: startNode.x + (endNode.x - startNode.x) * packetProgress,
+        cy: startNode.y + (endNode.y - startNode.y) * packetProgress,
+        delay: `${index * 0.18}s`,
+        opacity: 0.34 + (index % 3) * 0.12,
+    };
+});
+
+const EMAIL_ADDRESS = 'panzekyuv@gmail.com';
+const MAILTO_URL = `mailto:${EMAIL_ADDRESS}`;
+const INSTAGRAM_URL = 'https://instagram.com/kepinolang';
+const GITHUB_URL = 'https://github.com/darksoul729';
+const QUICK_LINKS = [
+    { label: 'HOME', href: '/' },
+    { label: 'PORTFOLIO', href: '/projects' },
+    { label: 'SKILLS', href: '/skills' },
+    { label: 'CONTACT', href: '/contact' },
+];
+const SOCIAL_LINKS = [
+    {
+        key: 'mail',
+        href: MAILTO_URL,
+        target: '_self',
+        bg: 'bg-[linear-gradient(180deg,#f8fafc_0%,#cbd5e1_100%)]',
+        glow: 'bg-white/30',
+        stroke: 'border-t-white border-b-[#94a3b8] border-x-[#e2e8f0]',
+        content: <svg className="w-5 h-5 text-slate-700 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+    },
+    {
+        key: 'instagram',
+        href: INSTAGRAM_URL,
+        target: '_blank',
+        bg: 'bg-[linear-gradient(45deg,#facc15_0%,#ef4444_50%,#a855f7_100%)]',
+        glow: 'bg-rose-500/30',
+        stroke: 'border-t-[#fef08a] border-b-[#7e22ce] border-x-[#f87171]',
+        content: <svg className="w-5 h-5 text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.79 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>,
+    },
+    {
+        key: 'github',
+        href: GITHUB_URL,
+        target: '_blank',
+        bg: 'bg-[linear-gradient(180deg,#3b82f6_0%,#1d4ed8_100%)]',
+        glow: 'bg-blue-500/30',
+        stroke: 'border-t-[#93c5fd] border-b-[#1e3a8a] border-x-[#2563eb]',
+        content: <span className="text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] font-black text-sm leading-none">GH</span>,
+    },
+    {
+        key: 'contact',
+        href: '/contact',
+        target: '_self',
+        internal: true,
+        bg: 'bg-[linear-gradient(180deg,#4752c4_0%,#2c3482_100%)]',
+        glow: 'bg-indigo-500/30',
+        stroke: 'border-t-[#818cf8] border-b-[#1e1b4b] border-x-[#4f46e5]',
+        content: <span className="text-white/95 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)] font-black text-[11px] leading-none">CT</span>,
+    },
+];
 
 const SysControlBridge = ({ t }) => {
     const bridgeRef = useRef(null);
-    const [tick, setTick] = useState(0);
-    const [radarAngle, setRadarAngle] = useState(0);
     const [isMapOpen, setIsMapOpen] = useState(false);
-    const [isBridgeVisible, setIsBridgeVisible] = useState(false);
     const blips = [
         { id: 0, r: 30, a: 40 },
         { id: 1, r: 52, a: 130 },
         { id: 2, r: 66, a: 220 },
         { id: 3, r: 40, a: 300 },
     ];
-
-    useEffect(() => {
-        const element = bridgeRef.current;
-        if (!element) {
-            return undefined;
-        }
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                setIsBridgeVisible(entry.isIntersecting);
-            },
-            { threshold: 0.1, rootMargin: '160px 0px' }
-        );
-
-        observer.observe(element);
-
-        return () => observer.disconnect();
-    }, []);
-
-    useEffect(() => {
-        if (!isBridgeVisible) {
-            return undefined;
-        }
-
-        let frame;
-        let last = performance.now();
-        const loop = (now) => {
-            const dt = now - last; last = now;
-            setRadarAngle(prev => (prev + dt * 0.1) % 360);
-            frame = requestAnimationFrame(loop);
-        };
-        frame = requestAnimationFrame(loop);
-        const t = setInterval(() => setTick(v => v + 1), 1000);
-        return () => { cancelAnimationFrame(frame); clearInterval(t); };
-    }, [isBridgeVisible]);
 
     useEffect(() => {
         if (!isMapOpen) {
@@ -96,9 +123,6 @@ const SysControlBridge = ({ t }) => {
         };
     }, [isMapOpen]);
 
-    const edgeOpacity = (i) => 0.25 + 0.55 * Math.abs(Math.sin((tick * 0.6 + i * 1.1)));
-    const pktT = (i) => (tick * 0.3 + i * 0.45) % 1;
-
     const NetworkMap = ({ className, preserveAspectRatio = 'xMidYMid meet' }) => (
         <svg className={className} viewBox="0 0 100 100" preserveAspectRatio={preserveAspectRatio}>
             {NET_EDGES.map(([a, b], i) => {
@@ -112,25 +136,25 @@ const SysControlBridge = ({ t }) => {
                         y2={nb.y}
                         stroke="#38bdf8"
                         strokeWidth="0.5"
-                        strokeOpacity={edgeOpacity(i)}
+                        strokeOpacity={0.3 + (i % 4) * 0.12}
                         strokeDasharray="2 1"
                     />
                 );
             })}
-            {NET_EDGES.map(([a, b], i) => {
-                const na = NET_NODES[a], nb = NET_NODES[b], t = pktT(i);
-                return (
-                    <circle
-                        key={`p${i}`}
-                        cx={na.x + (nb.x - na.x) * t}
-                        cy={na.y + (nb.y - na.y) * t}
-                        r="1"
-                        fill="#fbbf24"
-                        opacity="0.9"
-                        style={{ filter: 'drop-shadow(0 0 2px #fbbf24)' }}
-                    />
-                );
-            })}
+            {EDGE_PACKETS.map((packet) => (
+                <circle
+                    key={packet.key}
+                    cx={packet.cx}
+                    cy={packet.cy}
+                    r="1"
+                    fill="#fbbf24"
+                    opacity={packet.opacity}
+                    style={{
+                        filter: 'drop-shadow(0 0 2px #fbbf24)',
+                        animation: `pulse-packet 2.4s ${packet.delay} ease-in-out infinite`,
+                    }}
+                />
+            ))}
             {NET_NODES.map(n => (
                 <g key={n.id} transform={`translate(${n.x},${n.y})`}>
                     <circle r="4.5" fill="none" stroke={n.active ? '#38bdf8' : '#334155'} strokeWidth="0.4" opacity="0.3" />
@@ -163,6 +187,7 @@ const SysControlBridge = ({ t }) => {
                 @keyframes scan-bridge { 0%{transform:translateY(-100%)} 100%{transform:translateY(500%)} }
                 @keyframes pulse-node { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
                 @keyframes idle-node  { 0%,100%{opacity:0.7} 50%{opacity:0.3} }
+                @keyframes pulse-packet { 0%,100%{opacity:0.25;transform:scale(0.9)} 50%{opacity:0.95;transform:scale(1.3)} }
                 .led-blink   { animation: blink-led2 1.6s step-end infinite; }
                 .node-active { animation: pulse-node 2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
                 .node-idle   { animation: idle-node 3s ease-in-out infinite; }
@@ -273,9 +298,17 @@ const SysControlBridge = ({ t }) => {
                                 <line x1="20" y1="20" x2="100" y2="100" stroke="#14532d" strokeWidth="0.4" opacity="0.5" />
                                 <line x1="100" y1="20" x2="20" y2="100" stroke="#14532d" strokeWidth="0.4" opacity="0.5" />
                                 {/* Sweep */}
-                                <g transform={`rotate(${radarAngle}, 60, 60)`}>
-                                    <path d={`M60,60 L${60 + 56 * Math.cos(-Math.PI / 2)},${60 + 56 * Math.sin(-Math.PI / 2)} A56,56 0 0,1 ${60 + 56 * Math.cos(-Math.PI / 2 + Math.PI / 2.5)},${60 + 56 * Math.sin(-Math.PI / 2 + Math.PI / 2.5)} Z`}
-                                        fill="url(#rdGrad)" />
+                                <g>
+                                    <animateTransform
+                                        attributeName="transform"
+                                        attributeType="XML"
+                                        dur="6s"
+                                        from="0 60 60"
+                                        repeatCount="indefinite"
+                                        to="360 60 60"
+                                        type="rotate"
+                                    />
+                                    <path d={RADAR_SWEEP_PATH} fill="url(#rdGrad)" />
                                     <line x1="60" y1="60" x2="60" y2="4" stroke="#34d399" strokeWidth="1.5" strokeOpacity="0.95" />
                                 </g>
                                 {/* Blips */}
@@ -557,8 +590,9 @@ const Footer = ({ page }) => {
                                     {/* Ambient Glow behind buttons */}
                                     <div className={`absolute top-1/2 left-0 w-full h-[60%] ${t.glowBg} blur-[15px] -translate-y-1/2 pointer-events-none`}></div>
 
-                                    {['HOME', 'PORTFOLIO', 'SKILLS', 'CONTACT'].map((item) => (
-                                        <button key={item}
+                                    {QUICK_LINKS.map((item) => (
+                                        <button key={item.label}
+                                            onClick={() => navigateWithCleanup(item.href)}
                                             className={`flex-shrink-0 px-4 lg:px-6 h-[38px] lg:h-[42px] ${t.navBtn} rounded-[10px] border ${t.navBtnBorder} text-white font-black text-[11px] lg:text-[13px] uppercase tracking-wider hover:brightness-110 active:scale-95 active:translate-y-[2px] transition-all relative overflow-hidden outline-none`}
                                             style={{ boxShadow: t.navBtnShadow }}>
 
@@ -568,7 +602,7 @@ const Footer = ({ page }) => {
                                             {/* Hover Light Sweep */}
                                             <div className="absolute inset-0 w-[150%] h-full bg-[linear-gradient(115deg,transparent_20%,rgba(255,255,255,0.2)_30%,transparent_40%)] -translate-x-full hover:translate-x-[100%] transition-transform duration-700 pointer-events-none"></div>
 
-                                            <span className="relative z-10 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{item}</span>
+                                            <span className="relative z-10 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{item.label}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -578,26 +612,35 @@ const Footer = ({ page }) => {
                                     <div className="hidden sm:block absolute left-[-2px] xl:left-[-1.5px] top-1/2 -translate-y-1/2 h-[80%] w-[1.5px] bg-[#0a206a] shadow-[1px_0_0_rgba(255,255,255,0.1)]"></div>
                                     <div className="hidden sm:block absolute left-[-15px] top-1/2 -translate-y-1/2 w-[6px] h-[6px] rounded-full bg-[#1e4dc8]/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]"></div>
 
-                                    {[
-                                        { icon: 'mail', bg: 'bg-[linear-gradient(180deg,#f8fafc_0%,#cbd5e1_100%)]', glow: 'bg-white/30', stroke: 'border-t-white border-b-[#94a3b8] border-x-[#e2e8f0]', content: <svg className="w-5 h-5 text-slate-700 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> },
-                                        { icon: 'ig', bg: 'bg-[linear-gradient(45deg,#facc15_0%,#ef4444_50%,#a855f7_100%)]', glow: 'bg-rose-500/30', stroke: 'border-t-[#fef08a] border-b-[#7e22ce] border-x-[#f87171]', content: <svg className="w-5 h-5 text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.79 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg> },
-                                        { icon: 'be', bg: 'bg-[linear-gradient(180deg,#3b82f6_0%,#1d4ed8_100%)]', glow: 'bg-blue-500/30', stroke: 'border-t-[#93c5fd] border-b-[#1e3a8a] border-x-[#2563eb]', content: <span className="text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] font-black text-sm lg:text-base leading-none">Be</span> },
-                                        { icon: 'discord', bg: 'bg-[linear-gradient(180deg,#4752c4_0%,#2c3482_100%)]', glow: 'bg-indigo-500/30', stroke: 'border-t-[#818cf8] border-b-[#1e1b4b] border-x-[#4f46e5]', content: <svg className="w-5 h-5 text-white/95 drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2498-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8745-.6177-1.2498a.077.077 0 00-.0788-.0371 19.7363 19.7363 0 00-4.8855 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z" /></svg> }
-                                    ].map((social, i) => (
-                                        <div key={i} className="relative group">
-                                            {/* Outer Glow */}
-                                            <div className={`absolute inset-1 ${social.glow} blur-[6px] translate-y-1 rounded-full -z-10 group-hover:blur-[10px] transition-all`}></div>
+                                    {SOCIAL_LINKS.map((social) => {
+                                        const content = (
+                                            <>
+                                                <div className={`absolute inset-1 ${social.glow} blur-[6px] translate-y-1 rounded-full -z-10 group-hover:blur-[10px] transition-all`}></div>
 
-                                            <button className={`flex items-center justify-center w-[38px] h-[38px] lg:w-[42px] lg:h-[42px] rounded-[10px] ${social.bg} border-[2px] ${social.stroke} hover:brightness-110 active:scale-[0.98] active:translate-y-[2px] transition-all overflow-hidden relative outline-none`}
-                                                style={{ boxShadow: 'inset 0 4px 5px rgba(255,255,255,0.4), inset 0 -4px 6px rgba(0,0,0,0.4), 0 5px 0 #0a1338, 0 6px 8px rgba(0,0,0,0.6)' }}>
+                                                <span className={`flex items-center justify-center w-[38px] h-[38px] lg:w-[42px] lg:h-[42px] rounded-[10px] ${social.bg} border-[2px] ${social.stroke} hover:brightness-110 active:scale-[0.98] active:translate-y-[2px] transition-all overflow-hidden relative outline-none`}
+                                                    style={{ boxShadow: 'inset 0 4px 5px rgba(255,255,255,0.4), inset 0 -4px 6px rgba(0,0,0,0.4), 0 5px 0 #0a1338, 0 6px 8px rgba(0,0,0,0.6)' }}>
 
-                                                {/* Top Glass Arc */}
-                                                <div className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[8px]"></div>
+                                                    <span className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[8px]"></span>
 
-                                                <div className="relative z-10">{social.content}</div>
-                                            </button>
-                                        </div>
-                                    ))}
+                                                    <span className="relative z-10">{social.content}</span>
+                                                </span>
+                                            </>
+                                        );
+
+                                        return (
+                                            <div key={social.key} className="relative group">
+                                                {social.internal ? (
+                                                    <button onClick={() => navigateWithCleanup(social.href)} className="outline-none" aria-label={social.key}>
+                                                        {content}
+                                                    </button>
+                                                ) : (
+                                                    <a href={social.href} target={social.target} rel={social.target === '_blank' ? 'noreferrer' : undefined} className="outline-none" aria-label={social.key}>
+                                                        {content}
+                                                    </a>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -705,7 +748,7 @@ const Footer = ({ page }) => {
                                         {/* Outer Drop Shadow & Ambient Glow */}
                                         <div className="absolute inset-2 bg-black/60 blur-[15px] translate-y-3 rounded-xl -z-10 group-hover:blur-[20px] transition-all"></div>
 
-                                        <button className="w-full sm:w-auto h-[50px] lg:h-[60px] px-6 lg:px-10 xl:px-12 bg-[linear-gradient(180deg,#fde047_0%,#eab308_45%,#ca8a04_90%,#a16207_100%)] border-[2px] border-t-[#fef08a] border-b-[#713f12] border-x-[#b45309] rounded-[10px] text-[#451a03] font-black text-[14px] xl:text-[15px] uppercase tracking-wider hover:brightness-110 active:scale-[0.98] active:translate-y-[2px] transition-all whitespace-nowrap relative overflow-hidden flex items-center justify-center gap-2 shrink-0 shadow-[inset_0_4px_6px_rgba(255,255,255,0.7),inset_0_-6px_10px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.9),0_6px_0_#713f12,0_10px_20px_rgba(0,0,0,0.8)] outline-none">
+                                        <a href={MAILTO_URL} className="w-full sm:w-auto h-[50px] lg:h-[60px] px-6 lg:px-10 xl:px-12 bg-[linear-gradient(180deg,#fde047_0%,#eab308_45%,#ca8a04_90%,#a16207_100%)] border-[2px] border-t-[#fef08a] border-b-[#713f12] border-x-[#b45309] rounded-[10px] text-[#451a03] font-black text-[14px] xl:text-[15px] uppercase tracking-wider hover:brightness-110 active:scale-[0.98] active:translate-y-[2px] transition-all whitespace-nowrap relative overflow-hidden flex items-center justify-center gap-2 shrink-0 shadow-[inset_0_4px_6px_rgba(255,255,255,0.7),inset_0_-6px_10px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.9),0_6px_0_#713f12,0_10px_20px_rgba(0,0,0,0.8)] outline-none">
                                             {/* Specular Highlight Arc */}
                                             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent rounded-t-[8px]"></div>
 
@@ -714,7 +757,7 @@ const Footer = ({ page }) => {
 
                                             <svg className="relative w-5 h-5 xl:w-6 xl:h-6 opacity-90 shrink-0 drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)] z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" /></svg>
                                             <span className="relative z-10 pt-[2px] drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]">SEND MESSAGE</span>
-                                        </button>
+                                        </a>
                                     </div>
                                 </div>
 
