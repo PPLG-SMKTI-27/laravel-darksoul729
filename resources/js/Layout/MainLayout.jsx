@@ -10,7 +10,6 @@ import { cleanupPageRuntime, navigateWithCleanup } from '../lib/pageTransitionCl
 
 const Footer = React.lazy(() => import('../components/Footer'));
 const SoilFooter = React.lazy(() => import('../components/SoilFooter'));
-const IntroOverlay = React.lazy(() => import('../components/IntroOverlay'));
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -63,17 +62,20 @@ const NAV_ITEM_ACCENTS = {
     },
 };
 
+const LENIS_DISABLED_PAGES = new Set(['LandingPage', 'Projects', 'Contact', 'Feature', 'Skills', 'About']);
+
 const MainLayout = ({ children, page, standalone = false, hideNavigation = false, hideFooter = false, fullBleed = false }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [showIntro, setShowIntro] = useState(false);
 
     // Notification & Modal State
     const [toast, setToast] = useState(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isTouchOptimized, setIsTouchOptimized] = useState(false);
+    const [shouldMountFooter, setShouldMountFooter] = useState(false);
     const prefersReducedMotion = useReducedMotion();
 
     const lenisRef = useRef(null);
+    const footerSentinelRef = useRef(null);
 
     useEffect(() => {
         const updateTouchOptimization = () => {
@@ -97,7 +99,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
         const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
         const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
         const saveData = navigator.connection?.saveData ?? false;
-        const shouldDisableSmoothScroll = prefersReducedMotion || saveData || isCoarsePointer;
+        const shouldDisableSmoothScroll = prefersReducedMotion || saveData || isCoarsePointer || standalone || LENIS_DISABLED_PAGES.has(page);
 
         const lockScroll = () => {
             lenisRef.current?.stop?.();
@@ -151,25 +153,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             window.removeEventListener('lock-scroll', lockScroll);
             window.removeEventListener('unlock-scroll', unlockScroll);
         };
-    }, []);
-
-    // Intro state is only needed on the landing page.
-    useEffect(() => {
-        if (page !== 'LandingPage') {
-            setShowIntro(false);
-            return;
-        }
-
-        // Intro
-        const lastShown = localStorage.getItem('intro_last_shown');
-        const now = new Date().getTime();
-        const fiveMinutes = 5 * 60 * 1000;
-
-        if (!lastShown || (now - parseInt(lastShown) > fiveMinutes)) {
-            setShowIntro(true);
-            localStorage.setItem('intro_last_shown', now.toString());
-        }
-    }, [page]);
+    }, [page, standalone]);
 
     useEffect(() => {
         const flash = localStorage.getItem('plastic_flash');
@@ -195,6 +179,35 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
             window.removeEventListener('pagehide', handlePageHide);
         };
     }, []);
+
+    useEffect(() => {
+        if (standalone || hideFooter) {
+            setShouldMountFooter(false);
+            return undefined;
+        }
+
+        const sentinel = footerSentinelRef.current;
+        if (!sentinel) {
+            setShouldMountFooter(true);
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (!entry.isIntersecting) {
+                    return;
+                }
+
+                setShouldMountFooter(true);
+                observer.disconnect();
+            },
+            { rootMargin: '360px 0px' },
+        );
+
+        observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [hideFooter, page, standalone]);
 
     // Logout Logic
     const isLoggedIn = page === 'Dashboard' || (page && page.startsWith('Admin'));
@@ -332,11 +345,6 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
 
             {/* OVERLAYS */}
             <AnimatePresence>
-                {page === 'LandingPage' && showIntro && (
-                    <Suspense fallback={null}>
-                        <IntroOverlay onComplete={() => setShowIntro(false)} />
-                    </Suspense>
-                )}
                 {toast && <PlasticToast key="toast" message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
                 {showLogoutModal && (
                     <PlasticModal
@@ -480,6 +488,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                         {primaryNavItems.map((item) => {
                             const isActive = isItemActive(item);
                             const Icon = item.icon;
+                            const accent = getNavAccent(item.name);
 
                             return (
                                 <a
@@ -492,7 +501,7 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                                         : currentTheme.navItem
                                         }`}
                                 >
-                                    <Icon className={`h-[16px] w-[16px] ${isActive ? 'text-[#2563eb]' : 'text-white'}`} strokeWidth={2.15} />
+                                    <Icon className={`h-[16px] w-[16px] ${isActive ? accent.activeText : 'text-white'}`} strokeWidth={2.15} />
                                     <span>{item.name}</span>
                                 </a>
                             );
@@ -534,88 +543,114 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                 </nav>
             )}
 
-            {/* Mobile Nav Button (Hamburger Toy) */}
-            {!hideNavigation && !isMenuOpen && (
-                <div className="md:hidden absolute top-8 right-6 z-[60]">
-                    <button
-                        type="button"
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className={`flex h-12 w-12 items-center justify-center rounded-[1.2rem] border transition-all duration-150 ${mobileButtonClassName}`}
-                        aria-label={isMenuOpen ? 'Close navigation' : 'Open navigation'}
-                    >
-                        {isMenuOpen ? <X className="h-5 w-5" strokeWidth={2.2} /> : <Menu className="h-5 w-5" strokeWidth={2.2} />}
-                    </button>
-                </div>
-            )}
-
+            {/* Mobile Nav Button (Cartridge Concept - Replaces Sidebar & Hamburger) */}
             {/* Backdrop */}
             {!hideNavigation && (
                 <div
                     onClick={() => setIsMenuOpen(false)}
-                    className={`fixed inset-0 z-[54] ${isTouchOptimized ? 'transition-none' : 'transition-opacity duration-150'} ${mobileBackdropClassName} ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                    className={`lg:hidden fixed inset-0 z-[54] ${isTouchOptimized ? 'transition-none' : 'transition-opacity duration-300'} ${currentTheme.backdrop} ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 />
             )}
 
-            {/* Mobile Sidebar */}
+            {/* Mobile Data Cartridge */}
             {!hideNavigation && (
                 <div
-                    className={`fixed inset-y-0 right-0 z-[55] flex w-[18.5rem] max-w-[82vw] flex-col border-l px-4 py-5 ${isTouchOptimized ? 'transform-gpu transition-none' : 'transition-transform duration-200 ease-out'} ${mobileSidebarShellClassName} ${mobileSidebarClassName} ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    className={`lg:hidden fixed bottom-0 left-0 w-full z-[60] transform-gpu px-0 ${isTouchOptimized ? 'transition-none' : 'transition-transform duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]'} ${isMenuOpen ? 'translate-y-0' : 'translate-y-[calc(100%-3.5rem)]'}`}
                     style={{ ...navFontStyle, contain: 'layout paint style' }}
                 >
-                    <div className={mobileSidebarHeaderClassName}>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className={`text-[10px] font-bold uppercase tracking-[0.32em] ${currentTheme.footer}`}>Navigation</p>
-                                <p className={`mt-1 text-[1.08rem] font-semibold tracking-[-0.01em] ${currentTheme.heading}`}>Quick Links</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsMenuOpen(false)}
-                                className={`flex h-11 w-11 items-center justify-center rounded-[1rem] border transition-colors duration-150 ${mobileButtonClassName}`}
-                                aria-label="Close navigation"
-                            >
-                                <X className="h-4.5 w-4.5" strokeWidth={2.15} />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex w-full flex-col gap-2.5">
-                        {navItems.map((item) => {
-                            const isActive = isItemActive(item);
-                            const Icon = item.icon;
-                            const accent = getNavAccent(item.name);
-
-                            return (
-                                <a
-                                    key={item.name}
-                                    href={item.href}
-                                    onClick={(event) => handleNavItemClick(event, item)}
-                                    aria-current={isActive ? 'page' : undefined}
-                                    className={`flex w-full items-center gap-3 border text-left font-semibold uppercase ${mobileSidebarItemBaseClassName} ${isActive
-                                        ? `${mobileSidebarItemActiveClassName} ${accent.activeText}`
-                                        : item.isAction
-                                            ? `${mobileSidebarActionClassName} ${accent.activeText}`
-                                            : mobileSidebarItemClassName
-                                        }`}
+                    {(() => {
+                        const isDarkTheme = page === 'Projects' || page === 'Contact';
+                        return (
+                            <div className={`${isDarkTheme ? 'bg-[linear-gradient(180deg,rgba(40,20,10,0.85)_0%,rgba(15,8,4,0.98)_100%)] border-[#d97706]/40 shadow-[inset_0_2px_0_rgba(251,191,36,0.3)]' : 'bg-[linear-gradient(180deg,rgba(248,251,255,0.96)_0%,rgba(231,243,255,0.98)_100%)] border-[#d6ecff] shadow-[inset_0_2px_0_rgba(255,255,255,0.8)]'} backdrop-blur-xl border-t  rounded-t-[2.5rem] overflow-hidden transition-colors duration-500`}>
+                                
+                                {/* Cartridge Handle / Peek Area */}
+                                <div 
+                                    className={`h-14 w-full flex flex-col items-center justify-center cursor-pointer relative z-10 ${isDarkTheme ? 'hover:bg-black/20' : 'hover:bg-white/10'} transition-colors`}
+                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
                                 >
-                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full border ${isActive || item.isAction ? accent.chip : `${accent.chip} bg-white/60`
-                                        }`}>
-                                        <Icon className="h-4 w-4" strokeWidth={2.1} />
-                                    </span>
-                                    <span className="flex-1">{item.name}</span>
-                                </a>
-                            );
-                        })}
-                    </div>
+                                    {/* Inner glow on top edge */}
+                                    <div className={`absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent ${isDarkTheme ? 'via-[#f59e0b]/50' : 'via-[#ffffff]'} to-transparent`}></div>
+                                    
+                                    {/* Grip lines & Text */}
+                                    <div className="flex flex-col gap-1.5 items-center pointer-events-none mt-1">
+                                        <div className="flex gap-2">
+                                            <div className={`w-10 h-1.5 rounded-full ${isDarkTheme ? 'bg-[#431407] shadow-[inset_0_1px_1px_rgba(0,0,0,0.8)] border border-[#78350f]/50' : 'bg-[#bfdbfe] shadow-[inset_0_1px_1px_rgba(0,0,0,0.05),0_1px_0_rgba(255,255,255,0.8)] border border-[#93c5fd]/30'}`}></div>
+                                            <div className={`w-10 h-1.5 rounded-full ${isDarkTheme ? 'bg-[#431407] shadow-[inset_0_1px_1px_rgba(0,0,0,0.8)] border border-[#78350f]/50' : 'bg-[#bfdbfe] shadow-[inset_0_1px_1px_rgba(0,0,0,0.05),0_1px_0_rgba(255,255,255,0.8)] border border-[#93c5fd]/30'}`}></div>
+                                        </div>
+                                        <span className={`text-[9.5px] uppercase tracking-[0.4em] font-black ${isMenuOpen ? (isDarkTheme ? 'text-[#f59e0b]' : 'text-[#2563eb]') : (isDarkTheme ? 'text-[#78350f]' : 'text-[#64748b]')} transition-all duration-300`}>
+                                            {isMenuOpen ? 'CLOSE_MENU' : 'SYS_MENU'}
+                                        </span>
+                                    </div>
+                                </div>
 
-                    <div className={`mt-auto pt-6 text-center text-[11px] font-bold tracking-widest uppercase ${currentTheme.footer}`}>
-                        © 2026 Kevin Hermansyah
-                    </div>
+                                {/* Cartridge Inner Content */}
+                                <div className="px-6 pb-8 flex flex-col gap-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {navItems.map((item) => {
+                                            const isActive = isItemActive(item);
+                                            const Icon = item.icon;
+                                            
+                                            // Plastic Hardware-inspired cards
+                                            const baseStyle = "flex flex-col items-center justify-center gap-2.5 rounded-[1.2rem] border p-4 transition-all duration-200 text-center";
+                                            
+                                            let finalStyle = "";
+                                            let iconColor = "";
+
+                                            if (isDarkTheme) {
+                                                const activeStyle = "border-[#fbbf24]/50 bg-[linear-gradient(180deg,rgba(217,119,6,0.4)_0%,rgba(120,53,15,0.25)_100%)] text-[#fcd34d] shadow-[0_5px_0_rgba(180,83,9,0.7),_0_12px_20px_rgba(0,0,0,0.6),inset_0_2px_0_rgba(251,191,36,0.6)] scale-[0.98] backdrop-blur-md";
+                                                const actionActiveStyle = "border-[#ef4444]/50 bg-[linear-gradient(180deg,rgba(220,38,38,0.4)_0%,rgba(153,27,27,0.25)_100%)] text-[#fca5a5] shadow-[0_5px_0_rgba(185,28,28,0.7),_0_12px_20px_rgba(0,0,0,0.6),inset_0_2px_0_rgba(248,113,113,0.6)] scale-[0.98] backdrop-blur-md";
+                                                const actionStyle = "border-[#991b1b]/50 bg-[linear-gradient(180deg,rgba(153,27,27,0.3)_0%,rgba(69,10,10,0.4)_100%)] text-[#ef4444] hover:bg-[linear-gradient(180deg,rgba(220,38,38,0.3)_0%,rgba(153,27,27,0.4)_100%)] hover:translate-y-[-1px] shadow-[0_4px_0_rgba(153,27,27,0.5),_0_8px_15px_rgba(0,0,0,0.4),inset_0_2px_0_rgba(248,113,113,0.3)] backdrop-blur-md";
+                                                const inactiveStyle = "border-[#78350f]/60 bg-[linear-gradient(180deg,rgba(161,98,7,0.25)_0%,rgba(67,20,7,0.4)_100%)] text-[#f59e0b] hover:bg-[linear-gradient(180deg,rgba(217,119,6,0.3)_0%,rgba(120,53,15,0.4)_100%)] hover:text-[#fde68a] hover:translate-y-[-1px] shadow-[0_4px_0_rgba(120,53,15,0.6),_0_8px_15px_rgba(0,0,0,0.4),inset_0_2px_0_rgba(251,191,36,0.3)] backdrop-blur-md";
+                                                
+                                                if (isActive && !item.isAction) { finalStyle = activeStyle; iconColor = "text-[#fcd34d]"; }
+                                                else if (isActive && item.isAction) { finalStyle = actionActiveStyle; iconColor = "text-[#fca5a5]"; }
+                                                else if (!isActive && item.isAction) { finalStyle = actionStyle; iconColor = "text-[#ef4444]"; }
+                                                else { finalStyle = inactiveStyle; iconColor = "text-[#d97706]"; }
+                                            } else {
+                                                const activeStyle = "border-[#bfdbfe] bg-[linear-gradient(180deg,#ffffff_0%,#dbeafe_100%)] text-[#1d4ed8] shadow-[0_5px_0_#93c5fd,_0_12px_20px_rgba(37,99,235,0.14),inset_0_2px_0_rgba(255,255,255,1)] scale-[0.98]";
+                                                const actionActiveStyle = "border-[#fbcfe8] bg-[linear-gradient(180deg,#ffffff_0%,#fce7f3_100%)] text-[#be185d] shadow-[0_5px_0_#f9a8d4,_0_12px_20px_rgba(219,39,119,0.14),inset_0_2px_0_rgba(255,255,255,1)] scale-[0.98]";
+                                                const actionStyle = "border-[#d7e6f7] bg-[linear-gradient(180deg,#ffffff_0%,#eef6ff_100%)] text-[#22324a] shadow-[0_4px_0_#c4d7ee,_0_12px_20px_rgba(15,23,42,0.08),inset_0_2px_0_rgba(255,255,255,1)] hover:bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] hover:translate-y-[-1px] hover:shadow-[0_5px_0_#93c5fd,_0_12px_20px_rgba(37,99,235,0.14)]";
+                                                const inactiveStyle = "border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.6)_0%,rgba(255,255,255,0.3)_100%)] text-[#475569] shadow-[0_4px_0_rgba(255,255,255,0.7),_0_8px_15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)] hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.9)_0%,rgba(255,255,255,0.5)_100%)] hover:text-[#1d4ed8] hover:translate-y-[-1px]";
+                                                
+                                                if (isActive && !item.isAction) { finalStyle = activeStyle; iconColor = "text-[#1d4ed8]"; }
+                                                else if (isActive && item.isAction) { finalStyle = actionActiveStyle; iconColor = "text-[#be185d]"; }
+                                                else if (!isActive && item.isAction) { finalStyle = actionStyle; iconColor = "text-[#22324a]"; }
+                                                else { finalStyle = inactiveStyle; iconColor = "text-[#64748b]"; }
+                                            }
+                                            
+                                            return (
+                                                <a
+                                                    key={item.name}
+                                                    href={item.href}
+                                                    onClick={(event) => handleNavItemClick(event, item)}
+                                                    className={`${baseStyle} ${finalStyle} relative overflow-hidden`}
+                                                >
+                                                    <div className={`absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,${isDarkTheme ? '0.05' : '0.4'})_0%,transparent_50%)] pointer-events-none`}></div>
+                                                    
+                                                    <Icon className={`h-5 w-5 ${iconColor}`} strokeWidth={isActive ? 2.5 : 2} />
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">{item.name}</span>
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* System Status Line */}
+                                    <div className={`mt-2 flex items-center justify-between border-t ${isDarkTheme ? 'border-[#d97706]/20' : 'border-[#bfdbfe]/50'} pt-5 px-1`}>
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`h-2.5 w-2.5 rounded-full border ${isDarkTheme ? 'border-[#fef08a] bg-[#10b981] shadow-[0_0_8px_#10b981]' : 'border-white bg-[#10b981] shadow-[0_0_8px_#10b981,inset_0_1px_2px_rgba(255,255,255,0.5)]'} animate-pulse`}></div>
+                                            <span className={`text-[9.5px] ${isDarkTheme ? 'text-[#fcd34d]' : 'text-[#475569]'} font-bold tracking-[0.25em] uppercase`}>SYSTEM_ONLINE</span>
+                                        </div>
+                                        <span className={`text-[9px] ${isDarkTheme ? 'text-[#d97706]' : currentTheme.footer} font-bold tracking-[0.2em] uppercase`}>© 2026 KH_</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 
             {/* Main Content Area */}
-            <main className={`${standalone ? 'relative z-10 w-full' : fullBleed || page === 'Skills' ? 'flex-grow relative z-10 w-full' : 'flex-grow container mx-auto px-4 py-8 relative z-10 w-full'}`}>
+            <main className={`${standalone ? 'relative z-10 w-full' : fullBleed || page === 'Skills' || page === 'LandingPage' ? 'flex-grow relative z-10 w-full' : 'flex-grow container mx-auto px-4 py-8 relative z-10 w-full'}`}>
                 {isTouchOptimized ? (
                     <div key={page}>
                         {children}
@@ -627,8 +662,10 @@ const MainLayout = ({ children, page, standalone = false, hideNavigation = false
                 )}
             </main>
 
+            {!standalone && !hideFooter && <div ref={footerSentinelRef} className="h-px w-full" aria-hidden="true" />}
+
             {/* Footer */}
-            {!standalone && !hideFooter && (
+            {!standalone && !hideFooter && shouldMountFooter && (
                 <Suspense fallback={null}>
                     {page === 'Projects' ? <SoilFooter /> : <Footer page={page} />}
                 </Suspense>

@@ -38,6 +38,11 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
+    public function showregisterForm()
+    {
+        return view('auth.register');
+    }
+
     public function logout(Request $request)
     {
         Auth::logout();

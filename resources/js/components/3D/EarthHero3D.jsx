@@ -18,7 +18,7 @@ const drawBlob = (context, points, fillStyle) => {
 
         context.quadraticCurveTo(currentPoint[0], currentPoint[1], controlX, controlY);
     }
-
+natural”, tapi kalau mau benar-benar seamless seperti shared-scene transition, langkah berikutnya adalah pakai satu canvas ship yang sama antara intro dan hero, bukan dua layer terpisah. Itu lebih kompleks, tapi itu yang bikin transisi benar-benar nyatu.
     context.closePath();
     context.fillStyle = fillStyle;
     context.fill();
@@ -26,8 +26,8 @@ const drawBlob = (context, points, fillStyle) => {
 
 const createEarthTexture = () => {
     const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1024;
+    canvas.width = 1024;
+    canvas.height = 512;
 
     const context = canvas.getContext('2d');
 
@@ -40,6 +40,7 @@ const createEarthTexture = () => {
     oceanGradient.addColorStop(0.38, '#0d4ea6');
     oceanGradient.addColorStop(0.7, '#1f7ed6');
     oceanGradient.addColorStop(1, '#07192d');
+    Saya cek cepat asset lokal yang memang sudah pernah dipakai di codebase. Kalau file-nya ada, saya swap sekarang dan b
 
     context.fillStyle = oceanGradient;
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -104,7 +105,7 @@ const createEarthTexture = () => {
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 8;
+    texture.anisotropy = 4;
     texture.needsUpdate = true;
 
     return texture;
@@ -149,7 +150,7 @@ const EarthHero3D = (props) => {
     return (
         <group ref={groupRef} {...props}>
             <mesh>
-                <sphereGeometry args={[1, 128, 128]} />
+                <sphereGeometry args={[1, 72, 72]} />
                 <meshStandardMaterial
                     map={texture ?? undefined}
                     roughness={0.9}
@@ -160,7 +161,7 @@ const EarthHero3D = (props) => {
             </mesh>
 
             <mesh ref={cloudRef} scale={1.02}>
-                <sphereGeometry args={[1, 96, 96]} />
+                <sphereGeometry args={[1, 48, 48]} />
                 <meshStandardMaterial
                     color="#f8fbff"
                     transparent
@@ -171,7 +172,7 @@ const EarthHero3D = (props) => {
             </mesh>
 
             <mesh ref={atmosphereRef} scale={1.12}>
-                <sphereGeometry args={[1, 96, 96]} />
+                <sphereGeometry args={[1, 48, 48]} />
                 <meshBasicMaterial
                     color="#6dc9ff"
                     transparent
@@ -181,7 +182,7 @@ const EarthHero3D = (props) => {
             </mesh>
 
             <mesh scale={1.19}>
-                <sphereGeometry args={[1, 96, 96]} />
+                <sphereGeometry args={[1, 48, 48]} />
                 <meshBasicMaterial
                     color="#1d4ed8"
                     transparent
@@ -191,7 +192,7 @@ const EarthHero3D = (props) => {
             </mesh>
 
             <mesh ref={rimRef} position={[0, 0.01, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1.34, 1.34, 1]}>
-                <torusGeometry args={[1, 0.03, 16, 160, Math.PI]} />
+                <torusGeometry args={[1, 0.03, 12, 96, Math.PI]} />
                 <meshBasicMaterial
                     color="#7ef9d8"
                     transparent

@@ -181,12 +181,12 @@ const Projects = ({ page, props }) => {
         <MainLayout page={page}>
             <div ref={comp} className="relative min-h-screen text-stone-300 font-sans selection:bg-orange-500/30">
                 {/* Hero Section */}
-                <section className="relative min-h-[90vh] flex flex-col items-center justify-center pt-20 pb-10 px-4 z-10 w-full overflow-hidden">
+                <section className={`relative flex w-full flex-col items-center justify-center overflow-hidden px-4 z-10 ${isTouchOptimized ? 'min-h-[76vh] pt-10 pb-6' : 'min-h-[90vh] pt-20 pb-10'}`}>
 
                     {/* Decorative Background Elements (Underground Theme) */}
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden flex flex-col justify-between p-4 md:p-8">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden flex flex-col justify-between ${isTouchOptimized ? 'p-3' : 'p-4 md:p-8'}`}>
                         {/* Top HUD elements to fill empty mobile space */}
-                        <div className="flex justify-between items-start pt-24 md:pt-28 w-full max-w-7xl mx-auto opacity-40">
+                        <div className={`flex justify-between items-start w-full max-w-7xl mx-auto ${isTouchOptimized ? 'pt-16 opacity-26' : 'pt-24 md:pt-28 opacity-40'}`}>
                             <div className="flex flex-col gap-1">
                                 <span className="text-[10px] md:text-xs font-mono text-orange-500/80 tracking-[0.2em]">SYS.LOC // SEC-07</span>
                                 <div className="w-8 md:w-16 h-[1px] bg-orange-500/50"></div>
@@ -202,7 +202,7 @@ const Projects = ({ page, props }) => {
                         </div>
 
                         {/* Subtle Grid Lines for Texture */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                        <div className={`absolute inset-0 flex items-center justify-center ${isTouchOptimized ? 'opacity-12' : 'opacity-20'}`}>
                             <div className="w-[120%] h-[1px] bg-stone-800 rotate-[15deg]"></div>
                             <div className="w-[1px] h-[120%] bg-stone-800 rotate-[15deg] absolute"></div>
                         </div>
@@ -210,19 +210,19 @@ const Projects = ({ page, props }) => {
 
                     {/* Hero Content Overlay using Framer Motion */}
                     <motion.div
-                        className="relative z-10 w-full max-w-6xl mx-auto flex flex-col items-center justify-center text-center mt-32 md:mt-0 flex-1"
+                        className={`relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center text-center ${isTouchOptimized ? 'mt-10 gap-5 pb-2' : 'mt-32 md:mt-0'}`}
                         variants={containerVariants}
                         initial="hidden"
                         animate="visible"
                     >
                         <motion.div variants={fadeInVariants}>
-                            <h2 className="text-orange-500 font-mono tracking-[0.3em] uppercase text-xs md:text-sm mb-6 font-bold bg-orange-500/10 px-4 py-2 rounded-full border border-orange-500/20 backdrop-blur-sm shadow-[0_0_15px_rgba(249,115,22,0.2)]">
+                            <h2 className={`text-orange-500 font-mono tracking-[0.3em] uppercase font-bold bg-orange-500/10 rounded-full border border-orange-500/20 backdrop-blur-sm shadow-[0_0_15px_rgba(249,115,22,0.2)] ${isTouchOptimized ? 'mb-3 px-4 py-2 text-[11px]' : 'mb-6 px-4 py-2 text-xs md:text-sm'}`}>
                                 Vault 07
                             </h2>
                         </motion.div>
 
                         <h1
-                            className="text-5xl sm:text-7xl md:text-8xl lg:text-[10rem] font-black tracking-tighter mb-4 py-4 flex flex-col items-center gap-2 text-[#e7e5e4] drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] leading-[0.85]"
+                            className={`font-black tracking-tighter flex flex-col items-center gap-1.5 text-[#e7e5e4] drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] leading-[0.85] ${isTouchOptimized ? 'mb-1 max-w-[320px] py-1 text-[3.35rem]' : 'mb-4 py-4 text-5xl sm:text-7xl md:text-8xl lg:text-[10rem] gap-2'}`}
                             style={{
                                 textShadow: `
                                     0px 2px 0px #a8a29e,
@@ -231,14 +231,14 @@ const Projects = ({ page, props }) => {
                                 `
                             }}
                         >
-                            <motion.span variants={wordContainerVariants} className="flex overflow-visible pb-2" style={{ perspective: '1000px' }} initial="hidden" animate="visible">
+                            <motion.span variants={wordContainerVariants} className={`flex overflow-visible ${isTouchOptimized ? 'pb-1' : 'pb-2'}`} style={{ perspective: '1000px' }} initial="hidden" animate="visible">
                                 {titleText1.split('').map((char, index) => (
                                     <motion.span key={`char1-${index}`} variants={letterVariants} className="inline-block origin-bottom">
                                         {char}
                                     </motion.span>
                                 ))}
                             </motion.span>
-                            <motion.span variants={wordContainerVariants} className="flex overflow-visible pb-2" style={{ perspective: '1000px' }} initial="hidden" animate="visible" transition={{ delay: 0.5 }}>
+                            <motion.span variants={wordContainerVariants} className={`flex overflow-visible ${isTouchOptimized ? 'pb-1' : 'pb-2'}`} style={{ perspective: '1000px' }} initial="hidden" animate="visible" transition={{ delay: 0.5 }}>
                                 {titleText2.split('').map((char, index) => (
                                     <motion.span key={`char2-${index}`} variants={letterVariants} className="inline-block origin-bottom">
                                         {char}
@@ -247,21 +247,21 @@ const Projects = ({ page, props }) => {
                             </motion.span>
                         </h1>
 
-                        <motion.p variants={fadeInVariants} className="max-w-2xl text-base sm:text-lg md:text-xl text-stone-400 font-light leading-relaxed mb-8 sm:mb-12 shadow-xl bg-stone-900/60 p-6 rounded-3xl border border-stone-700/30 mx-4">
+                        <motion.p variants={fadeInVariants} className={`text-stone-400 font-light leading-relaxed shadow-xl bg-stone-900/60 rounded-3xl border border-stone-700/30 mx-4 ${isTouchOptimized ? 'mb-4 max-w-[292px] px-5 py-4 text-[0.97rem]' : 'mb-8 max-w-2xl p-6 text-base sm:mb-12 sm:text-lg md:text-xl'}`}>
                             A curated collection of digital remnants, experimental prototypes, and polished formations excavated from the depths.
                         </motion.p>
 
-                        <motion.div variants={fadeInVariants} className="flex flex-col sm:flex-row gap-4 w-[90%] sm:w-auto mx-auto group z-20">
+                        <motion.div variants={fadeInVariants} className={`mx-auto group z-20 flex ${isTouchOptimized ? 'w-full max-w-[292px] flex-col gap-3' : 'w-[90%] flex-col gap-4 sm:w-auto sm:flex-row'}`}>
                             <PlasticButton
                                 color="yellow"
-                                className="px-6 py-4 sm:px-10 sm:py-5 text-base sm:text-lg w-full sm:w-auto transition-all hover:scale-105 !bg-[#b45309] !text-orange-50 !border-[#78350f] !shadow-[0_6px_0_#451a03,0_10px_20px_rgba(0,0,0,0.5)] shadow-[0_0_30px_rgba(180,83,9,0.2)] hover:!bg-[#92400e]"
+                                className={`w-full transition-all hover:scale-105 !bg-[#b45309] !text-orange-50 !border-[#78350f] !shadow-[0_6px_0_#451a03,0_10px_20px_rgba(0,0,0,0.5)] shadow-[0_0_30px_rgba(180,83,9,0.2)] hover:!bg-[#92400e] ${isTouchOptimized ? 'px-5 py-3.5 text-[0.98rem]' : 'px-6 py-4 text-base sm:w-auto sm:px-10 sm:py-5 sm:text-lg'}`}
                                 onClick={() => document.getElementById('grid-section').scrollIntoView({ behavior: 'smooth' })}
                             >
                                 Explore Vault
                             </PlasticButton>
                             <PlasticButton
                                 color="yellow"
-                                className="px-6 py-4 sm:px-10 sm:py-5 text-base sm:text-lg w-full sm:w-auto transition-all hover:scale-105 !bg-[#1c1917] !text-stone-300 !border-[#0c0a09] !shadow-[0_6px_0_#000000,0_10px_20px_rgba(0,0,0,0.6)] shadow-[0_0_30px_rgba(0,0,0,0.3)] hover:!bg-[#0c0a09]"
+                                className={`w-full transition-all hover:scale-105 !bg-[#1c1917] !text-stone-300 !border-[#0c0a09] !shadow-[0_6px_0_#000000,0_10px_20px_rgba(0,0,0,0.6)] shadow-[0_0_30px_rgba(0,0,0,0.3)] hover:!bg-[#0c0a09] ${isTouchOptimized ? 'px-5 py-3.5 text-[0.98rem]' : 'px-6 py-4 text-base sm:w-auto sm:px-10 sm:py-5 sm:text-lg'}`}
                                 onClick={() => navigateWithCleanup('/about')}
                             >
                                 View Archives

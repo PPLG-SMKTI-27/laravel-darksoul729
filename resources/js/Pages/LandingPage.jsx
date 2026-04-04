@@ -1,16 +1,13 @@
 import React, { useLayoutEffect, useRef, Suspense, useState, useEffect, useMemo } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Html, useProgress } from '@react-three/drei';
 import { motion, useAnimation, useMotionValue, useInView, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
 import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
-import { Github, Linkedin, Twitter, Dribbble } from 'lucide-react';
+import { Github, Instagram, Mail, BriefcaseBusiness } from 'lucide-react';
 const FeaturedProjects = React.lazy(() => import('../components/FeaturedProjects'));
 const PanzekHome = React.lazy(() => import('../components/UI/PanzekHome'));
-// Lazy load Robocop3D
-const Robocop3D = React.lazy(() => import('../components/3D/Robocop3D'));
+const HeroRobotCanvas = React.lazy(() => import('../components/3D/HeroRobotCanvas'));
 
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -38,6 +35,11 @@ const CTA_RIGHT_CABLES = [
     { id: 'yellow', color: '#facc15', shadow: '#ca8a04', highlight: '#fde68a', path: 'M 0 50 C 42 50, 82 50, 148 50' },
     { id: 'blue', color: '#60a5fa', shadow: '#2563eb', highlight: '#bfdbfe', path: 'M 0 70 C 42 66, 82 34, 148 30' },
 ];
+
+const EMAIL_ADDRESS = 'panzekyuv@gmail.com';
+const MAILTO_URL = `mailto:${EMAIL_ADDRESS}`;
+const INSTAGRAM_URL = 'https://instagram.com/kepinolang';
+const GITHUB_URL = 'https://github.com/darksoul729';
 
 // ─── SCREEN 1: PanzekOS Splash (simple, shown during isBooting) ───────────────
 const PanzekOSSplash = () => {
@@ -232,99 +234,20 @@ const PanzekCLI = () => {
     );
 };
 
-class ModelErrorBoundary extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { hasError: false };
-    }
-
-    static getDerivedStateFromError() {
-        return { hasError: true };
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <Html center>
-                    <div className="flex flex-col items-center justify-center p-6 bg-white/70 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-56 text-center">
-                        <div className="text-slate-700 font-black uppercase tracking-widest text-[10px]">
-                            3D Model Error
-                        </div>
-                        <div className="mt-2 text-xs font-semibold text-slate-600">
-                            Model belum bisa dimuat. Cek koneksi atau file 3D.
-                        </div>
-                    </div>
-                </Html>
-            );
-        }
-
-        return this.props.children;
-    }
-}
-
-// Helper to pause rendering when offscreen
-const PerformanceOptimizer = () => {
-    const { gl, setFrameloop } = useThree();
-    useEffect(() => {
-        const observer = new IntersectionObserver(([entry]) => {
-            // When visible, run animation loop. When hidden, stop it.
-            setFrameloop(entry.isIntersecting ? 'demand' : 'never');
-        }, { threshold: 0.1 });
-
-        if (gl.domElement.parentElement) {
-            observer.observe(gl.domElement.parentElement);
-        }
-
-        return () => observer.disconnect();
-    }, [gl, setFrameloop]);
-    return null;
-};
-
-
-
-const CanvasLoader = () => {
-    const { progress, active } = useProgress();
-    const [showSlowNetwork, setShowSlowNetwork] = useState(false);
-
-    useEffect(() => {
-        if (!active) {
-            setShowSlowNetwork(false);
-            return undefined;
-        }
-
-        const timer = setTimeout(() => {
-            setShowSlowNetwork(true);
-        }, 2500);
-
-        return () => clearTimeout(timer);
-    }, [active]);
-
-    return (
-        <Html center>
-            <div className="flex flex-col items-center justify-center p-6 bg-white/60 backdrop-blur-md rounded-[2rem] border-[3px] border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.1)] w-48 transition-all duration-300">
-                <div className="relative w-16 h-16 animate-pulse mb-4">
-                    {/* Animated Campfire placeholder icon or just circles */}
-                    <div className="absolute inset-0 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin"></div>
-                    <div className="absolute inset-2 border-4 border-orange-200 border-b-orange-500 rounded-full animate-spin-reverse" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-                    <span className="absolute inset-0 flex flex-col items-center justify-center text-xs font-black text-orange-600">
-                        {Math.floor(progress)}%
-                    </span>
-                </div>
-                <div className="w-full bg-slate-200 rounded-full h-2 mb-2 overflow-hidden shadow-inner">
-                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
-                </div>
-                <div className="text-orange-500 font-bold uppercase tracking-widest text-[10px] mt-1 text-center">
-                    Setting up Camp...
-                </div>
-                {showSlowNetwork && (
-                    <div className="mt-2 text-[10px] font-semibold text-slate-600 text-center">
-                        Koneksi lambat, model 3D masih loading.
-                    </div>
-                )}
+const HeroRobotFallback = ({ isMobile = false }) => (
+    <div className={`flex h-full w-full items-center justify-center ${isMobile ? '' : 'rounded-[2rem] border border-white/50 bg-white/20 backdrop-blur-sm'}`}>
+        <div className={`text-center ${isMobile ? 'rounded-full bg-white/12 px-4 py-2 backdrop-blur-[4px]' : ''}`}>
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-700/80">
+                Loading Model
             </div>
-        </Html>
-    );
-};
+            {!isMobile && (
+                <div className="mt-2 text-sm font-semibold text-slate-600">
+                    Preparing 3D preview...
+                </div>
+            )}
+        </div>
+    </div>
+);
 
 const EmbeddedScreenFallback = () => (
     <div className="absolute inset-0 flex items-center justify-center bg-[#020c04]">
@@ -340,17 +263,17 @@ const EmbeddedScreenFallback = () => (
 );
 
 const FeaturedProjectsFallback = () => (
-    <div className="w-full py-12 mb-16">
+    <div className="mb-16 w-full py-12">
         <div className="mx-auto max-w-7xl px-4 md:px-12">
-            <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/45 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-                <div className="h-4 w-40 animate-pulse rounded-full bg-slate-200/90" />
-                <div className="mt-5 h-[320px] animate-pulse rounded-[1.75rem] bg-slate-200/70" />
+            <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm md:p-8">
+                <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200/90 md:w-40" />
+                <div className="mt-5 h-[220px] animate-pulse rounded-[1.75rem] bg-slate-200/70 md:h-[320px]" />
             </div>
         </div>
     </div>
 );
 
-const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDisconnect, portsRef, index }) => {
+const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDisconnect, portsRef, isMobile = false }) => {
     const controls = useAnimation();
     const x = useMotionValue(0);
     const y = useMotionValue(0);
@@ -358,8 +281,8 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
     const [nearPort, setNearPort] = useState(false);
     const snappedRef = useRef(false); // guard to prevent spring-back after snap
     const plugRef = useRef(null);
-    const magnetRadius = 240;
-    const snapRadius = 200;
+    const magnetRadius = 110;
+    const snapRadius = 48;
 
     const colorHex = {
         red: '#ef4444',
@@ -383,23 +306,35 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
     }[color];
 
     // Starting x position for the cable off-screen
-    const startX = -1000;
+    const startX = isMobile ? -560 : -1000;
 
-    // Fixed disconnected resting positions
-    const restingPositions = {
-        red: { x: -180, y: 0 },
-        yellow: { x: -220, y: 0 },
-        green: { x: -200, y: 0 },
-        blue: { x: -160, y: 0 }
-    };
+    const restingPositions = isMobile
+        ? {
+            red: { x: -78, y: 0 },
+            yellow: { x: -94, y: 0 },
+            green: { x: -86, y: 0 },
+            blue: { x: -72, y: 0 }
+        }
+        : {
+            red: { x: -180, y: 0 },
+            yellow: { x: -220, y: 0 },
+            green: { x: -200, y: 0 },
+            blue: { x: -160, y: 0 }
+        };
 
-    // Extreme off-screen start heights and droop/rise offsets to force crossing/tangling
-    const leftTangle = {
-        red: { startY: 1200, cp1y: 800, cp2y: -600 },
-        yellow: { startY: -800, cp1y: 400, cp2y: 900 },
-        green: { startY: 600, cp1y: -1200, cp2y: 800 },
-        blue: { startY: -1000, cp1y: 200, cp2y: 400 }
-    }[color];
+    const leftTangle = isMobile
+        ? {
+            red: { startY: 360, cp1y: 180, cp2y: -120 },
+            yellow: { startY: -250, cp1y: 120, cp2y: 260 },
+            green: { startY: 220, cp1y: -300, cp2y: 180 },
+            blue: { startY: -320, cp1y: 80, cp2y: 140 }
+        }[color]
+        : {
+            red: { startY: 1200, cp1y: 800, cp2y: -600 },
+            yellow: { startY: -800, cp1y: 400, cp2y: 900 },
+            green: { startY: 600, cp1y: -1200, cp2y: 800 },
+            blue: { startY: -1000, cp1y: 200, cp2y: 400 }
+        }[color];
 
     // Calculate dynamic bezier curve path based on motion value state or resting state
     const updatePath = () => {
@@ -410,7 +345,7 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
         const targetY = 0;
 
         // Fixed start position far left relative to world, plus unique vertical offset
-        const svgStartX = -1500 - (restingPositions[color].x + curX);
+        const svgStartX = startX - (restingPositions[color].x + curX);
         const svgStartY = -curY + leftTangle.startY;
 
         // Chaotic overlapping control points
@@ -466,18 +401,7 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
             return;
         }
 
-        // Proximity glow feedback when within magnet range
         setNearPort(dist < magnetRadius);
-
-        // Auto snap when within magnetic snap range
-        if (dist < snapRadius && !snappedRef.current) {
-            snappedRef.current = true; // Mark snapped so dragEnd doesn't spring back
-            setNearPort(false);
-            controls.stop();
-            x.set(0);
-            y.set(0);
-            onConnect(color);
-        }
     };
 
     const handleDragEnd = (event, info) => {
@@ -535,10 +459,10 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
 
     if (isConnected) {
         return (
-            <div className="absolute hidden md:flex items-center z-10 cursor-pointer hover:brightness-110 group transition-transform hover:translate-x-1"
+            <div className="absolute flex items-center z-10 cursor-pointer hover:brightness-110 group transition-transform hover:translate-x-1"
                 style={{ top: portY, transform: 'translateY(-50%)', left: -42, height: 20 }}
                 onClick={() => onDisconnect(color)}
-                title="Click to disconnect"
+                title={isMobile ? 'Tap to disconnect' : 'Click to disconnect'}
             >
                 {/* SVG curves rendered exactly to (0,0) of this connected container */}
                 <div className="absolute top-1/2 left-[5px]">{renderCable()}</div>
@@ -564,7 +488,7 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
             onDragEnd={handleDragEnd}
             whileHover={{ scale: 1.05 }}
             whileDrag={{ scale: 1.15, zIndex: 50, cursor: 'grabbing' }}
-            className="absolute z-40 hidden md:flex items-center cursor-grab group mt-[-14px]"
+            className={`absolute z-40 items-center cursor-grab group mt-[-14px] ${isMobile ? 'hidden' : 'flex'}`}
         >
             {/* Anchor point for SVGs inside the motion div at the left edge of the plug */}
             <div className="absolute top-1/2 left-[5px]">{renderCable()}</div>
@@ -575,7 +499,7 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
             </div>
 
             <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-[10px] font-black px-3 py-1 rounded-md pointer-events-none whitespace-nowrap shadow-lg">
-                {nearPort ? '⚡ AUTO CONNECT' : 'DRAG INTO PORT'}
+                {nearPort ? 'LEPAS UNTUK SAMBUNG' : 'DRAG KE PORT'}
             </div>
         </motion.div>
     );
@@ -620,12 +544,16 @@ const LandingPage = ({ page, props }) => {
     const comp = useRef();
     const heroRobotRef = useRef(null);
     const profileHeaderRef = useRef(null);
+    const featuredProjectsRef = useRef(null);
+    const ctaPanelRef = useRef(null);
     const portsRef = useRef({});
     const [isMobile, setIsMobile] = useState(false);
     const prefersReducedMotion = useReducedMotion();
     const [isLowPower, setIsLowPower] = useState(false);
     const isHeroRobotInView = useInView(heroRobotRef, { once: true, margin: "200px" });
     const isProfileHeaderInView = useInView(profileHeaderRef, { once: true, margin: '-15% 0px' });
+    const isFeaturedProjectsInView = useInView(featuredProjectsRef, { once: true, margin: '280px 0px' });
+    const isCtaPanelInView = useInView(ctaPanelRef, { once: false, margin: '200px 0px' });
     const [gameboyStatus, setGameboyStatus] = useState('READY');
     const [showMobileGameboyGuide, setShowMobileGameboyGuide] = useState(true);
 
@@ -720,6 +648,11 @@ const LandingPage = ({ page, props }) => {
         };
     }, [isLowPower, isMobile]);
     const useLiteMobileScene = isMobile || isLowPower || prefersReducedMotion;
+    const allowAmbientMotion = !useLiteMobileScene;
+    const allowHeroDecorMotion = allowAmbientMotion && !isMobile;
+    const allowCtaMotion = false;
+    const shouldRenderHeroRobot = isMobile || isHeroRobotInView;
+    const shouldRenderFeaturedProjects = isMobile || isFeaturedProjectsInView;
 
     const { scrollYProgress } = useScroll({
         target: comp,
@@ -796,9 +729,9 @@ const LandingPage = ({ page, props }) => {
 
                 {/* Sky accents - Paper Plane 1 */}
                 <motion.div
-                    animate={useLiteMobileScene ? undefined : { x: [0, -18, 0], y: [0, 10, 0], rotate: [10, 15, 10] }}
-                    transition={useLiteMobileScene ? undefined : { duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute right-[8%] top-[18%] w-24 text-white/92 drop-shadow-[0_14px_16px_rgba(255,255,255,0.14)]"
+                    animate={undefined}
+                    transition={undefined}
+                    className={`absolute right-[7%] top-[17%] text-white/92 drop-shadow-[0_14px_16px_rgba(255,255,255,0.14)] ${isMobile ? 'w-12 opacity-16' : 'w-20 opacity-65'}`}
                 >
                     <svg viewBox="0 0 160 120" className="h-auto w-full">
                         <path d="M10 56 146 20 98 104 72 66Z" fill="rgba(255,255,255,0.95)" />
@@ -810,9 +743,9 @@ const LandingPage = ({ page, props }) => {
 
                 {/* Sky accents - Paper Plane 2 (Smaller/Higher) */}
                 <motion.div
-                    animate={{ x: [0, 12, 0], y: [0, -8, 0], rotate: [-5, -2, -5] }}
-                    transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                    className={`absolute left-[35%] top-[12%] w-14 text-white/60 drop-shadow-[0_8px_10px_rgba(255,255,255,0.1)] ${isMobile ? 'opacity-30 scale-75' : ''}`}
+                    animate={undefined}
+                    transition={undefined}
+                    className={`absolute left-[35%] top-[12%] w-14 text-white/60 drop-shadow-[0_8px_10px_rgba(255,255,255,0.1)] ${isMobile ? 'opacity-12 scale-[0.62]' : 'opacity-45'}`}
                 >
                     <svg viewBox="0 0 160 120" className="h-auto w-full opacity-70">
                         <path d="M10 56 146 20 98 104 72 66Z" fill="white" />
@@ -822,137 +755,56 @@ const LandingPage = ({ page, props }) => {
 
                 {/* Floating Themed Elements (Portfolio Capsule aesthetic) */}
 
-                {/* Hot Air Balloon */}
+                {/* Scout Beacon */}
                 <motion.div
-                    animate={{
-                        y: [0, -25, 0],
-                        x: [0, 15, 0],
-                        rotate: [-2, 2, -2]
-                    }}
-                    transition={{
-                        duration: 15,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                    className={`absolute left-[12%] top-[15%] z-10 ${isMobile ? 'opacity-40 scale-75' : 'hidden sm:block'}`}
+                    animate={undefined}
+                    transition={undefined}
+                    className={`absolute left-[11%] top-[15%] z-10 ${isMobile ? 'opacity-12 scale-[0.54]' : 'opacity-85'}`}
                 >
-                    <svg width="60" height="80" viewBox="0 0 60 80">
-                        {/* Balloon */}
-                        <path d="M30 5 C15 5, 5 15, 5 30 C5 45, 15 55, 30 55 C45 55, 55 45, 55 30 C55 15, 45 5, 30 5Z" fill="#ff5b6b" />
-                        <path d="M30 5 C22 5, 15 15, 15 30 C15 45, 22 55, 30 55" fill="#f87171" opacity="0.6" />
-                        <path d="M30 5 C38 5, 45 15, 45 30 C45 45, 38 55, 30 55" fill="#ef4444" opacity="0.4" />
-                        {/* Wires */}
-                        <path d="M15 48 L18 65 M45 48 L42 65" stroke="#94a3b8" strokeWidth="1.5" />
-                        {/* Basket */}
-                        <rect x="18" y="65" width="24" height="12" rx="3" fill="#92400e" />
-                        <rect x="18" y="65" width="24" height="4" rx="1" fill="#78350f" opacity="0.3" />
-                    </svg>
-                    <div className="absolute inset-0 bg-white/20 blur-xl rounded-full scale-150 -z-10" />
-                </motion.div>
-
-                {/* Distant Flock of Birds */}
-                {!useLiteMobileScene && (
-                    <motion.div
-                        animate={{
-                            x: ['-10vw', '110vw'],
-                            y: [0, -20, 10, -5]
-                        }}
-                        transition={{
-                            x: { duration: 60, repeat: Infinity, ease: "linear" },
-                            y: { duration: 15, repeat: Infinity, ease: "easeInOut" }
-                        }}
-                        className="absolute top-[8%] opacity-30 flex gap-12 pointer-events-none"
-                    >
-                        {[0, 1, 2, 3].map((i) => (
-                            <motion.div
-                                key={i}
-                                animate={{ y: [0, -8, 0] }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
-                                style={{ scale: 0.4 + (i * 0.1) }}
-                            >
-                                <svg width="24" height="12" viewBox="0 0 24 12">
-                                    <path d="M2 10 C6 2, 10 10, 12 10 C14 10, 18 2, 22 10" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
-                                </svg>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                )}
-
-                {/* Star Icon (Platformer style) */}
-                <motion.div
-                    animate={{
-                        y: [0, -15, 0],
-                        rotate: [0, 360],
-                        scale: [1, 1.1, 1]
-                    }}
-                    transition={{
-                        y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-                        rotate: { duration: 12, repeat: Infinity, ease: "linear" },
-                        scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
-                    }}
-                    className={`absolute right-[18%] top-[25%] opacity-40 mix-blend-overlay ${isMobile ? 'scale-75' : ''}`}
-                >
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#ffd54a">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        {/* Gloss effect */}
-                        <path d="M12 4 l1.5 3 h3 l-2 2" fill="white" opacity="0.5" />
-                    </svg>
-                </motion.div>
-
-                {/* Coin Icon */}
-                <motion.div
-                    animate={{
-                        y: [0, 20, 0],
-                        rotateY: [0, 360]
-                    }}
-                    transition={{
-                        y: { duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 },
-                        rotateY: { duration: 3, repeat: Infinity, ease: "linear" }
-                    }}
-                    className={`absolute left-[28%] top-[35%] opacity-30 ${isMobile ? 'scale-75' : ''}`}
-                >
-                    <div className="w-6 h-8 rounded-full bg-yellow-400 border-[2px] border-yellow-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_8px_rgba(0,0,0,0.2)] flex items-center justify-center font-black text-yellow-800 text-[10px]">
-                        $
+                    <div className="relative h-[84px] w-[84px]">
+                        <motion.div
+                            animate={undefined}
+                            transition={undefined}
+                            className="absolute inset-0 rounded-full border border-white/35"
+                        />
+                        <motion.div
+                            animate={undefined}
+                            transition={undefined}
+                            className="absolute inset-[10px] rounded-full border border-sky-100/35"
+                        />
+                        <div className="absolute left-1/2 top-1/2 h-[22px] w-[22px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 bg-[radial-gradient(circle,#f8fafc_0%,#dbeafe_55%,#93c5fd_100%)] shadow-[0_0_18px_rgba(125,211,252,0.45)]" />
+                        <div className="absolute left-1/2 top-1/2 h-[8px] w-[54px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20 blur-sm" />
+                        <div className="absolute left-1/2 top-1/2 h-[54px] w-[8px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20 blur-sm" />
+                        <div className="absolute left-[12px] top-1/2 h-[2px] w-[14px] -translate-y-1/2 rounded-full bg-white/70" />
+                        <div className="absolute right-[12px] top-1/2 h-[2px] w-[14px] -translate-y-1/2 rounded-full bg-white/70" />
+                        <div className="absolute left-1/2 top-[12px] h-[14px] w-[2px] -translate-x-1/2 rounded-full bg-white/70" />
+                        <div className="absolute left-1/2 bottom-[12px] h-[14px] w-[2px] -translate-x-1/2 rounded-full bg-white/70" />
                     </div>
                 </motion.div>
 
+                {/* Focused hero-right atmosphere for spaceship */}
                 <motion.div
-                    animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                    className={`absolute right-[25%] top-[30%] opacity-20 ${isMobile ? 'scale-75 opacity-10' : ''}`}
-                >
-                    <svg width="40" height="40" viewBox="0 0 40 40">
-                        <circle cx="20" cy="20" r="18" fill="none" stroke="white" strokeWidth="2" strokeDasharray="4 4" />
-                        <path d="M12 20 L28 20 M20 12 L20 28" stroke="white" strokeWidth="3" strokeLinecap="round" />
-                    </svg>
-                </motion.div>
-
-                <motion.div
-                    animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                    className={`absolute left-[15%] top-[40%] opacity-[0.15] ${isMobile ? 'scale-75 opacity-[0.08]' : ''}`}
-                >
-                    <svg width="30" height="30" viewBox="0 0 30 30">
-                        <rect x="5" y="5" width="20" height="20" rx="4" fill="none" stroke="white" strokeWidth="2" />
-                        <circle cx="15" cy="15" r="4" fill="white" />
-                    </svg>
-                </motion.div>
-
-                <motion.div
-                    animate={{ x: [0, 26, 0], opacity: [0.45, 0.8, 0.45] }}
-                    transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-                    className={`absolute right-[16%] top-[25%] h-[2px] w-24 bg-gradient-to-r from-transparent via-white/80 to-transparent ${isMobile ? 'scale-x-75' : ''}`}
+                    animate={undefined}
+                    transition={undefined}
+                    className={`absolute right-[14%] top-[56%] h-[2px] w-[18vw] max-w-[220px] bg-gradient-to-r from-transparent via-white/80 to-transparent ${isMobile ? 'right-[20%] top-[29%] w-[20vw] opacity-22' : 'opacity-70'}`}
                 />
-
                 <motion.div
-                    animate={{ x: [0, 14, 0], y: [0, -6, 0] }}
-                    transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                    className={`absolute left-[10%] top-[22%] flex items-center gap-4 text-white/55 ${isMobile ? 'opacity-30' : ''}`}
-                >
-                    <svg viewBox="0 0 120 32" className="h-6 w-20">
-                        <path d="M10 22c7-9 15-9 22 0M36 20c7-8 14-8 21 0M64 18c7-7 14-7 21 0" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
-                    </svg>
-                </motion.div>
+                    animate={undefined}
+                    transition={undefined}
+                    className={`absolute rounded-full bg-[radial-gradient(circle,rgba(125,211,252,0.45)_0%,rgba(191,219,254,0.18)_34%,rgba(255,255,255,0)_72%)] blur-[20px] ${isMobile ? 'right-[2%] top-[17%] h-[140px] w-[220px] opacity-80' : 'right-[7%] top-[44%] h-[220px] w-[380px]'}`}
+                />
+                {allowHeroDecorMotion && (
+                    <motion.div
+                        animate={undefined}
+                        transition={undefined}
+                        className="absolute right-[26%] top-[58%] h-[140px] w-[260px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.32)_0%,rgba(219,234,254,0.12)_38%,rgba(255,255,255,0)_72%)] blur-[34px]"
+                    />
+                )}
+                <motion.div
+                    animate={undefined}
+                    transition={undefined}
+                    className={`absolute rounded-full bg-gradient-to-r from-transparent via-white/50 to-transparent blur-[2px] ${isMobile ? 'left-[52%] top-[33%] h-[2px] w-[42px] opacity-16' : 'left-[46%] top-[54%] h-[2px] w-[170px] opacity-50'}`}
+                />
 
                 <motion.div
                     style={{ y: cloudBankY, opacity: cloudBankOpacity, scale: cloudBankScale }}
@@ -962,15 +814,8 @@ const LandingPage = ({ page, props }) => {
 
                     {/* Primary Cloud Layer with Texture and Drift */}
                     <motion.div
-                        animate={useLiteMobileScene ? undefined : {
-                            x: [0, 15, -12, 5, 0],
-                            y: [0, -8, 6, -4, 0]
-                        }}
-                        transition={useLiteMobileScene ? undefined : {
-                            duration: 25,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                        }}
+                        animate={undefined}
+                        transition={undefined}
                         className="absolute inset-x-0 bottom-0 h-full"
                         style={{
                             backgroundImage: `
@@ -990,18 +835,10 @@ const LandingPage = ({ page, props }) => {
                     />
 
                     {/* Secondary Soft Layer for Depth */}
-                    {!useLiteMobileScene && (
+                    {allowHeroDecorMotion && (
                         <motion.div
-                            animate={{
-                                x: [0, -20, 15, -5, 0],
-                                y: [0, 10, -8, 4, 0]
-                            }}
-                            transition={{
-                                duration: 35,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                                delay: 2
-                            }}
+                            animate={undefined}
+                            transition={undefined}
                             className="absolute inset-x-0 bottom-0 h-[80%] opacity-40 blur-[25px]"
                             style={{
                                 backgroundImage: `
@@ -1022,17 +859,17 @@ const LandingPage = ({ page, props }) => {
             <div className="hidden lg:flex fixed left-5 top-1/2 z-50 -translate-y-1/2 flex-col items-center gap-3">
                 <div className="flex flex-col items-center gap-3">
                     <div className="h-12 w-[3px] rounded-full bg-gradient-to-b from-transparent via-white/80 to-[#93c5fd]" />
-                    <a href="#" target="_blank" rel="noreferrer" aria-label="GitHub" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#fca5a5] bg-[linear-gradient(180deg,#f87171_0%,#ef4444_100%)] text-white shadow-[0_4px_0_#b91c1c,_0_10px_18px_rgba(239,68,68,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                    <a href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label="GitHub" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#fca5a5] bg-[linear-gradient(180deg,#f87171_0%,#ef4444_100%)] text-white shadow-[0_4px_0_#b91c1c,_0_10px_18px_rgba(239,68,68,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
                         <Github size={18} strokeWidth={2.4} />
                     </a>
-                    <a href="#" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#93c5fd] bg-[linear-gradient(180deg,#60a5fa_0%,#2563eb_100%)] text-white shadow-[0_4px_0_#1d4ed8,_0_10px_18px_rgba(37,99,235,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
-                        <Linkedin size={18} strokeWidth={2.4} />
+                    <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label="Instagram" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#93c5fd] bg-[linear-gradient(180deg,#60a5fa_0%,#2563eb_100%)] text-white shadow-[0_4px_0_#1d4ed8,_0_10px_18px_rgba(37,99,235,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                        <Instagram size={18} strokeWidth={2.4} />
                     </a>
-                    <a href="#" target="_blank" rel="noreferrer" aria-label="Dribbble" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#86efac] bg-[linear-gradient(180deg,#4ade80_0%,#22c55e_100%)] text-white shadow-[0_4px_0_#15803d,_0_10px_18px_rgba(34,197,94,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
-                        <Dribbble size={18} strokeWidth={2.4} />
+                    <a href={MAILTO_URL} aria-label="Email" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#86efac] bg-[linear-gradient(180deg,#4ade80_0%,#22c55e_100%)] text-white shadow-[0_4px_0_#15803d,_0_10px_18px_rgba(34,197,94,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                        <Mail size={18} strokeWidth={2.4} />
                     </a>
-                    <a href="#" target="_blank" rel="noreferrer" aria-label="Twitter" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#fdba74] bg-[linear-gradient(180deg,#fb923c_0%,#f97316_100%)] text-white shadow-[0_4px_0_#c2410c,_0_10px_18px_rgba(249,115,22,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
-                        <Twitter size={18} strokeWidth={2.4} />
+                    <a href="/projects" aria-label="Projects" className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[#fdba74] bg-[linear-gradient(180deg,#fb923c_0%,#f97316_100%)] text-white shadow-[0_4px_0_#c2410c,_0_10px_18px_rgba(249,115,22,0.22)] transition-all duration-200 hover:-translate-y-1 hover:scale-105">
+                        <BriefcaseBusiness size={18} strokeWidth={2.4} />
                     </a>
                     <div className="h-12 w-[3px] rounded-full bg-gradient-to-b from-[#93c5fd] via-white/80 to-transparent" />
                 </div>
@@ -1040,62 +877,52 @@ const LandingPage = ({ page, props }) => {
 
             <div ref={comp} className="flex flex-col gap-12 md:gap-16 pb-12 relative w-full">
                 {/* HERO SECTION: 2-Column Layout */}
-                <div className="relative z-20 mb-8 flex flex-col items-center justify-between gap-4 overflow-visible px-4 pt-2 md:mb-0 md:max-w-7xl md:flex-row md:gap-8 md:px-4 md:pt-16 md:mx-auto md:w-full">
+                <div className="relative z-20 mb-8 flex flex-col items-center justify-between gap-3 overflow-visible px-4 pt-2 md:mb-0 md:max-w-7xl md:flex-row md:items-center md:gap-4 md:px-6 md:pt-14 md:mx-auto md:w-full">
                     {/* Left: Text Content */}
-                    <div className="flex flex-col items-center md:items-start text-center md:text-left z-10 w-full md:w-[45%] md:pl-16">
+                    <div className="flex flex-col items-center md:items-start text-center md:text-left z-10 w-full md:w-[46%] md:pl-10">
                         <motion.div
                             initial={{ opacity: 0, y: 14 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.28 }}
-                            className="mb-5 flex flex-wrap items-center justify-center gap-2 md:justify-start"
+                            className="mb-3 flex flex-wrap items-center justify-center gap-2 md:mb-5 md:justify-start"
                         >
                             <span className="rounded-full border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(219,234,254,0.92)_100%)] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-sky-700 shadow-[0_4px_0_#93c5fd,0_10px_16px_rgba(59,130,246,0.16)]">
                                 Portfolio Capsule
                             </span>
                         </motion.div>
 
-                        <h1 className="hero-text font-black tracking-tighter mb-4 leading-[0.9] select-none flex flex-col gap-2 min-h-[100px] sm:min-h-[140px] md:min-h-[180px] lg:min-h-[220px]">
+                        <h1 className="hero-text font-black tracking-tighter mb-3 leading-[0.9] select-none flex flex-col gap-1.5 min-h-[92px] sm:min-h-[140px] md:min-h-[180px] lg:min-h-[220px]">
                             {/* KEVIN - Multi-colored floating text */}
-                            <span className="flex justify-center md:justify-start text-[3.5rem] sm:text-[5rem] md:text-[7rem] lg:text-[8.5rem] drop-shadow-xl relative z-10 -space-x-1 md:-space-x-3">
+                            <span className="flex justify-center md:justify-start text-[3.15rem] sm:text-[5rem] md:text-[7rem] lg:text-[8.5rem] drop-shadow-xl relative z-10 -space-x-1 md:-space-x-3">
                                 {[
                                     { char: 'K', color: '#ef4444', shadow: '#b91c1c', shadow2: '#991b1b', delay: 0 },
                                     { char: 'E', color: '#eab308', shadow: '#ca8a04', shadow2: '#a16207', delay: 0.1 },
                                     { char: 'V', color: '#22c55e', shadow: '#16a34a', shadow2: '#15803d', delay: 0.15 },
                                     { char: 'I', color: '#3b82f6', shadow: '#2563eb', shadow2: '#1d4ed8', delay: 0.25 },
                                     { char: 'N', color: '#f97316', shadow: '#ea580c', shadow2: '#c2410c', delay: 0.2 }
-                                ].map((item, i) => (
+                                ].map((item) => (
                                     <motion.span
-                                        key={i}
+                                        key={item.char}
                                         initial={{ opacity: 0, y: 40, rotateX: 45, scale: 0.5 }}
                                         animate={{
                                             opacity: 1,
-                                            y: useLiteMobileScene ? 0 : [0, -16, -6, -14, 0],
-                                            x: useLiteMobileScene ? 0 : [0, 2, -2, 1, 0],
+                                            y: 0,
+                                            x: 0,
                                             rotateX: 0,
-                                            rotateZ: useLiteMobileScene ? 0 : [0, -3, 3, -2, 0],
-                                            scale: useLiteMobileScene ? 1 : [1, 1.1, 0.95, 1.08, 1],
-                                            scaleX: useLiteMobileScene ? 1 : [1, 1.12, 0.92, 1.05, 1],
-                                            scaleY: useLiteMobileScene ? 1 : [1, 0.98, 1.08, 0.98, 1],
+                                            rotateZ: 0,
+                                            scale: 1,
+                                            scaleX: 1,
+                                            scaleY: 1,
                                         }}
                                         transition={{
                                             opacity: { duration: 0.4, delay: item.delay },
-                                            y: useLiteMobileScene
-                                                ? { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay }
-                                                : [
-                                                    { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
-                                                    { duration: 2.4 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + item.delay }
-                                                ],
-                                            x: useLiteMobileScene ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1 + item.delay },
+                                            y: { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
+                                            x: { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
                                             rotateX: { duration: 0.8, type: 'spring', stiffness: 200, delay: item.delay },
-                                            rotateZ: useLiteMobileScene ? undefined : { duration: 2.6 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.12 },
-                                            scale: useLiteMobileScene
-                                                ? { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay }
-                                                : [
-                                                    { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
-                                                    { duration: 2.8 + i * 0.25, repeat: Infinity, ease: 'easeInOut', delay: 1.1 + i * 0.2 }
-                                                ],
-                                            scaleX: useLiteMobileScene ? undefined : { duration: 2.2 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.3 + i * 0.2 },
-                                            scaleY: useLiteMobileScene ? undefined : { duration: 2.1 + i * 0.2, repeat: Infinity, ease: 'easeInOut', delay: 1.25 + i * 0.2 }
+                                            rotateZ: { duration: 0.6, type: 'spring', stiffness: 220, damping: 18, delay: item.delay },
+                                            scale: { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
+                                            scaleX: { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay },
+                                            scaleY: { duration: 0.6, type: 'spring', stiffness: 300, damping: 15, delay: item.delay }
                                         }}
                                         className="origin-bottom"
                                         style={{
@@ -1113,26 +940,21 @@ const LandingPage = ({ page, props }) => {
                                 initial={{ opacity: 0, scaleY: 0, originY: 0 }}
                                 animate={{
                                     opacity: 1,
-                                    scaleY: useLiteMobileScene ? 1 : [1, 1.06, 0.98, 1.04, 1],
-                                    y: useLiteMobileScene ? 0 : [0, -5, -1, -7, 0],
-                                    x: useLiteMobileScene ? 0 : [0, 1.5, -1, 1, 0],
-                                    rotateZ: useLiteMobileScene ? 0 : [0, -1.5, 1, -1, 0]
+                                    scaleY: 1,
+                                    y: 0,
+                                    x: 0,
+                                    rotateZ: 0
                                 }}
                                 transition={{
                                     opacity: { duration: 0.5, delay: 0.5 },
-                                    y: useLiteMobileScene ? undefined : { duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 1.2 },
-                                    x: useLiteMobileScene ? undefined : { duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 },
-                                    rotateZ: useLiteMobileScene ? undefined : { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay: 1.3 },
-                                    scaleY: useLiteMobileScene
-                                        ? { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 }
-                                        : [
-                                            { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 },
-                                            { duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }
-                                        ]
+                                    y: { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 },
+                                    x: { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 },
+                                    rotateZ: { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 },
+                                    scaleY: { type: 'spring', stiffness: 200, damping: 12, delay: 0.5 }
                                 }}
-                                className="block text-[2.2rem] sm:text-[3.5rem] md:text-[5rem] lg:text-[5.5rem] text-white drop-shadow-2xl origin-top relative z-0 mt-[-8px] md:mt-[-20px] font-black tracking-normal"
+                                className="block text-[2rem] sm:text-[3.5rem] md:text-[5rem] lg:text-[5.5rem] text-white drop-shadow-2xl origin-top relative z-0 mt-[-6px] md:mt-[-18px] font-black tracking-normal"
                                 style={{
-                                    textShadow: "0 1px 0 #f1f5f9, 0 2px 0 #e2e8f0, 0 3px 0 #cbd5e1, 0 4px 0 #94a3b8, 0 5px 0 #64748b, 0 6px 0 #475569, 0 10px 15px rgba(0,0,0,0.3)",
+                                    textShadow: "0 1px 0 #f8fafc, 0 2px 0 #e2e8f0, 0 3px 0 #cbd5e1, 0 4px 0 #94a3b8, 0 8px 14px rgba(0,0,0,0.24)",
                                     willChange: 'transform'
                                 }}
                             >
@@ -1145,7 +967,7 @@ const LandingPage = ({ page, props }) => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.7 }}
-                            className="hero-text text-sm sm:text-lg md:text-xl font-bold text-white mb-4 md:mb-8 max-w-lg leading-relaxed tracking-wide"
+                            className="hero-text text-[0.96rem] sm:text-lg md:text-xl font-bold text-white mb-4 md:mb-7 max-w-lg leading-relaxed tracking-wide"
                             style={{ textShadow: "0 2px 4px rgba(0,0,0,0.2)" }}
                         >
                             3D Designer &bull; Frontend &bull; Illustrator
@@ -1155,7 +977,7 @@ const LandingPage = ({ page, props }) => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.8 }}
-                            className="hero-text flex flex-wrap justify-center md:justify-start gap-3 md:gap-4 mb-4 md:mb-10"
+                            className="hero-text flex flex-wrap justify-center md:justify-start gap-3 md:gap-4 mb-4 md:mb-8"
                         >
                             {/* exact button styles matching reference */}
                             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -1175,53 +997,40 @@ const LandingPage = ({ page, props }) => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.9 }}
-                            className="flex gap-3 md:gap-4 text-white text-xs sm:text-sm font-black tracking-widest drop-shadow-sm"
+                            className="mt-1 grid grid-cols-3 gap-2 rounded-[1.4rem] border border-white/45 bg-white/16 px-3 py-2.5 text-white text-[10px] sm:text-sm font-black tracking-[0.14em] drop-shadow-[0_6px_18px_rgba(255,255,255,0.08)] backdrop-blur-[8px] md:mt-2 md:flex md:gap-4 md:rounded-full md:px-4"
                         >
-                            <span>5+ Years</span>
-                            <span className="opacity-60">&bull;</span>
-                            <span>20+ Projects</span>
-                            <span className="opacity-60">&bull;</span>
-                            <span>Fast Delivery</span>
+                            <span className="text-center leading-tight">5+ Years</span>
+                            <span className="hidden opacity-60 md:inline">&bull;</span>
+                            <span className="text-center leading-tight">20+ Projects</span>
+                            <span className="hidden opacity-60 md:inline">&bull;</span>
+                            <span className="text-center leading-tight">Fast Delivery</span>
                         </motion.div>
                     </div>
 
                     {/* Right: 3D Robot Showcase — responsive container */}
-                    <div ref={heroRobotRef} className={`hero-robot order-first md:order-none relative w-full h-[450px] sm:h-[600px] md:h-[580px] md:w-[50%] md:aspect-auto flex-shrink-0 z-20 ${isMobile ? 'pointer-events-none' : ''}`}>
+                    <div ref={heroRobotRef} className={`hero-robot order-first md:order-none relative w-full h-[250px] sm:h-[460px] md:h-[560px] md:w-[54%] md:-mr-2 md:aspect-auto flex-shrink-0 z-20 ${isMobile ? 'pointer-events-none -mb-1' : ''}`}>
+                        <div className={`pointer-events-none absolute inset-0 ${isMobile ? 'top-[2%]' : 'top-[6%]'}`}>
+                            <motion.div
+                                animate={undefined}
+                                transition={undefined}
+                                className={`absolute rounded-full bg-[radial-gradient(circle,rgba(125,211,252,0.42)_0%,rgba(191,219,254,0.16)_38%,rgba(255,255,255,0)_72%)] blur-[18px] ${isMobile ? 'right-[8%] top-[18%] h-[110px] w-[190px]' : 'right-[8%] top-[34%] h-[190px] w-[300px]'}`}
+                            />
+                            <motion.div
+                                animate={undefined}
+                                transition={undefined}
+                                className={`absolute h-[2px] rounded-full bg-gradient-to-r from-transparent via-sky-100/80 to-transparent blur-[1px] ${isMobile ? 'right-[33%] top-[34%] w-[48px]' : 'right-[26%] top-[51%] w-[160px]'}`}
+                            />
+                            <motion.div
+                                animate={undefined}
+                                transition={undefined}
+                                className={`absolute h-[10px] rounded-full bg-gradient-to-r from-white/0 via-white/35 to-white/0 blur-[8px] ${isMobile ? 'right-[30%] top-[32%] w-[72px]' : 'right-[24%] top-[49%] w-[210px]'}`}
+                            />
+                        </div>
 
-                        {isHeroRobotInView && (
-                            <Canvas
-                                camera={{ position: [0, 0.6, 8.8], fov: isMobile ? 62 : 50 }}
-                                dpr={heroRenderSettings.dpr}
-                                frameloop="demand"
-                                gl={{
-                                    powerPreference: heroRenderSettings.powerPreference,
-                                    antialias: heroRenderSettings.antialias
-                                }}
-                            >
-                                <PerformanceOptimizer />
-                                <Suspense fallback={<CanvasLoader />}>
-                                    <ambientLight intensity={1.6} />
-                                    <directionalLight position={[5, 10, 5]} intensity={2.8} castShadow />
-                                    <pointLight position={[-5, 5, -5]} intensity={1.0} color="#ffffff" />
-                                    <pointLight position={[3, 2, 3]} intensity={0.6} color="#ffeedd" />
-
-                                    <group position={isMobile ? [0, -0.18, 0] : [0.6, -0.3, 0]}>
-                                        <ModelErrorBoundary>
-                                            <Robocop3D
-                                                scale={isMobile ? 2.5 : 3.0}
-                                                position={[0, 0, 0]}
-                                                rotation={[0, Math.PI / 5, 0]}
-                                            />
-                                        </ModelErrorBoundary>
-                                    </group>
-
-                                    <OrbitControls
-                                        enableZoom={false}
-                                        enablePan={false}
-                                        enableRotate={false}
-                                    />
-                                </Suspense>
-                            </Canvas>
+                        {shouldRenderHeroRobot && (
+                            <Suspense fallback={<HeroRobotFallback isMobile={isMobile} />}>
+                                <HeroRobotCanvas isMobile={isMobile} heroRenderSettings={heroRenderSettings} />
+                            </Suspense>
                         )}
 
                     </div>
@@ -1243,16 +1052,16 @@ const LandingPage = ({ page, props }) => {
                             </motion.span>
                             <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mt-1">
                                 <h2 className="text-5xl md:text-7xl font-black tracking-[0.12em] flex gap-[2px] md:gap-1 relative z-10">
-                                    {PROFILE_TITLE_LETTERS.map((letter, index) => (
+                                    {PROFILE_TITLE_LETTERS.map((letter) => (
                                         <motion.span
                                             key={letter.char}
                                             initial={{ opacity: 0, y: 26, rotateX: -26, scale: 0.84 }}
                                             animate={isProfileHeaderInView ? {
                                                 opacity: 1,
-                                                y: useLiteMobileScene ? 0 : [0, -3, 0, -2, 0],
+                                                y: 0,
                                                 rotateX: 0,
-                                                rotateZ: useLiteMobileScene ? 0 : [0, -1.2, 1.1, -0.6, 0],
-                                                scale: useLiteMobileScene ? 1 : [1, 1.03, 1, 1.02, 1],
+                                                rotateZ: 0,
+                                                scale: 1,
                                             } : {
                                                 opacity: 0,
                                                 y: 26,
@@ -1261,15 +1070,10 @@ const LandingPage = ({ page, props }) => {
                                             }}
                                             transition={{
                                                 opacity: { duration: 0.34, delay: letter.delay },
-                                                y: useLiteMobileScene
-                                                    ? { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay }
-                                                    : [
-                                                        { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay },
-                                                        { duration: 3.1 + index * 0.16, repeat: Infinity, ease: 'easeInOut', delay: 0.75 + letter.delay }
-                                                    ],
+                                                y: { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay },
                                                 rotateX: { duration: 0.48, ease: 'easeOut', delay: letter.delay },
-                                                rotateZ: useLiteMobileScene ? undefined : { duration: 3.5 + index * 0.15, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + letter.delay },
-                                                scale: useLiteMobileScene ? undefined : { duration: 3 + index * 0.14, repeat: Infinity, ease: 'easeInOut', delay: 0.82 + letter.delay },
+                                                rotateZ: { duration: 0.48, ease: 'easeOut', delay: letter.delay },
+                                                scale: { type: 'spring', stiffness: 230, damping: 18, delay: letter.delay },
                                             }}
                                             className="inline-block origin-bottom will-change-transform"
                                             style={{ color: letter.color, textShadow: letter.shadow }}
@@ -1303,7 +1107,7 @@ const LandingPage = ({ page, props }) => {
                                     </div>
                                     {showMobileGameboyGuide && (
                                         <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] font-semibold leading-relaxed text-slate-700">
-                                            <div className="rounded-2xl bg-slate-900/[0.04] px-3 py-2">1. Nyalakan dengan tap port merah, kuning, hijau, dan biru.</div>
+                                            <div className="rounded-2xl bg-slate-900/[0.04] px-3 py-2">1. Tap port merah, kuning, hijau, dan biru untuk menyambungkan kabel.</div>
                                             <div className="rounded-2xl bg-slate-900/[0.04] px-3 py-2">2. Setelah layar hidup, langsung tap ikon aplikasi di dalam screen.</div>
                                             <div className="rounded-2xl bg-slate-900/[0.04] px-3 py-2">3. Gameboy sekarang full-screen tanpa tombol fisik supaya lebih clean dan stabil.</div>
                                         </div>
@@ -1330,10 +1134,21 @@ const LandingPage = ({ page, props }) => {
                                     return (
                                         <React.Fragment key={color}>
                                             <div
-                                                className={`absolute -left-[14px] w-4 h-6 rounded-l-md border-y-[2px] border-l-[2px] transition-colors cursor-pointer flex items-center justify-center z-10 md:z-10 bg-slate-800 border-slate-700 hover:bg-slate-600 shadow-[-2px_0_5px_rgba(0,0,0,0.5)]`}
+                                                className={`absolute -left-[14px] w-4 h-6 rounded-l-md border-y-[2px] border-l-[2px] transition-colors flex items-center justify-center z-10 md:z-10 bg-slate-800 border-slate-700 shadow-[-2px_0_5px_rgba(0,0,0,0.5)] ${isConn || isMobile ? 'cursor-pointer hover:bg-slate-600' : 'cursor-default'}`}
                                                 style={{ top, transform: 'translateY(-50%)' }}
-                                                onClick={() => !isConn && handleConnect(color)}
-                                                title={isConn ? "" : "Click to connect (or drag cable on Desktop)"}
+                                                onClick={() => {
+                                                    if (!isMobile) {
+                                                        return;
+                                                    }
+
+                                                    if (isConn) {
+                                                        handleDisconnect(color);
+                                                        return;
+                                                    }
+
+                                                    handleConnect(color);
+                                                }}
+                                                title={isMobile ? (isConn ? 'Tap to disconnect' : 'Tap to connect') : isConn ? 'Click to disconnect' : 'Drag cable head to this port'}
                                             >
                                                 <div ref={el => portsRef.current[color] = el} className="w-[6px] h-[10px] bg-black rounded-[1px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] relative overflow-hidden flex items-center justify-center">
                                                     {isConn && <div className="w-full h-full opacity-80" style={{ backgroundColor: hexes[color] }}></div>}
@@ -1349,6 +1164,7 @@ const LandingPage = ({ page, props }) => {
                                                 onConnect={handleConnect}
                                                 onDisconnect={handleDisconnect}
                                                 portsRef={portsRef}
+                                                isMobile={isMobile}
                                             />
                                         </React.Fragment>
                                     );
@@ -1389,7 +1205,7 @@ const LandingPage = ({ page, props }) => {
                                                 <div className="text-white/30 font-black text-2xl uppercase tracking-[0.2em] animate-pulse">NO SIGNAL</div>
                                                 <div className="text-white/20 text-[8px] font-bold mt-2 uppercase tracking-widest hidden md:block">Connect 4 Cables</div>
                                                 <div className="mt-3 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-center text-[8px] font-black uppercase tracking-[0.22em] text-sky-100/80 md:hidden">
-                                                    Tap 4 port warna di kiri
+                                                    Tap 4 port warna
                                                 </div>
                                             </div>
                                         )}
@@ -1498,12 +1314,18 @@ const LandingPage = ({ page, props }) => {
                     </div>
                 </div>
                 {/* NEW ARRIVALS PREVIEW (3D Cartridge Shelf) */}
-                <Suspense fallback={<FeaturedProjectsFallback />}>
-                    <FeaturedProjects repos={repos} />
-                </Suspense>
+                <div ref={featuredProjectsRef} className="projects-section">
+                    {shouldRenderFeaturedProjects ? (
+                        <Suspense fallback={<FeaturedProjectsFallback />}>
+                            <FeaturedProjects repos={repos} />
+                        </Suspense>
+                    ) : (
+                        <FeaturedProjectsFallback />
+                    )}
+                </div>
 
                 {/* CALL TO ACTION BANNER */}
-                <div className="w-full relative py-32 mt-24 mb-32 flex items-center justify-center pointer-events-none">
+                <div ref={ctaPanelRef} className="w-full relative py-32 mt-24 mb-32 flex items-center justify-center pointer-events-none">
                     <style>{`
                         @keyframes toy-float { 0%,100% { transform: translate3d(0,0,0) rotate(0deg); } 50% { transform: translate3d(0,-6px,0) rotate(1.5deg); } }
                         @keyframes toy-bounce { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(2deg); } }
@@ -1639,8 +1461,8 @@ const LandingPage = ({ page, props }) => {
                                 <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-red-600 to-red-500 shadow-[inset_0_2px_10px_rgba(255,255,255,0.2)]" />
                                 {/* Wave Background Layer - Darker for depth */}
                                 <motion.div
-                                    animate={{ x: ['-50%', '0%'] }}
-                                    transition={{ repeat: Infinity, ease: 'linear', duration: 4.5 }}
+                                    animate={allowCtaMotion ? { x: ['-50%', '0%'] } : undefined}
+                                    transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4.5 } : undefined}
                                     className="absolute bottom-[60%] left-0 w-[200%] h-[35px] pointer-events-none text-red-700/40"
                                 >
                                     <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[35px] left-0 fill-current block">
@@ -1652,8 +1474,8 @@ const LandingPage = ({ page, props }) => {
                                 </motion.div>
                                 {/* Wave Foreground Layer - Lighter/Vibrant */}
                                 <motion.div
-                                    animate={{ x: ['0%', '-50%'] }}
-                                    transition={{ repeat: Infinity, ease: 'linear', duration: 3.2 }}
+                                    animate={allowCtaMotion ? { x: ['0%', '-50%'] } : undefined}
+                                    transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 3.2 } : undefined}
                                     className="absolute bottom-[60%] left-0 w-[200%] h-[24px] pointer-events-none text-red-500"
                                 >
                                     <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[24px] left-0 fill-current block">
@@ -1664,9 +1486,9 @@ const LandingPage = ({ page, props }) => {
                                     </svg>
                                 </motion.div>
                                 {/* Bubbles - Organic movement */}
-                                <motion.div animate={{ y: ['0%', '-500%'], x: [0, 8, -4, 0], opacity: [0, 0.6, 0] }} transition={{ repeat: Infinity, ease: 'linear', duration: 3 }} className="absolute left-[25%] bottom-[10%] w-2.5 h-2.5 bg-white/40 blur-[1px] rounded-full" />
-                                <motion.div animate={{ y: ['0%', '-400%'], x: [0, -12, 8, 0], opacity: [0, 0.7, 0] }} transition={{ repeat: Infinity, ease: 'linear', duration: 4.5, delay: 1 }} className="absolute left-[55%] bottom-[15%] w-3.5 h-3.5 bg-white/30 blur-[1px] rounded-full" />
-                                <motion.div animate={{ y: ['0%', '-600%'], x: [0, 4, -8, 0], opacity: [0, 0.5, 0] }} transition={{ repeat: Infinity, ease: 'linear', duration: 4, delay: 2.5 }} className="absolute w-1.5 h-1.5 left-[75%] bottom-[5%] bg-white/50 blur-[0.5px] rounded-full" />
+                                <motion.div animate={allowCtaMotion ? { y: ['0%', '-500%'], x: [0, 8, -4, 0], opacity: [0, 0.6, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 3 } : undefined} className="absolute left-[25%] bottom-[10%] w-2.5 h-2.5 bg-white/40 blur-[1px] rounded-full" />
+                                <motion.div animate={allowCtaMotion ? { y: ['0%', '-400%'], x: [0, -12, 8, 0], opacity: [0, 0.7, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4.5, delay: 1 } : undefined} className="absolute left-[55%] bottom-[15%] w-3.5 h-3.5 bg-white/30 blur-[1px] rounded-full" />
+                                <motion.div animate={allowCtaMotion ? { y: ['0%', '-600%'], x: [0, 4, -8, 0], opacity: [0, 0.5, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4, delay: 2.5 } : undefined} className="absolute w-1.5 h-1.5 left-[75%] bottom-[5%] bg-white/50 blur-[0.5px] rounded-full" />
                             </div>
 
                             <div className="p-8 pb-12 md:p-12 md:pb-16 flex flex-col items-center justify-center text-center relative z-10">

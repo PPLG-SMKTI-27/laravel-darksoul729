@@ -4,15 +4,11 @@ import {
     Wifi,
     BatteryFull,
     Signal,
-    FolderDot,
-    UserIcon,
-    Mail,
     Settings,
     Terminal as TerminalIcon,
     Camera as CameraIcon,
     MessageCircle,
     Music as MusicIcon,
-    Hexagon,
     Circle,
     Square,
     ChevronLeft,
@@ -23,7 +19,12 @@ import {
     Send,
     Volume2,
     Zap,
-    Image as ImageIcon
+    Image as ImageIcon,
+    LockKeyhole,
+    Flashlight,
+    AppWindow,
+    Search,
+    UserRoundPlus
 } from 'lucide-react';
 
 const TerminalApp = () => {
@@ -150,38 +151,96 @@ const SettingsApp = ({ performanceMode, setPerformanceMode }) => {
 
 const CameraApp = ({ onCapture }) => {
     const [shutter, setShutter] = useState(false);
-    const [stream, setStream] = useState(null);
+    const [streamState, setStreamState] = useState('requesting');
     const [error, setError] = useState(null);
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const streamRef = useRef(null);
 
     useEffect(() => {
-        let currentStream = null;
         const startCamera = async () => {
             try {
-                const mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user' },
-                    audio: false
-                });
-                setStream(mediaStream);
-                currentStream = mediaStream;
-                if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    throw new Error('MediaDevices unavailable');
                 }
+
+                const preferredConstraints = [
+                    { video: { facingMode: { ideal: 'environment' } }, audio: false },
+                    { video: { facingMode: { ideal: 'user' } }, audio: false },
+                    { video: true, audio: false }
+                ];
+
+                let mediaStream = null;
+
+                for (const constraints of preferredConstraints) {
+                    try {
+                        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                        break;
+                    } catch (constraintError) {
+                        mediaStream = null;
+                        if (constraints === preferredConstraints[preferredConstraints.length - 1]) {
+                            throw constraintError;
+                        }
+                    }
+                }
+
+                if (!mediaStream) {
+                    throw new Error('Unable to open camera');
+                }
+
+                streamRef.current = mediaStream;
+                setStreamState('live');
             } catch (err) {
                 console.error("Camera error:", err);
-                setError(err.name === 'NotAllowedError' ? 'Permission Denied' : 'Camera Error');
+                setError(err.name === 'NotAllowedError' ? 'Permission Denied' : 'Camera Unavailable');
+                setStreamState('error');
             }
         };
 
         startCamera();
 
         return () => {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((track) => track.stop());
+                streamRef.current = null;
             }
         };
     }, []);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        const mediaStream = streamRef.current;
+
+        if (!video || !mediaStream) {
+            return;
+        }
+
+        video.srcObject = mediaStream;
+
+        const handleLoadedMetadata = async () => {
+            try {
+                await video.play();
+                setStreamState('ready');
+            } catch (playError) {
+                console.error('Video play error:', playError);
+                setError('Preview blocked');
+                setStreamState('error');
+            }
+        };
+
+        video.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+        if (video.readyState >= 1) {
+            handleLoadedMetadata();
+        }
+
+        return () => {
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            if (video.srcObject) {
+                video.srcObject = null;
+            }
+        };
+    }, [streamState]);
 
     const triggerShutter = () => {
         if (!videoRef.current || !canvasRef.current) return;
@@ -205,9 +264,11 @@ const CameraApp = ({ onCapture }) => {
         }
     };
 
+    const showVideo = streamState === 'live' || streamState === 'ready';
+
     return (
         <div className="relative h-full bg-black flex items-center justify-center overflow-hidden">
-            {stream ? (
+            {showVideo ? (
                 <video
                     ref={videoRef}
                     autoPlay
@@ -215,14 +276,16 @@ const CameraApp = ({ onCapture }) => {
                     muted
                     className="absolute inset-0 w-full h-full object-cover"
                 />
-            ) : (
+            ) : null}
+
+            {streamState !== 'ready' ? (
                 <div className="flex flex-col items-center gap-3 text-white/50 px-6 text-center">
                     <CameraIcon size={40} className="opacity-20 mb-2" />
                     <p className="text-[10px] bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm">
-                        {error || 'Requesting Camera Access...'}
+                        {error || (streamState === 'requesting' ? 'Requesting Camera Access...' : 'Preparing Camera Preview...')}
                     </p>
                 </div>
-            )}
+            ) : null}
 
             {/* Hidden canvas for capture */}
             <canvas ref={canvasRef} className="hidden" />
@@ -252,7 +315,7 @@ const CameraApp = ({ onCapture }) => {
             </AnimatePresence>
 
             {/* Shutter Button */}
-            {stream && (
+            {streamState === 'ready' && (
                 <button
                     onClick={triggerShutter}
                     className="absolute bottom-20 w-14 h-14 rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition-transform z-20 shadow-xl"
@@ -334,35 +397,449 @@ const GalleryApp = () => {
     );
 };
 
-const MessagesApp = () => {
-    const chats = [
-        { name: 'Admin', msg: 'Welcome to PanzekOS!', time: '10:07', avatar: 'bg-red-500' },
-        { name: 'System', msg: 'Performance update ready.', time: '09:12', avatar: 'bg-blue-500' },
-        { name: 'Notification', msg: 'New project visitor detected.', time: 'Yesterday', avatar: 'bg-green-500' }
-    ];
+const MESSAGES_DEVICE_STORAGE_KEY = 'panzek_messages_device_id_v1';
+const CHAT_ACCENTS = [
+    'from-emerald-400 to-emerald-600',
+    'from-sky-400 to-blue-600',
+    'from-rose-400 to-pink-600',
+    'from-violet-400 to-purple-600',
+    'from-amber-400 to-orange-500',
+];
+
+const getChatDeviceId = () => {
+    if (typeof window === 'undefined') {
+        return '';
+    }
+
+    const existingDeviceId = localStorage.getItem(MESSAGES_DEVICE_STORAGE_KEY);
+
+    if (existingDeviceId) {
+        return existingDeviceId;
+    }
+
+    const nextDeviceId = window.crypto?.randomUUID?.() ?? `panzek-device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(MESSAGES_DEVICE_STORAGE_KEY, nextDeviceId);
+
+    return nextDeviceId;
+};
+
+const getChatAccent = (code) => {
+    const digits = code.replace(/\D/g, '');
+    const sum = digits.split('').reduce((carry, value) => carry + Number(value), 0);
+    return CHAT_ACCENTS[sum % CHAT_ACCENTS.length];
+};
+
+const getCsrfToken = () => {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+};
+
+const chatRequest = async (url, options = {}) => {
+    const config = {
+        method: options.method ?? 'GET',
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(options.method && options.method !== 'GET'
+                ? {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                }
+                : {}),
+        },
+        ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+    };
+
+    const response = await fetch(url, config);
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(payload.message ?? 'Chat request failed.');
+    }
+
+    return payload;
+};
+
+const MessagesApp = ({ onHome }) => {
+    const [deviceId, setDeviceId] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [profileNameInput, setProfileNameInput] = useState('');
+    const [profile, setProfile] = useState(null);
+    const [contacts, setContacts] = useState([]);
+    const [threads, setThreads] = useState({});
+    const [selectedContactId, setSelectedContactId] = useState(null);
+    const [friendCodeInput, setFriendCodeInput] = useState('');
+    const [messageInput, setMessageInput] = useState('');
+    const [searchFeedback, setSearchFeedback] = useState('');
+    const [syncError, setSyncError] = useState('');
+
+    const applyServerState = (payload) => {
+        setProfile(payload.profile ?? null);
+        setContacts((payload.contacts ?? []).map((contact) => ({
+            ...contact,
+            accent: getChatAccent(contact.code),
+        })));
+        setThreads(payload.threads ?? {});
+    };
+
+    const fetchState = async (nextDeviceId, options = {}) => {
+        const silent = options.silent ?? false;
+
+        try {
+            const payload = await chatRequest(`/chat/state/${encodeURIComponent(nextDeviceId)}`);
+            applyServerState(payload);
+            setSyncError('');
+        } catch (error) {
+            if (error.message !== 'Chat user not found.') {
+                setSyncError('Gagal sinkron ke server chat.');
+            }
+        } finally {
+            if (!silent) {
+                setIsLoading(false);
+            }
+        }
+    };
+
+    useEffect(() => {
+        const nextDeviceId = getChatDeviceId();
+        setDeviceId(nextDeviceId);
+        fetchState(nextDeviceId);
+    }, []);
+
+    useEffect(() => {
+        if (!deviceId || !profile) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            if (document.hidden) {
+                return;
+            }
+
+            fetchState(deviceId, { silent: true });
+        }, 3000);
+
+        return () => window.clearInterval(interval);
+    }, [deviceId, profile]);
+
+    useEffect(() => {
+        if (!selectedContactId) {
+            return;
+        }
+
+        if (!contacts.some((contact) => String(contact.id) === String(selectedContactId))) {
+            setSelectedContactId(null);
+        }
+    }, [contacts, selectedContactId]);
+
+    const selectedContact = contacts.find((contact) => contact.id === selectedContactId) ?? null;
+    const selectedMessages = selectedContact ? (threads[selectedContact.id] ?? []) : [];
+
+    const createProfile = async () => {
+        const trimmedName = profileNameInput.trim();
+
+        if (!trimmedName) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const payload = await chatRequest('/chat/register', {
+                method: 'POST',
+                body: {
+                    device_id: deviceId,
+                    name: trimmedName,
+                },
+            });
+
+            applyServerState(payload);
+            setProfileNameInput('');
+            setSyncError('');
+            setSearchFeedback('');
+        } catch (error) {
+            setSyncError(error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const addFriendByCode = async () => {
+        const normalizedCode = friendCodeInput.trim().toUpperCase();
+
+        if (!normalizedCode) {
+            setSearchFeedback('Masukkan code dulu.');
+            return;
+        }
+
+        if (normalizedCode === profile?.code) {
+            setSearchFeedback('Itu code milikmu sendiri.');
+            return;
+        }
+
+        try {
+            const foundPayload = await chatRequest(`/chat/users/search?${new URLSearchParams({
+                device_id: deviceId,
+                code: normalizedCode,
+            }).toString()}`);
+
+            if (foundPayload.contact?.already_added) {
+                setSearchFeedback(`${foundPayload.contact.name} sudah ada di daftar.`);
+                const existingContact = contacts.find((contact) => contact.code === normalizedCode);
+                if (existingContact) {
+                    setSelectedContactId(existingContact.id);
+                }
+                return;
+            }
+
+            const payload = await chatRequest('/chat/contacts', {
+                method: 'POST',
+                body: {
+                    device_id: deviceId,
+                    contact_code: normalizedCode,
+                },
+            });
+
+            applyServerState(payload);
+            setFriendCodeInput('');
+            setSearchFeedback(`Tersambung dengan ${foundPayload.contact.name}.`);
+
+            const nextContact = (payload.contacts ?? []).find((contact) => contact.code === normalizedCode);
+            if (nextContact) {
+                setSelectedContactId(nextContact.id);
+            }
+        } catch (error) {
+            setSearchFeedback(error.message);
+        }
+    };
+
+    const sendMessage = async () => {
+        if (!selectedContact || !messageInput.trim()) {
+            return;
+        }
+
+        try {
+            const payload = await chatRequest('/chat/messages', {
+                method: 'POST',
+                body: {
+                    device_id: deviceId,
+                    recipient_code: selectedContact.code,
+                    body: messageInput.trim(),
+                },
+            });
+
+            applyServerState(payload);
+            setMessageInput('');
+            setSearchFeedback('');
+        } catch (error) {
+            setSearchFeedback(error.message);
+        }
+    };
+
+    if (isLoading && !profile) {
+        return (
+            <div className="flex h-full items-center justify-center bg-[linear-gradient(180deg,#f8fbff_0%,#edf4ff_100%)] px-6 text-center">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.26em] text-slate-400">Syncing</p>
+                    <p className="mt-2 text-[11px] font-semibold text-slate-600">Menyiapkan messaging deck...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!profile) {
+        return (
+            <div className="flex h-full flex-col justify-between bg-[linear-gradient(180deg,#f8fbff_0%,#edf4ff_100%)] p-4 text-slate-900">
+                <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.28em] text-sky-500">Messaging Setup</p>
+                    <h4 className="mt-2 text-[19px] font-black leading-tight">Masukkan nama dulu</h4>
+                    <p className="mt-2 text-[9px] leading-relaxed text-slate-500">
+                        Pertama kali buka, kamu perlu bikin identitas chat. Setelah itu sistem akan generate code seperti nomor pribadi.
+                    </p>
+                </div>
+
+                <div className="space-y-3">
+                    <div className="rounded-[1.35rem] border border-slate-200 bg-white/90 p-3 shadow-[0_14px_35px_rgba(148,163,184,0.14)]">
+                        <label className="text-[7px] font-black uppercase tracking-[0.26em] text-slate-400">Display Name</label>
+                        <input
+                            value={profileNameInput}
+                            onChange={(event) => setProfileNameInput(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    createProfile();
+                                }
+                            }}
+                            placeholder="Ketik nama kamu"
+                        className="mt-2 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-3 text-[11px] font-semibold text-slate-800 outline-none transition focus:border-sky-300"
+                        />
+                    </div>
+
+                    {syncError ? (
+                        <p className="text-[8px] font-semibold text-rose-500">{syncError}</p>
+                    ) : null}
+
+                    <button
+                        type="button"
+                        onClick={createProfile}
+                        className="flex w-full items-center justify-center rounded-[1.1rem] bg-[linear-gradient(180deg,#38bdf8_0%,#2563eb_100%)] px-4 py-3 text-[9px] font-black uppercase tracking-[0.3em] text-white shadow-[0_10px_24px_rgba(37,99,235,0.3)] transition active:scale-[0.98]"
+                    >
+                        Continue
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col h-full bg-[#f8fafc] p-2 space-y-2">
-            <div className="px-2 py-1 flex justify-between items-center">
-                <h4 className="text-[12px] font-black text-slate-800">Messages</h4>
-                <Send size={12} className="text-blue-500" />
-            </div>
-            <div className="space-y-1">
-                {chats.map((chat, i) => (
-                    <div key={i} className="flex gap-2 p-2 bg-white rounded-xl shadow-sm border border-slate-100 items-center">
-                        <div className={`w-8 h-8 rounded-full ${chat.avatar} flex items-center justify-center text-white text-[10px] font-bold`}>
-                            {chat.name[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-center">
-                                <p className="text-[9px] font-bold text-slate-800">{chat.name}</p>
-                                <p className="text-[6px] text-slate-400">{chat.time}</p>
-                            </div>
-                            <p className="text-[8px] text-slate-500 truncate">{chat.msg}</p>
+        <div className="flex h-full flex-col bg-[linear-gradient(180deg,#f8fbff_0%,#edf4ff_100%)] text-slate-900">
+            <div className="border-b border-slate-200/80 px-3 py-3">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={selectedContact ? () => setSelectedContactId(null) : onHome}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 shadow-[0_6px_14px_rgba(148,163,184,0.12)]"
+                        >
+                            <ChevronLeft size={12} strokeWidth={3} />
+                        </button>
+                        <div>
+                            <p className="text-[12px] font-black text-slate-800">{selectedContact ? selectedContact.name : 'Messages'}</p>
+                            <p className="mt-0.5 text-[7px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                {selectedContact ? selectedContact.code : profile.name}
+                            </p>
                         </div>
                     </div>
-                ))}
+                    {!selectedContact && <Send size={13} className="mt-0.5 text-sky-500" />}
+                </div>
+
+                {!selectedContact && (
+                    <>
+                        <div className="mt-3 rounded-[1.2rem] border border-slate-200 bg-white/90 px-3 py-2 shadow-[0_10px_24px_rgba(148,163,184,0.1)]">
+                            <p className="text-[7px] font-black uppercase tracking-[0.26em] text-slate-400">Your Code</p>
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                                <p className="text-[11px] font-black tracking-[0.14em] text-slate-800">{profile.code}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => navigator.clipboard?.writeText(profile.code)}
+                                    className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[7px] font-black uppercase tracking-[0.2em] text-slate-500"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex gap-2">
+                            <div className="flex flex-1 items-center gap-2 rounded-[1.1rem] border border-slate-200 bg-white px-3 py-2 shadow-[0_8px_18px_rgba(148,163,184,0.1)]">
+                                <Search size={12} className="text-slate-400" />
+                                <input
+                                    value={friendCodeInput}
+                                    onChange={(event) => setFriendCodeInput(event.target.value.toUpperCase())}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            addFriendByCode();
+                                        }
+                                    }}
+                                    placeholder="Cari teman pakai code"
+                                    className="w-full bg-transparent text-[10px] font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={addFriendByCode}
+                                className="flex items-center justify-center rounded-[1.1rem] bg-[linear-gradient(180deg,#22c55e_0%,#16a34a_100%)] px-3 text-white shadow-[0_10px_18px_rgba(34,197,94,0.25)] transition active:scale-[0.98]"
+                            >
+                                <UserRoundPlus size={14} />
+                            </button>
+                        </div>
+
+                        {searchFeedback ? (
+                            <p className="mt-2 text-[8px] font-semibold text-slate-500">{searchFeedback}</p>
+                        ) : null}
+                        {syncError ? (
+                            <p className="mt-1 text-[8px] font-semibold text-rose-500">{syncError}</p>
+                        ) : null}
+                    </>
+                )}
             </div>
+
+            {selectedContact ? (
+                <>
+                    <div className="flex-1 overflow-y-auto px-2 pb-2 pt-2">
+                        <div className="flex min-h-full flex-col rounded-[1.15rem] border border-slate-200 bg-white/92 p-2 shadow-[0_14px_30px_rgba(148,163,184,0.1)]">
+                            <div className="flex-1 space-y-2 overflow-y-auto px-1 pb-2">
+                                {selectedMessages.map((message) => (
+                                    <div key={message.id} className={`flex ${message.from === 'me' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[78%] rounded-[1rem] px-3 py-2 ${message.from === 'me' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                            <p className="text-[9px] font-semibold leading-relaxed">{message.text}</p>
+                                            <p className={`mt-1 text-[6px] font-bold uppercase tracking-[0.16em] ${message.from === 'me' ? 'text-white/70' : 'text-slate-400'}`}>{message.time}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-slate-200/70 bg-white/80 px-2 py-2 backdrop-blur-sm">
+                        <div className="flex items-center gap-2">
+                            <input
+                                value={messageInput}
+                                onChange={(event) => setMessageInput(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                        sendMessage();
+                                    }
+                                }}
+                                placeholder={`Chat ${selectedContact.name}`}
+                                className="flex-1 rounded-[1rem] border border-slate-200 bg-white px-3 py-2 text-[10px] font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+                            />
+                            <button
+                                type="button"
+                                onClick={sendMessage}
+                                className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[linear-gradient(180deg,#38bdf8_0%,#2563eb_100%)] text-white shadow-[0_10px_18px_rgba(37,99,235,0.24)] transition active:scale-[0.98]"
+                            >
+                                <Send size={13} />
+                            </button>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <div className="flex-1 overflow-y-auto px-2 py-2">
+                    {contacts.length > 0 ? (
+                        <div className="space-y-2">
+                            {contacts.map((contact) => {
+                                const contactMessages = threads[contact.id] ?? [];
+                                const lastMessage = contactMessages[contactMessages.length - 1];
+
+                                return (
+                                    <button
+                                        key={contact.id}
+                                        type="button"
+                                        onClick={() => setSelectedContactId(contact.id)}
+                                        className="flex w-full items-center gap-2 rounded-[1.1rem] border border-slate-200 bg-white p-2 text-left shadow-[0_12px_24px_rgba(148,163,184,0.1)] transition active:scale-[0.99]"
+                                    >
+                                        <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${contact.accent} text-[10px] font-black text-white`}>
+                                            {contact.name[0]}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="truncate text-[9px] font-black text-slate-800">{contact.name}</p>
+                                                <p className="text-[6px] font-semibold text-slate-400">{lastMessage?.time ?? '--:--'}</p>
+                                            </div>
+                                            <p className="mt-0.5 truncate text-[8px] font-medium text-slate-500">{lastMessage?.text ?? 'Belum ada pesan'}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                                <MessageCircle size={22} />
+                            </div>
+                            <p className="mt-4 text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">No Friends Yet</p>
+                            <p className="mt-2 text-[9px] leading-relaxed text-slate-500">Masukkan code teman di atas untuk mulai bikin daftar chat seperti WhatsApp mini.</p>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -411,8 +888,10 @@ const MusicApp = () => {
 
 const PanzekHome = ({ onNavigate }) => {
     const [time, setTime] = useState('');
+    const [lockTime, setLockTime] = useState('');
     const [activeApp, setActiveApp] = useState(null);
     const [performanceMode, setPerformanceMode] = useState(120);
+    const [isLocked, setIsLocked] = useState(true);
     const screenRef = useRef(null);
     const [isCompactScreen, setIsCompactScreen] = useState(false);
 
@@ -424,6 +903,11 @@ const PanzekHome = ({ onNavigate }) => {
             hours = hours < 10 ? '0' + hours : hours;
             mins = mins < 10 ? '0' + mins : mins;
             setTime(`${hours}:${mins}`);
+            setLockTime(now.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+            }));
         };
         updateTime();
         const interval = setInterval(updateTime, 1000);
@@ -444,21 +928,37 @@ const PanzekHome = ({ onNavigate }) => {
         return () => observer.disconnect();
     }, []);
 
-    const apps = useMemo(() => ([
-        { id: 4, name: 'Settings', icon: <Settings size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-gray-500 to-gray-700', action: () => setActiveApp('Settings') },
-        { id: 5, name: 'Terminal', icon: <TerminalIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-slate-700 to-slate-900', action: () => setActiveApp('Terminal') },
-        { id: 6, name: 'Camera', icon: <CameraIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-yellow-400 to-yellow-600', action: () => setActiveApp('Camera') },
-        { id: 9, name: 'Gallery', icon: <ImageIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-orange-400 to-orange-600', action: () => setActiveApp('Gallery') },
-        { id: 7, name: 'Messages', icon: <MessageCircle size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-emerald-400 to-emerald-600', action: () => setActiveApp('Messages') },
-        { id: 8, name: 'Music', icon: <MusicIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-rose-400 to-rose-600', action: () => setActiveApp('Music') }
-    ]), [isCompactScreen]);
-
     const transitionProps = {
         type: 'spring',
         stiffness: performanceMode === 120 ? 400 : 260,
         damping: performanceMode === 120 ? 30 : 20
     };
     const closeActiveApp = () => setActiveApp(null);
+    const unlockScreen = () => setIsLocked(false);
+    const goHome = () => {
+        setActiveApp(null);
+        setIsLocked(false);
+    };
+    const openApp = (appName) => {
+        setIsLocked(false);
+        setActiveApp(appName);
+    };
+    const formattedShortDate = useMemo(() => {
+        return new Date().toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    }, []);
+
+    const apps = useMemo(() => ([
+        { id: 4, name: 'Settings', icon: <Settings size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-gray-500 to-gray-700', action: () => openApp('Settings') },
+        { id: 5, name: 'Terminal', icon: <TerminalIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-slate-700 to-slate-900', action: () => openApp('Terminal') },
+        { id: 6, name: 'Camera', icon: <CameraIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-yellow-400 to-yellow-600', action: () => openApp('Camera') },
+        { id: 9, name: 'Gallery', icon: <ImageIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-orange-400 to-orange-600', action: () => openApp('Gallery') },
+        { id: 7, name: 'Messages', icon: <MessageCircle size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-emerald-400 to-emerald-600', action: () => openApp('Messages') },
+        { id: 8, name: 'Music', icon: <MusicIcon size={isCompactScreen ? 16 : 18} strokeWidth={2.5} />, color: 'from-rose-400 to-rose-600', action: () => openApp('Music') }
+    ]), [isCompactScreen]);
 
     return (
         <motion.div
@@ -466,14 +966,14 @@ const PanzekHome = ({ onNavigate }) => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: performanceMode === 120 ? 0.3 : 0.5, ease: 'easeOut' }}
-            className="absolute inset-0 bg-[#0a0a0a] z-10 overflow-hidden flex flex-col font-sans"
+            className="absolute inset-0 z-10 overflow-hidden flex flex-col font-sans"
             style={{
-                backgroundImage: 'url("https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1000&auto=format&fit=crop")',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
+                background:
+                    'radial-gradient(circle at 18% 16%, rgba(255,255,255,0.2), transparent 26%), radial-gradient(circle at 72% 22%, rgba(244,114,182,0.2), transparent 24%), radial-gradient(circle at 62% 70%, rgba(96,165,250,0.18), transparent 28%), linear-gradient(165deg, #0f172a 0%, #1e1b4b 42%, #2d1b69 68%, #4c1d95 100%)',
             }}
         >
-            <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.16))] pointer-events-none" />
+            <div className="absolute inset-0 pointer-events-none opacity-40" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '100% 28px', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent 90%)' }} />
 
             {/* STATUS BAR */}
             <div className={`relative z-20 flex items-center justify-between text-white drop-shadow-md ${isCompactScreen ? 'px-2.5 py-1 text-[7px]' : 'px-3 py-1.5 text-[8px]'} font-medium`}>
@@ -488,23 +988,84 @@ const PanzekHome = ({ onNavigate }) => {
 
             <div className="flex-1 overflow-hidden relative z-20 flex flex-col">
                 <AnimatePresence mode="wait">
-                    {!activeApp ? (
+                    {isLocked ? (
+                        <motion.div
+                            key="lockscreen"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0, scale: 1.02 }}
+                            transition={{ duration: 0.26 }}
+                            className="relative flex flex-1 flex-col justify-between px-4 pb-3 pt-5"
+                        >
+                            <div className="flex items-start justify-between">
+                                <p className="text-[8px] font-semibold tracking-[0.32em] text-white/55 uppercase">Locked</p>
+                                <button
+                                    type="button"
+                                    onClick={() => onNavigate?.('/')}
+                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white/80 backdrop-blur-xl transition active:scale-95"
+                                >
+                                    <AppWindow size={14} />
+                                </button>
+                            </div>
+
+                            <div className="flex flex-col items-center justify-center text-center text-white">
+                                <p className="text-[8px] font-semibold uppercase tracking-[0.36em] text-white/55">Lock Screen</p>
+                                <div className={isCompactScreen ? 'mt-3 text-[42px] font-extralight leading-none tracking-[-0.04em]' : 'mt-4 text-[56px] font-extralight leading-none tracking-[-0.05em]'}>
+                                    {time}
+                                </div>
+                                <p className="mt-2 text-[10px] font-medium text-white/78">{lockTime}</p>
+                                <p className="mt-4 text-[8px] font-medium text-white/60">Tap unlock to enter</p>
+                            </div>
+
+                            <div className="flex items-end justify-between gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => openApp('Camera')}
+                                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_28px_rgba(15,23,42,0.28)] transition active:scale-95"
+                                >
+                                    <CameraIcon size={16} />
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={unlockScreen}
+                                    className="flex-1 rounded-full border border-white/18 bg-white/12 px-4 py-3 text-center text-[8px] font-black uppercase tracking-[0.32em] text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_36px_rgba(15,23,42,0.3)] transition active:scale-[0.98]"
+                                >
+                                    Unlock
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_28px_rgba(15,23,42,0.28)] transition active:scale-95"
+                                >
+                                    <Flashlight size={16} />
+                                </button>
+                            </div>
+                        </motion.div>
+                    ) : !activeApp ? (
                         <motion.div
                             key="homescreen"
                             initial={{ opacity: 0, scale: 1.1 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             transition={transitionProps}
-                            className="flex flex-col flex-1"
+                            className="flex flex-col flex-1 px-3 pb-3 pt-2"
                         >
-                            {/* CLOCK WIDGET */}
-                            <div className={`flex flex-col items-center justify-center text-white drop-shadow-lg ${isCompactScreen ? 'mt-0.5 mb-2' : 'mt-1 mb-3'}`}>
-                                <div className={isCompactScreen ? 'text-[22px] font-light tracking-[0.2em]' : 'text-[28px] font-light tracking-widest'}>{time}</div>
-                                <div className={isCompactScreen ? 'mt-0.5 text-[6px] font-medium uppercase tracking-[0.28em] opacity-80' : 'mt-0.5 text-[7px] font-medium tracking-widest uppercase opacity-80'}>Wed, Mar 11</div>
+                            <div className="flex items-center justify-between px-1 text-white">
+                                <div>
+                                    <p className="text-[8px] font-semibold uppercase tracking-[0.28em] text-white/55">Home</p>
+                                    <p className="mt-1 text-[9px] font-medium text-white/75">{formattedShortDate}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsLocked(true)}
+                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white/88 backdrop-blur-xl transition active:scale-95"
+                                >
+                                    <LockKeyhole size={15} />
+                                </button>
                             </div>
 
-                            {/* HOME GRID */}
-                            <div className={`grid grid-cols-4 flex-1 content-start ${isCompactScreen ? 'gap-x-2 gap-y-2 px-4' : 'gap-x-3 gap-y-3 px-8'}`}>
+                            <div className={`mt-4 grid grid-cols-3 flex-1 content-start ${isCompactScreen ? 'gap-x-3 gap-y-4 px-2' : 'gap-x-4 gap-y-4 px-3'}`}>
                                 {apps.map((app, index) => (
                                     <motion.div
                                         key={app.id}
@@ -514,23 +1075,17 @@ const PanzekHome = ({ onNavigate }) => {
                                         className="flex flex-col items-center gap-1 cursor-pointer group"
                                         onClick={app.action}
                                     >
-                                        <div className={`flex items-center justify-center rounded-xl border border-white/20 text-white bg-gradient-to-br ${app.color} shadow-lg shadow-black/30 transition-transform group-hover:scale-105 active:scale-95 ${isCompactScreen ? 'h-[30px] w-[30px]' : 'h-[36px] w-[36px]'}`}
+                                        <div className={`flex items-center justify-center rounded-[20px] border border-white/20 text-white bg-gradient-to-br ${app.color} shadow-lg shadow-black/30 transition-transform group-hover:scale-105 active:scale-95 ${isCompactScreen ? 'h-[44px] w-[44px]' : 'h-[50px] w-[50px]'}`}
                                             style={{
-                                                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.4)'
+                                                boxShadow: 'inset 0 2px 8px rgba(255,255,255,0.28), inset 0 -8px 14px rgba(0,0,0,0.16), 0 14px 24px rgba(0,0,0,0.18)'
                                             }}>
                                             {app.icon}
                                         </div>
-                                        <span className={`text-white font-semibold tracking-wide drop-shadow-md ${isCompactScreen ? 'text-[6px]' : 'text-[7px]'}`}>
+                                        <span className={`text-white/90 font-semibold tracking-wide drop-shadow-md ${isCompactScreen ? 'text-[6px]' : 'text-[7px]'}`}>
                                             {app.name}
                                         </span>
                                     </motion.div>
                                 ))}
-                            </div>
-
-                            <div className={`px-3 pb-1 ${isCompactScreen ? 'pt-1' : 'pt-2'}`}>
-                                <div className={`rounded-full border border-white/15 bg-black/28 text-white/90 backdrop-blur-sm ${isCompactScreen ? 'px-2.5 py-1 text-[6px]' : 'px-3 py-1 text-[7px]'} text-center font-bold uppercase tracking-[0.22em]`}>
-                                    Tap app icon to open
-                                </div>
                             </div>
                         </motion.div>
                     ) : (
@@ -543,9 +1098,11 @@ const PanzekHome = ({ onNavigate }) => {
                             className="flex-1 overflow-hidden relative flex flex-col"
                         >
                             {/* APP HEADER (Subtle floating) */}
-                            <div className={`absolute left-0 right-0 top-0 z-30 flex items-center pointer-events-none ${isCompactScreen ? 'h-5 px-2' : 'h-6 px-3'}`}>
-                                <span className="text-[8px] font-black text-white/50 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm mt-1">{activeApp}</span>
-                            </div>
+                            {activeApp !== 'Messages' && (
+                                <div className={`absolute left-0 right-0 top-0 z-30 flex items-center pointer-events-none ${isCompactScreen ? 'h-5 px-2' : 'h-6 px-3'}`}>
+                                    <span className="text-[8px] font-black text-white/50 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm mt-1">{activeApp}</span>
+                                </div>
+                            )}
 
                             {/* App Content Area - Full Height */}
                             <div className="flex-1 overflow-hidden">
@@ -556,16 +1113,20 @@ const PanzekHome = ({ onNavigate }) => {
                                         const stored = localStorage.getItem('panzek_captured_photos');
                                         let photos = [];
                                         if (stored) {
-                                            try { photos = JSON.parse(stored); } catch (e) { }
+                                            try {
+                                                photos = JSON.parse(stored);
+                                            } catch (e) {
+                                            }
                                         }
                                         photos.push(img);
-                                        // Keep last 30 photos
-                                        if (photos.length > 30) photos.shift();
+                                        if (photos.length > 30) {
+                                            photos.shift();
+                                        }
                                         localStorage.setItem('panzek_captured_photos', JSON.stringify(photos));
                                     }} />
                                 )}
                                 {activeApp === 'Gallery' && <GalleryApp />}
-                                {activeApp === 'Messages' && <MessagesApp />}
+                                {activeApp === 'Messages' && <MessagesApp onHome={goHome} />}
                                 {activeApp === 'Music' && <MusicApp />}
                             </div>
                         </motion.div>
@@ -580,7 +1141,7 @@ const PanzekHome = ({ onNavigate }) => {
 
                 {/* Center Navigation Content */}
                 <div className={`pointer-events-auto flex flex-col items-center ${isCompactScreen ? 'gap-1 pb-0.5' : 'gap-1.5 pb-1'}`}>
-                    {activeApp && (
+                    {activeApp && activeApp !== 'Messages' && (
                         <div className={`flex items-center rounded-full border border-white/15 bg-black/45 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition-opacity ${isCompactScreen ? 'gap-1 px-1.5 py-1' : 'gap-1.5 px-2 py-1.5'}`}>
                             <button
                                 type="button"
@@ -593,7 +1154,7 @@ const PanzekHome = ({ onNavigate }) => {
                             <button
                                 type="button"
                                 aria-label="Home"
-                                onClick={closeActiveApp}
+                                onClick={goHome}
                                 className={`flex items-center justify-center rounded-full bg-white/6 text-white/90 transition hover:bg-white/12 hover:text-white active:scale-95 touch-manipulation ${isCompactScreen ? 'h-8 w-8' : 'h-9 w-9'}`}
                             >
                                 <Circle size={isCompactScreen ? 10 : 11} fill="currentColor" />
