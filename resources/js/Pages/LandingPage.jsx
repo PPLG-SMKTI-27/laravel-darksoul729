@@ -1060,7 +1060,7 @@ const LandingPage = ({ page, props }) => {
                     </div>
 
                     {/* Right: 3D Robot Showcase — responsive container */}
-                    <div ref={heroRobotRef} className={`hero-robot order-first md:order-none relative w-full h-[250px] sm:h-[460px] md:h-[560px] md:w-[54%] md:-mr-2 md:aspect-auto flex-shrink-0 z-20 ${isMobile ? 'pointer-events-none -mb-1' : ''}`}>
+                    <div ref={heroRobotRef} className={`hero-robot order-first md:order-none relative w-full h-[285px] sm:h-[460px] md:h-[560px] md:w-[54%] md:-mr-2 md:aspect-auto flex-shrink-0 z-20 ${isMobile ? 'pointer-events-none -mb-2' : ''}`}>
                         <div className={`pointer-events-none absolute inset-0 ${isMobile ? 'top-[2%]' : 'top-[6%]'}`}>
                             <motion.div
                                 animate={undefined}

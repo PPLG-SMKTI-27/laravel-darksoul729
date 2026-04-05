@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showLoginForm()
+    public function showLoginForm(): View
     {
         return view('auth.login');
     }
 
-    public function login(Request $request)
+    public function login(Request $request): RedirectResponse|JsonResponse
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -23,14 +26,25 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             $user = $request->user();
+            $redirectTo = $user->role === 'teacher' ? '/teacher' : '/dashboard';
 
-            // Redirect based on role
-            if ($user->role === 'teacher') {
-                return redirect()->intended('/teacher');
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'redirect' => $redirectTo,
+                ]);
             }
 
-            // Default redirect for admin and other roles
-            return redirect()->intended('/dashboard');
+            return redirect()->intended($redirectTo);
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Email atau password salah.',
+                'errors' => [
+                    'email' => ['Email atau password salah.'],
+                ],
+            ], 422);
         }
 
         return back()->withErrors([
@@ -38,12 +52,12 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
-    public function showregisterForm()
+    public function showregisterForm(): View
     {
         return view('auth.register');
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request): RedirectResponse
     {
         $email = $request->user()?->email;
 

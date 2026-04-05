@@ -106,7 +106,7 @@ const CanvasLoader = () => {
 export default function HeroRobotCanvas({ isMobile, heroRenderSettings }) {
     return (
         <Canvas
-            camera={{ position: [0, 0.6, 8.8], fov: isMobile ? 62 : 50 }}
+            camera={{ position: [0, 0.6, 8.8], fov: isMobile ? 56 : 50 }}
             dpr={heroRenderSettings.dpr}
             frameloop="demand"
             gl={{
@@ -122,11 +122,11 @@ export default function HeroRobotCanvas({ isMobile, heroRenderSettings }) {
                 <pointLight position={[3, 2, 3]} intensity={0.9} color="#ffeedd" />
                 <pointLight position={[1.5, 1.2, 4.5]} intensity={1.1} color="#7dd3fc" />
 
-                <group position={isMobile ? [0.06, 0.08, 0] : [0.82, 0.32, 0]}>
+                <group position={isMobile ? [0.12, 0.16, 0] : [0.82, 0.32, 0]}>
                     <ModelErrorBoundary resetKey="hero-spaceship-glb">
                         <Robocop3D
                             key="hero-spaceship-glb"
-                            scale={isMobile ? 7.4 : 6.45}
+                            scale={isMobile ? 9.1 : 6.45}
                             position={[0, 0, 0]}
                             rotation={[0.1, -Math.PI / 5, -0.1]}
                         />
