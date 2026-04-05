@@ -4,18 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Message;
+use App\Support\PageResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class MessageController extends Controller
 {
-    public function index()
+    public function index(Request $request): View|JsonResponse
     {
         $messages = Message::latest()->get();
 
-        return view('index', [
-            'page' => 'AdminMessages',
-            'props' => [
-                'messages' => $messages,
-            ],
+        return PageResponse::render($request, 'AdminMessages', [
+            'messages' => $messages,
         ]);
     }
 

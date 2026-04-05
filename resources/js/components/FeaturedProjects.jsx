@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
 
-const Animated3DTitle = ({ text }) => {
+const Animated3DTitle = ({ text, isCompact = false, prefersReducedMotion = false }) => {
     const palette3D = [
         { front: '#ff5a6e', drop: '#d33b4e' }, // Pink
         { front: '#ff9c3a', drop: '#d17215' }, // Orange
@@ -29,9 +29,9 @@ const Animated3DTitle = ({ text }) => {
     let globalIndex = 0;
 
     return (
-        <h2 className="flex flex-wrap items-center justify-center gap-3 md:justify-start md:gap-7">
+        <h2 className="flex flex-wrap items-center justify-center gap-2.5 max-[420px]:gap-2 md:justify-start md:gap-7">
             {words.map((word, wIdx) => (
-                <div key={wIdx} className="flex pb-3 md:pb-4">
+                <div key={wIdx} className="flex pb-3 max-[420px]:pb-2 md:pb-4">
                     {word.split('').map((char, cIdx) => {
                         const idx = globalIndex++;
                         const colorSet = palette3D[idx % palette3D.length];
@@ -39,19 +39,19 @@ const Animated3DTitle = ({ text }) => {
                         return (
                             <motion.span
                                 key={idx}
-                                className="block text-[2.55rem] leading-none md:text-6xl lg:text-[4.5rem] font-black uppercase"
+                                className={`block font-black uppercase leading-none ${isCompact ? 'text-[clamp(1.7rem,8.2vw,2.2rem)] sm:text-[2.45rem]' : 'text-[2.55rem] md:text-6xl lg:text-[4.5rem]'}`}
                                 style={{
                                     color: colorSet.front,
                                     textShadow: generate3DShadow(colorSet.drop),
                                     marginLeft: char === 'I' ? '0.12rem' : '0.04rem',
                                     marginRight: char === 'I' ? '0.12rem' : '0.04rem'
                                 }}
-                                animate={{ y: [0, -12, 0] }}
-                                transition={{
-                                    duration: 2.5,
+                                animate={prefersReducedMotion ? undefined : { y: [0, isCompact ? -7 : -12, 0] }}
+                                transition={prefersReducedMotion ? undefined : {
+                                    duration: isCompact ? 3.4 : 2.5,
                                     repeat: Infinity,
                                     ease: "easeInOut",
-                                    delay: idx * 0.1,
+                                    delay: idx * (isCompact ? 0.06 : 0.1),
                                 }}
                             >
                                 {char}
@@ -64,19 +64,19 @@ const Animated3DTitle = ({ text }) => {
     );
 };
 
-const BlockLetters = ({ text }) => {
+const BlockLetters = ({ text, isCompact = false }) => {
     // Colors matching the tactile colorful letters in the user's reference
     const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6']; 
     const words = text.split(' ');
     
     return (
-        <div className="mb-4 flex flex-col gap-2">
+        <div className="mb-4 flex flex-col gap-2 max-[420px]:mb-3">
             {words.map((word, wordIdx) => (
-                <div key={wordIdx} className="flex flex-wrap items-center gap-y-1">
+                <div key={wordIdx} className="flex max-w-full flex-wrap items-center gap-y-1">
                     {word.split('').map((char, i) => (
                         <span 
                             key={i} 
-                            className="text-[1.45rem] leading-none md:text-[2.5rem] font-black uppercase tracking-[0.08em] md:tracking-wide"
+                            className={`font-black uppercase leading-none ${isCompact ? 'text-[clamp(0.92rem,4.8vw,1.05rem)] tracking-[0.05em]' : 'text-[1.45rem] md:text-[2.5rem] tracking-[0.08em] md:tracking-wide'}`}
                             style={{ 
                                 color: colors[i % colors.length], 
                                 textShadow: `
@@ -98,9 +98,39 @@ const BlockLetters = ({ text }) => {
     );
 };
 
+const getCompactDescription = (description) => {
+    const fallback = 'NO DATA GIVEN. RUNNING DEFAULT SEQUENCE.';
+    const normalizedDescription = (description ?? fallback).toString().trim();
+
+    if (normalizedDescription.length <= 88) {
+        return normalizedDescription;
+    }
+
+    return `${normalizedDescription.slice(0, 88).trimEnd()}...`;
+};
+
 export default function FeaturedProjects({ repos = [] }) {
     const prefersReducedMotion = useReducedMotion();
     const [activeIndex, setActiveIndex] = useState(0);
+    const [isCompactScreen, setIsCompactScreen] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const mediaQuery = window.matchMedia('(max-width: 767px)');
+        const updateCompactScreen = () => {
+            setIsCompactScreen(mediaQuery.matches);
+        };
+
+        updateCompactScreen();
+        mediaQuery.addEventListener('change', updateCompactScreen);
+
+        return () => {
+            mediaQuery.removeEventListener('change', updateCompactScreen);
+        };
+    }, []);
 
     const projects = useMemo(() => {
         const data = repos && repos.length > 0
@@ -144,45 +174,45 @@ export default function FeaturedProjects({ repos = [] }) {
     }, [repos]);
 
     return (
-        <section className="featured-projects-shell relative z-10 mb-20 w-full overflow-visible px-3 py-12 md:px-8 md:py-16">
+        <section className="featured-projects-shell relative z-10 mb-20 w-full overflow-visible px-2 py-10 max-[420px]:px-1.5 md:px-8 md:py-16">
             <div className="mx-auto max-w-[1400px]">
                 
                 {/* Header Title - 3D Hovering Letters */}
-                <div className="mt-2 mb-5 flex justify-center md:mt-0 md:mb-10 md:ml-6 md:justify-start">
-                    <Animated3DTitle text="FEATURED PROJECTS" />
+                <div className="mt-1 mb-4 flex justify-center max-[420px]:mb-3 md:mt-0 md:mb-10 md:ml-6 md:justify-start">
+                    <Animated3DTitle text="FEATURED PROJECTS" isCompact={isCompactScreen} prefersReducedMotion={prefersReducedMotion} />
                 </div>
 
                 {/* THE MASSIVE ANALOGUE HARDWARE CONSOLE */}
-                <div className="relative flex w-full flex-col gap-5 overflow-visible rounded-[2rem] border-[4px] border-[#eef2f8] bg-[#c3cad5] p-3 shadow-[inset_0_4px_0_rgba(255,255,255,0.95),inset_0_-8px_16px_rgba(100,116,139,0.3),0_20px_40px_rgba(15,23,42,0.15)] md:gap-8 md:rounded-[2.5rem] md:p-5 xl:flex-row">
+                <div className="relative flex w-full flex-col gap-4 overflow-visible rounded-[1.6rem] border-[4px] border-[#eef2f8] bg-[#c3cad5] p-2.5 shadow-[inset_0_4px_0_rgba(255,255,255,0.95),inset_0_-8px_16px_rgba(100,116,139,0.3),0_20px_40px_rgba(15,23,42,0.15)] max-[420px]:gap-3 max-[420px]:rounded-[1.35rem] max-[420px]:p-2 md:gap-8 md:rounded-[2.5rem] md:p-5 xl:flex-row">
                     
                     {/* LEFT: Massive Inset Output Monitor */}
-                    <div className="relative aspect-[5/7] min-h-[390px] flex-1 rounded-[1.6rem] border-[4px] border-[#334155] bg-[linear-gradient(180deg,#20242b_0%,#16191f_50%,#0e1014_100%)] p-3 shadow-[inset_0_12px_24px_rgba(255,255,255,0.06),inset_0_-12px_24px_rgba(0,0,0,0.6)] md:min-h-[450px] md:aspect-[3/4] md:rounded-[2rem] md:p-4 xl:min-h-[550px] xl:aspect-auto">
+                    <div className="relative aspect-[11/15] min-h-[340px] flex-1 rounded-[1.35rem] border-[4px] border-[#334155] bg-[linear-gradient(180deg,#20242b_0%,#16191f_50%,#0e1014_100%)] p-2.5 shadow-[inset_0_12px_24px_rgba(255,255,255,0.06),inset_0_-12px_24px_rgba(0,0,0,0.6)] max-[420px]:min-h-[315px] max-[420px]:rounded-[1.1rem] max-[420px]:p-2 md:min-h-[450px] md:aspect-[3/4] md:rounded-[2rem] md:p-4 xl:min-h-[550px] xl:aspect-auto">
                          
                          {/* Power LED */}
-                         <div className="absolute top-5 left-5 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_12px_#ef4444]" />
+                         <div className="absolute left-4 top-4 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_12px_#ef4444] max-[420px]:left-3.5 max-[420px]:top-3.5" />
 
                          {/* Console Vents */}
-                         <div className="absolute left-4 top-[50%] flex flex-col gap-2 -mt-6">
+                         <div className="absolute left-3 top-[50%] -mt-6 flex flex-col gap-2 max-[420px]:left-2.5 max-[420px]:gap-1.5">
                              <div className="h-6 w-2 rounded-r bg-slate-900 shadow-inner" />
                              <div className="h-6 w-2 rounded-r bg-slate-900 shadow-inner" />
                              <div className="h-6 w-2 rounded-r bg-slate-900 shadow-inner" />
                          </div>
 
                          {/* The Glass Screen */}
-                         <div className="relative ml-4 mt-5 h-[calc(100%-1.25rem)] w-[calc(100%-1rem)] overflow-hidden rounded-xl border-2 border-slate-900/80 bg-[#0d1117] shadow-[inset_0_0_80px_rgba(0,0,0,0.8)] md:ml-6 md:mt-6 md:h-[calc(100%-2rem)] md:w-[calc(100%-2rem)]">
+                         <div className="relative ml-3.5 mt-4 h-[calc(100%-1rem)] w-[calc(100%-0.8rem)] overflow-hidden rounded-xl border-2 border-slate-900/80 bg-[#0d1117] shadow-[inset_0_0_80px_rgba(0,0,0,0.8)] max-[420px]:ml-3 max-[420px]:mt-3.5 max-[420px]:h-[calc(100%-0.7rem)] max-[420px]:w-[calc(100%-0.55rem)] md:ml-6 md:mt-6 md:h-[calc(100%-2rem)] md:w-[calc(100%-2rem)]">
                               
                               {/* Scanlines overlay */}
-                              <div className="pointer-events-none absolute inset-0 z-20 opacity-20" style={{ background: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '100% 4px' }} />
+                              <div className={`pointer-events-none absolute inset-0 z-20 ${isCompactScreen ? 'opacity-12' : 'opacity-20'}`} style={{ background: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: isCompactScreen ? '100% 5px' : '100% 4px' }} />
                               <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.08)_0%,transparent_60%)]" />
 
                               <AnimatePresence mode="wait">
                                   <motion.div
                                       key={activeIndex}
-                                      initial={{ opacity: 0, filter: 'blur(8px)', scale: 0.95 }}
-                                      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
-                                      exit={{ opacity: 0, filter: 'blur(8px)', scale: 1.05 }}
-                                      transition={{ duration: 0.3 }}
-                                      className="group relative z-10 flex h-full w-full flex-col justify-end p-5 md:p-14"
+                                      initial={isCompactScreen ? { opacity: 0, y: 16 } : { opacity: 0, filter: 'blur(8px)', scale: 0.95 }}
+                                      animate={isCompactScreen ? { opacity: 1, y: 0 } : { opacity: 1, filter: 'blur(0px)', scale: 1 }}
+                                      exit={isCompactScreen ? { opacity: 0, y: -16 } : { opacity: 0, filter: 'blur(8px)', scale: 1.05 }}
+                                      transition={{ duration: isCompactScreen ? 0.24 : 0.3 }}
+                                      className={`group relative z-10 flex h-full w-full flex-col justify-end ${isCompactScreen ? 'p-3.5 max-[420px]:p-3' : 'p-5 md:p-14'}`}
                                   >
                                       {/* Full Screen Background Image */}
                                       {projects[activeIndex].image && (
@@ -190,48 +220,60 @@ export default function FeaturedProjects({ repos = [] }) {
                                               <img 
                                                   src={projects[activeIndex].image} 
                                                   alt={projects[activeIndex].title}
-                                                  className="absolute inset-0 h-full w-full object-cover object-center opacity-60 saturate-[0.8] group-hover:opacity-100 group-hover:saturate-100 transition-all duration-700 ease-out"
+                                                  className={`absolute inset-0 h-full w-full object-cover object-center ${isCompactScreen ? 'opacity-52 saturate-[0.72]' : 'opacity-60 saturate-[0.8] group-hover:opacity-100 group-hover:saturate-100'} transition-all duration-700 ease-out`}
+                                                  loading="lazy"
                                               />
                                               {/* Dark overlays to ensure text remains highly readable */}
-                                              <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/70 to-transparent z-10 transition-all duration-500 opacity-90 group-hover:opacity-80" />
-                                              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-all duration-500 z-10" />
+                                              <div className={`absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/70 to-transparent z-10 transition-all duration-500 ${isCompactScreen ? 'opacity-94' : 'opacity-90 group-hover:opacity-80'}`} />
+                                              <div className={`absolute inset-0 z-10 transition-all duration-500 ${isCompactScreen ? 'bg-black/50' : 'bg-black/40 group-hover:bg-black/10'}`} />
 
                                               {/* Animated Scanline over the full image */}
-                                              <motion.div 
-                                                  animate={{ top: ['-10%', '110%'] }}
-                                                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                                                  className="absolute left-0 w-full h-[2px] bg-[#4ade80]/30 shadow-[0_0_10px_#4ade80] z-20 pointer-events-none"
-                                              />
+                                              {!isCompactScreen && !prefersReducedMotion && (
+                                                  <motion.div 
+                                                      animate={{ top: ['-10%', '110%'] }}
+                                                      transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                                                      className="absolute left-0 w-full h-[2px] bg-[#4ade80]/30 shadow-[0_0_10px_#4ade80] z-20 pointer-events-none"
+                                                  />
+                                              )}
                                           </div>
                                       )}
 
                                       {/* Project Glow */}
-                                      <div className={`absolute -top-20 -right-20 w-96 h-96 bg-gradient-to-bl ${projects[activeIndex].glow} blur-3xl opacity-40 rounded-full z-0 pointer-events-none`} />
+                                      <div className={`absolute rounded-full bg-gradient-to-bl ${projects[activeIndex].glow} pointer-events-none z-0 ${isCompactScreen ? '-top-12 -right-12 h-52 w-52 opacity-25 blur-2xl' : '-top-20 -right-20 h-96 w-96 opacity-40 blur-3xl'}`} />
                                       
-                                      <div className="relative z-20 flex flex-col justify-end h-full w-full transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                                          <div className="mb-3 inline-flex flex-col items-start gap-1 md:mb-4">
-                                              <span className="font-mono text-[10px] text-slate-300 uppercase tracking-widest drop-shadow-md">
+                                      <div className="relative z-20 flex h-full w-full flex-col justify-end transition-transform duration-500 group-hover:translate-y-0 md:translate-y-2">
+                                          <div className={`inline-flex flex-col items-start gap-1 ${isCompactScreen ? 'mb-2' : 'mb-3 md:mb-4'}`}>
+                                              <span className={`font-mono uppercase tracking-widest text-slate-300 drop-shadow-md ${isCompactScreen ? 'text-[8px]' : 'text-[10px]'}`}>
                                                   [SYSTEM.OK] // MODULE_DATA_STREAM
                                               </span>
-                                              <div className="inline-block rounded border border-[#4ade80]/40 bg-black/50 backdrop-blur-md px-3 py-1 font-mono text-xs uppercase tracking-widest text-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+                                              <div className={`inline-block rounded border border-[#4ade80]/40 bg-black/50 px-3 py-1 font-mono uppercase tracking-widest text-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.2)] ${isCompactScreen ? 'text-[10px]' : 'text-xs backdrop-blur-md'}`}>
                                                   {projects[activeIndex].tech}
                                               </div>
                                           </div>
 
-                                          <h3 className="text-[2.15rem] leading-[0.95] md:text-6xl lg:text-7xl xl:text-8xl font-black uppercase text-white tracking-[-0.04em] drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] md:tracking-tighter" style={{ textShadow: `0 2px 4px rgba(0,0,0,0.8), 0 0 40px ${projects[activeIndex].cableColor}70` }}>
+                                          <h3 className={`font-black uppercase text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] ${isCompactScreen ? 'max-w-[10ch] text-[clamp(1.55rem,8vw,1.95rem)] leading-[0.92] tracking-[-0.03em] [text-wrap:balance]' : 'text-[2.15rem] leading-[0.95] md:text-6xl lg:text-7xl xl:text-8xl tracking-[-0.04em] md:tracking-tighter'}`} style={{ textShadow: `0 2px 4px rgba(0,0,0,0.8), 0 0 ${isCompactScreen ? '24px' : '40px'} ${projects[activeIndex].cableColor}70` }}>
                                               {projects[activeIndex].title}
                                           </h3>
                                           
-                                          <p className="mt-3 max-w-xl font-mono text-sm leading-relaxed text-slate-200 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] md:mt-6 md:max-w-2xl md:text-lg">
-                                              &gt; {projects[activeIndex].description || "NO DATA GIVEN. RUNNING DEFAULT SEQUENCE."}
+                                          <p className={`font-mono leading-relaxed text-slate-200 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${isCompactScreen ? 'mt-2.5 max-w-[26ch] text-[0.9rem] [text-wrap:pretty]' : 'mt-3 max-w-xl text-sm md:mt-6 md:max-w-2xl md:text-lg'}`}>
+                                              &gt; {isCompactScreen ? getCompactDescription(projects[activeIndex].description) : (projects[activeIndex].description || 'NO DATA GIVEN. RUNNING DEFAULT SEQUENCE.')}
                                           </p>
 
-                                          <div className="mt-6 md:mt-10">
+                                          {isCompactScreen && (
+                                              <button
+                                                  onClick={() => navigateWithCleanup('/projects')}
+                                                  className="mt-3 inline-flex w-fit items-center font-mono text-[0.78rem] font-bold uppercase tracking-[0.18em] text-white/90 underline decoration-white/50 underline-offset-4 transition hover:text-[#4ade80] hover:decoration-[#4ade80]"
+                                              >
+                                                  See All
+                                              </button>
+                                          )}
+
+                                          <div className={`${isCompactScreen ? 'mt-4 hidden' : 'mt-6 md:mt-10'}`}>
                                               <button 
                                                   onClick={() => navigateWithCleanup(projects[activeIndex].link || '/projects')}
-                                                  className="group/btn flex items-center gap-3 font-mono text-sm font-bold uppercase tracking-[0.3em] text-white transition-all hover:text-[#4ade80] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] md:text-xl md:tracking-widest"
+                                                  className={`group/btn flex items-center font-mono font-bold uppercase text-white transition-all hover:text-[#4ade80] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${isCompactScreen ? 'gap-2 text-[0.82rem] tracking-[0.14em]' : 'gap-3 text-sm tracking-[0.3em] md:text-xl md:tracking-widest'}`}
                                               >
-                                                  <span className="h-1 w-6 bg-white transition-all group-hover/btn:w-12 group-hover/btn:bg-[#4ade80] md:w-8" />
+                                                  <span className={`h-1 bg-white transition-all group-hover/btn:bg-[#4ade80] ${isCompactScreen ? 'w-5 group-hover/btn:w-8' : 'w-6 group-hover/btn:w-12 md:w-8'}`} />
                                                   Execute Output
                                               </button>
                                           </div>
@@ -258,7 +300,7 @@ export default function FeaturedProjects({ repos = [] }) {
                     </div>
 
                     {/* RIGHT: Embossed Input Cartridges */}
-                    <div className="relative flex w-full shrink-0 flex-col justify-center gap-4 md:gap-5 xl:w-[420px]">
+                    <div className="relative flex w-full shrink-0 flex-col justify-center gap-3.5 max-[420px]:gap-3 md:gap-5 xl:w-[420px]">
                         {projects.map((project, i) => {
                             const isActive = activeIndex === i;
                             return (
@@ -283,7 +325,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                         onClick={() => setActiveIndex(i)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        className="group relative z-10 w-full overflow-hidden rounded-[1.45rem] border-[3px] border-white/90 p-4 text-left transition-colors md:rounded-[1.8rem] md:p-8"
+                                        className="group relative z-10 w-full overflow-hidden rounded-[1.25rem] border-[3px] border-white/90 p-3.5 text-left transition-colors max-[420px]:rounded-[1.1rem] max-[420px]:p-3 md:rounded-[1.8rem] md:p-8"
                                         style={{
                                             background: isActive ? 'linear-gradient(160deg, #ffffff 0%, #f4f7fb 100%)' : 'linear-gradient(160deg, #f1f4f9 0%, #e2e8f0 100%)',
                                             boxShadow: isActive 
@@ -291,7 +333,7 @@ export default function FeaturedProjects({ repos = [] }) {
                                                 : 'inset 0 4px 0 rgba(255,255,255,0.7), inset 0 -4px 8px rgba(100,116,139,0.1), 0 8px 16px rgba(15,23,42,0.05)',
                                         }}
                                     >
-                                        <div className="mb-3 flex items-center gap-3 border-b border-slate-200 pb-3 md:mb-4">
+                                        <div className="mb-3 flex items-center gap-2.5 border-b border-slate-200 pb-3 md:mb-4 md:gap-3">
                                             {/* Status LED */}
                                             <div 
                                                 className="h-4 w-4 rounded-full border border-white/50"
@@ -300,17 +342,17 @@ export default function FeaturedProjects({ repos = [] }) {
                                                     boxShadow: isActive ? `0 0 16px ${project.cableColor}, inset 0 2px 4px rgba(255,255,255,0.6)` : 'inset 0 2px 4px rgba(0,0,0,0.2)'
                                                 }}
                                             />
-                                            <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400 max-[420px]:text-[8px] md:text-[11px] md:tracking-widest">
                                                 PORT 0{i + 1} // {isActive ? 'ACTIVE_SYNC' : 'IDLE'}
                                             </span>
                                         </div>
 
                                         {/* Multicolored 3D Typography exactly like reference */}
-                                        <div className="my-4 md:my-6">
-                                            <BlockLetters text={project.title} />
+                                        <div className="my-3.5 max-w-full overflow-hidden md:my-6">
+                                            <BlockLetters text={project.title} isCompact={isCompactScreen} />
                                         </div>
 
-                                        <div className="mt-5 flex items-center justify-between md:mt-8">
+                                        <div className="mt-4 flex items-center justify-between md:mt-8">
                                             <div className="h-2 flex-1 max-w-[120px] rounded-full bg-slate-200 shadow-inner overflow-hidden">
                                                 <div 
                                                     className="h-full w-full rounded-full transition-transform duration-700 ease-out"
@@ -333,12 +375,12 @@ export default function FeaturedProjects({ repos = [] }) {
                 </div>
 
                 {/* Footer Button below console */}
-                <div className="mt-10 flex justify-end">
+                <div className="mt-8 flex justify-center md:mt-10 md:justify-end">
                     <button 
                         onClick={() => navigateWithCleanup('/projects')}
-                        className="inline-flex items-center gap-2 rounded-full border-[3px] border-white bg-[#cbd3df] px-8 py-3 text-sm font-black uppercase tracking-widest text-slate-700 shadow-[inset_0_2px_0_rgba(255,255,255,0.8),0_6px_10px_rgba(0,0,0,0.1)] hover:bg-white hover:-translate-y-1 transition-all"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border-[3px] border-white bg-[#cbd3df] px-6 py-3 text-[0.78rem] font-black uppercase tracking-[0.22em] text-slate-700 shadow-[inset_0_2px_0_rgba(255,255,255,0.8),0_6px_10px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 hover:bg-white max-[420px]:px-4 md:w-auto md:px-8 md:text-sm md:tracking-widest"
                     >
-                        See Collection
+                        See All Projects
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" className="ml-2">
                             <path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"></path>
                         </svg>

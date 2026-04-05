@@ -130,7 +130,7 @@ const TypedText = ({ text, color }) => {
     );
 };
 
-const PanzekCLI = () => {
+const PanzekCLI = ({ isMobile = false }) => {
     const [visibleLines, setVisibleLines] = useState([]);
     const [holoPhase, setHoloPhase] = useState(0);
 
@@ -146,7 +146,7 @@ const PanzekCLI = () => {
     }, []);
 
     return (
-        <div className="absolute inset-0 bg-[#020c04] flex flex-col p-2 z-10 overflow-hidden font-mono">
+        <div className={`absolute inset-0 bg-[#020c04] flex flex-col z-10 overflow-hidden font-mono ${isMobile ? 'p-2.5' : 'p-2'}`}>
             <style>{`
                 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
                 @keyframes crt-flicker { 0%,100%{opacity:1} 50%{opacity:0.85} 25%{opacity:0.92} 75%{opacity:0.88} }
@@ -162,11 +162,13 @@ const PanzekCLI = () => {
             `}</style>
 
             {/* Scanline overlay */}
-            <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden opacity-20">
-                <div className="scanline-bar absolute left-0 right-0 h-[2px] bg-[#34d399]/40" style={{ top: 0 }} />
-            </div>
+            {!isMobile && (
+                <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden opacity-20">
+                    <div className="scanline-bar absolute left-0 right-0 h-[2px] bg-[#34d399]/40" style={{ top: 0 }} />
+                </div>
+            )}
             {/* CRT grid overlay */}
-            <div className="absolute inset-0 pointer-events-none z-20 opacity-[0.04]"
+            <div className={`absolute inset-0 pointer-events-none z-20 ${isMobile ? 'opacity-[0.03]' : 'opacity-[0.04]'}`}
                 style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(52,211,153,0.8) 3px,rgba(52,211,153,0.8) 4px)' }}
             />
 
@@ -179,9 +181,9 @@ const PanzekCLI = () => {
             </div>
 
             {/* Main 2-column layout */}
-            <div className="flex gap-1 flex-1 overflow-hidden">
+            <div className={`flex flex-1 overflow-hidden ${isMobile ? 'gap-0' : 'gap-1'}`}>
                 {/* LEFT: Holographic Face */}
-                <div className="flex-shrink-0 flex flex-col items-center justify-start pt-1" style={{ width: 64 }}>
+                <div className={`flex-shrink-0 flex flex-col items-center justify-start pt-1 ${isMobile ? 'hidden' : ''}`} style={{ width: 64 }}>
                     <div
                         className={holoPhase === 0 ? 'opacity-0' : holoPhase === 1 ? 'holo-flicker' : 'holo-stable'}
                         style={{ transition: 'opacity 0.2s' }}
@@ -210,11 +212,11 @@ const PanzekCLI = () => {
                 </div>
 
                 {/* RIGHT: CLI Output */}
-                <div className="flex-1 flex flex-col overflow-hidden" style={{ gap: 0 }}>
+                <div className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'max-w-[24ch] mx-auto pt-1' : ''}`} style={{ gap: 0 }}>
                     {CLI_LINES.map((line, i) => (
                         visibleLines.includes(i) && (
                             <div key={i} className={`cli-line ${line.blink ? 'status-blink' : ''}`}
-                                style={{ fontSize: 7, lineHeight: 1.7, letterSpacing: '0.03em' }}
+                                style={{ fontSize: isMobile ? 7.8 : 7, lineHeight: isMobile ? 1.55 : 1.7, letterSpacing: isMobile ? '0.01em' : '0.03em' }}
                             >
                                 {line.typing
                                     ? <TypedText text={line.text} color={line.color} />
@@ -277,10 +279,15 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
     const controls = useAnimation();
     const x = useMotionValue(0);
     const y = useMotionValue(0);
-    const [pathD, setPathD] = useState('');
     const [nearPort, setNearPort] = useState(false);
     const snappedRef = useRef(false); // guard to prevent spring-back after snap
     const plugRef = useRef(null);
+    const cablePathRefs = useRef({
+        shadow: null,
+        frame: null,
+        base: null,
+        highlight: null,
+    });
     const magnetRadius = 110;
     const snapRadius = 48;
 
@@ -337,6 +344,12 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
         }[color];
 
     // Calculate dynamic bezier curve path based on motion value state or resting state
+    const applyPath = (nextPath) => {
+        Object.values(cablePathRefs.current).forEach((pathElement) => {
+            pathElement?.setAttribute('d', nextPath);
+        });
+    };
+
     const updatePath = () => {
         const curX = isConnected ? 0 : x.get();
         const curY = isConnected ? 0 : y.get();
@@ -355,7 +368,7 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
         const cp2y = targetY + leftTangle.cp2y;
 
         // SVG Path String
-        setPathD(`M ${svgStartX} ${svgStartY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${targetX} ${targetY}`);
+        applyPath(`M ${svgStartX} ${svgStartY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${targetX} ${targetY}`);
     };
 
     useEffect(() => {
@@ -447,13 +460,13 @@ const DraggableCable = ({ color, startY, portY, isConnected, onConnect, onDiscon
     const renderCable = (containerTop, containerLeft) => (
         <svg className="absolute overflow-visible pointer-events-none" style={{ top: 0, left: 0, width: 1, height: 1, zIndex: -1 }}>
             {/* Drop Shadow */}
-            <path d={pathD} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="18" strokeLinecap="round" transform="translate(0, 10)" filter="blur(6px)" />
+            <path ref={(element) => { cablePathRefs.current.shadow = element; }} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="18" strokeLinecap="round" transform="translate(0, 10)" filter="blur(6px)" />
             {/* Bottom Dark Stroke (3D shadow) */}
-            <path d={pathD} fill="none" stroke={shadowHex} strokeWidth="16" strokeLinecap="round" transform="translate(0, 2)" />
+            <path ref={(element) => { cablePathRefs.current.frame = element; }} fill="none" stroke={shadowHex} strokeWidth="16" strokeLinecap="round" transform="translate(0, 2)" />
             {/* Base Color Stroke */}
-            <path d={pathD} fill="none" stroke={colorHex} strokeWidth="14" strokeLinecap="round" />
+            <path ref={(element) => { cablePathRefs.current.base = element; }} fill="none" stroke={colorHex} strokeWidth="14" strokeLinecap="round" />
             {/* Top Highlight Stroke for Gloss */}
-            <path d={pathD} fill="none" stroke={highlightHex} strokeWidth="4" strokeLinecap="round" transform="translate(0, -4)" opacity="0.6" />
+            <path ref={(element) => { cablePathRefs.current.highlight = element; }} fill="none" stroke={highlightHex} strokeWidth="4" strokeLinecap="round" transform="translate(0, -4)" opacity="0.6" />
         </svg>
     );
 
@@ -634,19 +647,32 @@ const LandingPage = ({ page, props }) => {
         const cores = navigator.hardwareConcurrency ?? 4;
         const memory = navigator.deviceMemory ?? 4;
         const saveData = navigator.connection?.saveData ?? false;
-        const isCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
-        const lowPower = prefersReducedMotion || saveData || isCoarsePointer || cores <= 6 || memory <= 6;
+        const lowPower = prefersReducedMotion || saveData || cores <= 4 || memory <= 4;
 
         setIsLowPower(lowPower);
     }, [prefersReducedMotion]);
 
     const heroRenderSettings = useMemo(() => {
-        const lowPower = isLowPower || isMobile;
+        if (isLowPower) {
+            return {
+                dpr: [0.85, 1],
+                antialias: false,
+                powerPreference: 'low-power'
+            };
+        }
+
+        if (isMobile) {
+            return {
+                dpr: [1, 1.2],
+                antialias: true,
+                powerPreference: 'default'
+            };
+        }
 
         return {
-            dpr: lowPower ? [0.7, 0.95] : [0.9, 1.25],
-            antialias: !lowPower,
-            powerPreference: lowPower ? 'low-power' : 'high-performance'
+            dpr: [0.95, 1.25],
+            antialias: true,
+            powerPreference: 'high-performance'
         };
     }, [isLowPower, isMobile]);
     const useLiteMobileScene = isMobile || isLowPower || prefersReducedMotion;
@@ -692,7 +718,7 @@ const LandingPage = ({ page, props }) => {
                 });
             }
 
-            if (heroSectionRef.current && heroCloudBankRef.current) {
+            if (heroSectionRef.current && heroCloudBankRef.current && !isMobile) {
                 gsap.set(heroCloudBankRef.current, {
                     yPercent: 0,
                     opacity: 1,
@@ -716,19 +742,19 @@ const LandingPage = ({ page, props }) => {
             }
         }, comp);
         return () => ctx.revert();
-    }, []);
+    }, [isMobile]);
 
     return (
         <MainLayout page={page}>
-            <div className="fixed inset-0 pointer-events-none -z-40 bg-gradient-to-b from-[#3b8fd9] via-[#7cbbed] to-[#d8ecf8] overflow-hidden">
+            <div className={`fixed inset-0 pointer-events-none -z-40 bg-gradient-to-b from-[#3b8fd9] via-[#7cbbed] to-[#d8ecf8] ${isMobile ? 'overflow-visible' : 'overflow-hidden'}`}>
                 {/* Sun Glow/Source in Top Left */}
-                <div className={`absolute -top-[10%] -left-[5%] rounded-full bg-gradient-to-br from-yellow-200/40 via-orange-100/20 to-transparent mix-blend-screen ${useLiteMobileScene ? 'h-[58vw] w-[58vw] blur-[70px]' : 'h-[45vw] w-[45vw] blur-[120px]'}`} />
-                <div className={`absolute top-[10%] left-[10%] rounded-full bg-yellow-100/30 ${useLiteMobileScene ? 'h-[22vw] w-[22vw] blur-[46px]' : 'h-[15vw] w-[15vw] blur-[80px]'}`} />
+                <div className={`absolute -top-[10%] -left-[5%] rounded-full bg-gradient-to-br from-yellow-200/40 via-orange-100/20 to-transparent mix-blend-screen ${useLiteMobileScene ? 'h-[48vw] w-[48vw] blur-[42px]' : 'h-[45vw] w-[45vw] blur-[120px]'}`} />
+                <div className={`absolute top-[10%] left-[10%] rounded-full bg-yellow-100/30 ${useLiteMobileScene ? 'h-[18vw] w-[18vw] blur-[26px]' : 'h-[15vw] w-[15vw] blur-[80px]'}`} />
                 {/* Soft blended clouds integrated into background gradient */}
-                <div className={`absolute top-[45%] left-[5%] rounded-full bg-white/30 ${useLiteMobileScene ? 'h-[120px] w-[52%] blur-[38px]' : 'h-[180px] w-[50%] blur-[60px]'}`}></div>
-                <div className={`absolute top-[55%] right-[0%] rounded-full bg-white/35 ${useLiteMobileScene ? 'h-[120px] w-[48%] blur-[34px]' : 'h-[160px] w-[45%] blur-[50px]'}`}></div>
-                <div className={`absolute top-[65%] left-[20%] rounded-full bg-white/40 ${useLiteMobileScene ? 'h-[140px] w-[70%] blur-[40px]' : 'h-[200px] w-[70%] blur-[70px]'}`}></div>
-                <div className={`absolute top-[75%] left-[0%] w-full rounded-full bg-white/50 ${useLiteMobileScene ? 'h-[220px] blur-[44px]' : 'h-[300px] blur-[80px]'}`}></div>
+                <div className={`absolute top-[45%] left-[5%] rounded-full bg-white/30 ${useLiteMobileScene ? 'h-[104px] w-[46%] blur-[20px]' : 'h-[180px] w-[50%] blur-[60px]'}`}></div>
+                <div className={`absolute top-[55%] right-[0%] rounded-full bg-white/35 ${useLiteMobileScene ? 'h-[104px] w-[42%] blur-[18px]' : 'h-[160px] w-[45%] blur-[50px]'}`}></div>
+                <div className={`absolute top-[65%] left-[20%] rounded-full bg-white/40 ${useLiteMobileScene ? 'h-[118px] w-[62%] blur-[22px]' : 'h-[200px] w-[70%] blur-[70px]'}`}></div>
+                <div className={`absolute top-[75%] left-[0%] w-full rounded-full bg-white/50 ${useLiteMobileScene ? 'h-[180px] blur-[24px]' : 'h-[300px] blur-[80px]'}`}></div>
                 {!isMobile && (
                     <>
                         <div className="absolute top-[20%] right-[25%] w-[250px] h-[80px] bg-white/20 rounded-full blur-[40px]"></div>
@@ -834,7 +860,7 @@ const LandingPage = ({ page, props }) => {
 
                 <div
                     ref={heroCloudBankRef}
-                    className="absolute inset-x-[-5%] bottom-[-8%] h-[34vh] min-h-[220px] origin-bottom will-change-transform"
+                    className={`absolute inset-x-[-5%] origin-bottom will-change-transform ${isMobile ? 'bottom-0 h-[28vh] min-h-[168px]' : 'bottom-[-8%] h-[34vh] min-h-[220px]'}`}
                 >
                     <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-white via-white/95 to-transparent z-10" />
 
@@ -1238,7 +1264,7 @@ const LandingPage = ({ page, props }) => {
 
                                         {isBooting && <PanzekOSSplash />}
 
-                                        {showImage && <PanzekCLI />}
+                                        {showImage && <PanzekCLI isMobile={isMobile} />}
 
                                         {showHome && (
                                             <Suspense fallback={<EmbeddedScreenFallback />}>

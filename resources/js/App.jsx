@@ -5,7 +5,6 @@ const pageLoaders = {
     LandingPage: () => import('./Pages/LandingPage'),
     About: () => import('./Pages/About'),
     Contact: () => import('./Pages/Contact'),
-    Feature: () => import('./Pages/Feature'),
     Skills: () => import('./Pages/Skills'),
     Projects: () => import('./Pages/Projects'),
     Login: () => import('./Pages/Login'),
@@ -22,7 +21,9 @@ const adminModuleLoaders = {
     LocalAppearance: () => import('./UI/AdminApps').then((module) => ({ default: module.LocalAppearance })),
 };
 
-const loadAdminDesktop = () => import('./UI/AdminTerminal').then((module) => ({ default: module.AdminDesktop }));
+const loadAdminDesktop = async () => {
+    return loadCachedModule('admin:desktop', () => import('./UI/AdminTerminal').then((module) => ({ default: module.AdminDesktop })));
+};
 
 const moduleCache = new Map();
 
@@ -76,6 +77,12 @@ const PREFETCH_ROUTES = ['/', '/about', '/contact', '/skills', '/projects'];
 
 const getRouteCacheKey = (url) => {
     return `${url.pathname}${url.search}`;
+};
+
+const isJsonResponse = (response) => {
+    const contentType = response.headers.get('content-type') || '';
+
+    return contentType.includes('application/json');
 };
 
 const extractRoutePayload = (html) => {
@@ -267,6 +274,10 @@ const App = ({ initialPage, initialProps }) => {
 
         if (!response.ok) {
             return null;
+        }
+
+        if (isJsonResponse(response)) {
+            return response.json();
         }
 
         const html = await response.text();
@@ -474,6 +485,10 @@ const App = ({ initialPage, initialProps }) => {
         };
 
         const handlePointerPrefetch = (event) => {
+            if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+                return;
+            }
+
             const target = event.target instanceof Element ? event.target : null;
             if (!target) {
                 return;
@@ -491,13 +506,11 @@ const App = ({ initialPage, initialProps }) => {
         window.addEventListener('popstate', handlePopState);
         document.addEventListener('click', handleDocumentClick);
         document.addEventListener('pointerenter', handlePointerPrefetch, true);
-        document.addEventListener('touchstart', handlePointerPrefetch, true);
 
         return () => {
             window.removeEventListener('popstate', handlePopState);
             document.removeEventListener('click', handleDocumentClick);
             document.removeEventListener('pointerenter', handlePointerPrefetch, true);
-            document.removeEventListener('touchstart', handlePointerPrefetch, true);
         };
     }, [navigate, prefetchRoute]);
 

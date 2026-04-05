@@ -4,35 +4,32 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Support\PageResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class ProjectController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request): View|JsonResponse
     {
         $projects = Project::latest()->get();
 
-        return view('index', [
-            'page' => 'AdminProjects',
-            'props' => [
-                'projects' => $projects,
-            ],
+        return PageResponse::render($request, 'AdminProjects', [
+            'projects' => $projects,
         ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request): View|JsonResponse
     {
-        return view('index', [
-            'page' => 'AdminProjectCreate',
-            'props' => [],
-        ]);
+        return PageResponse::render($request, 'AdminProjectCreate');
     }
 
     /**
@@ -72,13 +69,10 @@ class ProjectController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Project $project)
+    public function edit(Request $request, Project $project): View|JsonResponse
     {
-        return view('index', [
-            'page' => 'AdminProjectEdit',
-            'props' => [
-                'project' => $project,
-            ],
+        return PageResponse::render($request, 'AdminProjectEdit', [
+            'project' => $project,
         ]);
     }
 

@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\Project;
+use App\Support\PageResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request): View|JsonResponse
     {
         $stats = [
             'total' => Project::count(),
@@ -19,12 +23,9 @@ class DashboardController extends Controller
 
         $recentProjects = Project::latest()->take(5)->get();
 
-        return view('index', [
-            'page' => 'Admin/Dashboard',
-            'props' => [
-                'stats' => $stats,
-                'recentProjects' => $recentProjects,
-            ],
+        return PageResponse::render($request, 'Admin/Dashboard', [
+            'stats' => $stats,
+            'recentProjects' => $recentProjects,
         ]);
     }
 }

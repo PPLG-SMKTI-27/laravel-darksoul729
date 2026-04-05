@@ -10,6 +10,7 @@ use App\Models\ChatContact;
 use App\Models\ChatMessage;
 use App\Models\ChatUser;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ChatController extends Controller
 {
@@ -26,7 +27,7 @@ class ChatController extends Controller
         $chatUser->name = $request->string('name')->toString();
         $chatUser->save();
 
-        return response()->json($this->buildStatePayload($chatUser), 201);
+        return response()->json($this->buildContactsPayload($chatUser), 201);
     }
 
     public function state(string $deviceId): JsonResponse
@@ -39,7 +40,28 @@ class ChatController extends Controller
             ], 404);
         }
 
-        return response()->json($this->buildStatePayload($chatUser));
+        return response()->json($this->buildContactsPayload($chatUser));
+    }
+
+    public function thread(Request $request, string $deviceId, int $contactId): JsonResponse
+    {
+        $chatUser = ChatUser::query()->where('device_id', $deviceId)->first();
+
+        if (! $chatUser) {
+            return response()->json([
+                'message' => 'Chat user not found.',
+            ], 404);
+        }
+
+        if (! $chatUser->contacts()->where('contact_chat_user_id', $contactId)->exists()) {
+            return response()->json([
+                'message' => 'Contact not found.',
+            ], 404);
+        }
+
+        return response()->json(
+            $this->buildThreadPayload($chatUser, $contactId, max(0, $request->integer('after_id')))
+        );
     }
 
     public function search(SearchChatUserRequest $request): JsonResponse
@@ -90,7 +112,7 @@ class ChatController extends Controller
             'contact_chat_user_id' => $owner->id,
         ]);
 
-        return response()->json($this->buildStatePayload($owner));
+        return response()->json($this->buildContactsPayload($owner));
     }
 
     public function storeMessage(StoreChatMessageRequest $request): JsonResponse
@@ -116,16 +138,21 @@ class ChatController extends Controller
             'contact_chat_user_id' => $sender->id,
         ]);
 
-        ChatMessage::query()->create([
+        $message = ChatMessage::query()->create([
             'sender_chat_user_id' => $sender->id,
             'recipient_chat_user_id' => $recipient->id,
             'body' => $request->string('body')->toString(),
         ]);
 
-        return response()->json($this->buildStatePayload($sender));
+        $contactsPayload = $this->buildContactsPayload($sender);
+
+        return response()->json([
+            'message' => $this->transformMessage($message, $sender->id),
+            'contacts' => $contactsPayload['contacts'],
+        ]);
     }
 
-    protected function buildStatePayload(ChatUser $chatUser): array
+    protected function buildContactsPayload(ChatUser $chatUser): array
     {
         $chatUser->load([
             'contacts.contact',
@@ -135,31 +162,30 @@ class ChatController extends Controller
             ->pluck('contact_chat_user_id')
             ->all();
 
-        $messages = ChatMessage::query()
-            ->where(function ($query) use ($chatUser, $contactIds) {
-                $query->where('sender_chat_user_id', $chatUser->id)
-                    ->whereIn('recipient_chat_user_id', $contactIds);
-            })
-            ->orWhere(function ($query) use ($chatUser, $contactIds) {
-                $query->where('recipient_chat_user_id', $chatUser->id)
-                    ->whereIn('sender_chat_user_id', $contactIds);
-            })
-            ->orderBy('created_at')
-            ->get();
+        $latestMessages = [];
 
-        $threads = [];
+        if ($contactIds !== []) {
+            $messages = ChatMessage::query()
+                ->where(function ($query) use ($chatUser, $contactIds) {
+                    $query->where('sender_chat_user_id', $chatUser->id)
+                        ->whereIn('recipient_chat_user_id', $contactIds);
+                })
+                ->orWhere(function ($query) use ($chatUser, $contactIds) {
+                    $query->where('recipient_chat_user_id', $chatUser->id)
+                        ->whereIn('sender_chat_user_id', $contactIds);
+                })
+                ->orderByDesc('id')
+                ->get();
 
-        foreach ($messages as $message) {
-            $contactId = $message->sender_chat_user_id === $chatUser->id
-                ? $message->recipient_chat_user_id
-                : $message->sender_chat_user_id;
+            foreach ($messages as $message) {
+                $contactId = $message->sender_chat_user_id === $chatUser->id
+                    ? $message->recipient_chat_user_id
+                    : $message->sender_chat_user_id;
 
-            $threads[$contactId][] = [
-                'id' => $message->id,
-                'from' => $message->sender_chat_user_id === $chatUser->id ? 'me' : 'them',
-                'text' => $message->body,
-                'time' => $message->created_at->format('H:i'),
-            ];
+                if (! array_key_exists($contactId, $latestMessages)) {
+                    $latestMessages[$contactId] = $message;
+                }
+            }
         }
 
         return [
@@ -173,10 +199,49 @@ class ChatController extends Controller
                     'id' => $contact->contact->id,
                     'name' => $contact->contact->name,
                     'code' => $contact->contact->code,
+                    'last_message' => isset($latestMessages[$contact->contact->id])
+                        ? [
+                            'text' => $latestMessages[$contact->contact->id]->body,
+                            'time' => $latestMessages[$contact->contact->id]->created_at->format('H:i'),
+                        ]
+                        : null,
                 ])
                 ->values()
                 ->all(),
-            'threads' => $threads,
+        ];
+    }
+
+    protected function buildThreadPayload(ChatUser $chatUser, int $contactId, int $afterId = 0): array
+    {
+        $messages = ChatMessage::query()
+            ->where(function ($query) use ($chatUser, $contactId) {
+                $query->where('sender_chat_user_id', $chatUser->id)
+                    ->where('recipient_chat_user_id', $contactId);
+            })
+            ->orWhere(function ($query) use ($chatUser, $contactId) {
+                $query->where('recipient_chat_user_id', $chatUser->id)
+                    ->where('sender_chat_user_id', $contactId);
+            })
+            ->when($afterId > 0, fn ($query) => $query->where('id', '>', $afterId))
+            ->orderBy('id')
+            ->get();
+
+        return [
+            'contact_id' => $contactId,
+            'messages' => $messages
+                ->map(fn (ChatMessage $message) => $this->transformMessage($message, $chatUser->id))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    protected function transformMessage(ChatMessage $message, int $ownerId): array
+    {
+        return [
+            'id' => $message->id,
+            'from' => $message->sender_chat_user_id === $ownerId ? 'me' : 'them',
+            'text' => $message->body,
+            'time' => $message->created_at->format('H:i'),
         ];
     }
 
