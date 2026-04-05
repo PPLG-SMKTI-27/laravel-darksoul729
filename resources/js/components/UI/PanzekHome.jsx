@@ -7,6 +7,7 @@ import {
     Settings,
     Terminal as TerminalIcon,
     Camera as CameraIcon,
+    RefreshCcw,
     MessageCircle,
     Music as MusicIcon,
     Circle,
@@ -153,24 +154,50 @@ const CameraApp = ({ onCapture }) => {
     const [shutter, setShutter] = useState(false);
     const [streamState, setStreamState] = useState('requesting');
     const [error, setError] = useState(null);
+    const [cameraFacingMode, setCameraFacingMode] = useState('environment');
+    const [canSwitchCamera, setCanSwitchCamera] = useState(false);
+    const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
 
     useEffect(() => {
-        const startCamera = async () => {
+        let isMounted = true;
+
+        const stopCurrentStream = () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((track) => track.stop());
+                streamRef.current = null;
+            }
+        };
+
+        const detectSwitchSupport = async (mediaStream) => {
+            const track = mediaStream?.getVideoTracks?.()[0];
+            const supportedFacingModes = track?.getCapabilities?.().facingMode ?? [];
+            const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+            const videoInputCount = devices.filter((device) => device.kind === 'videoinput').length;
+
+            if (!isMounted) {
+                return;
+            }
+
+            setCanSwitchCamera(videoInputCount > 1 || supportedFacingModes.length > 1);
+        };
+
+        const startCamera = async (preferredFacingMode = 'environment') => {
             try {
                 if (!navigator.mediaDevices?.getUserMedia) {
                     throw new Error('MediaDevices unavailable');
                 }
 
                 const preferredConstraints = [
-                    { video: { facingMode: { ideal: 'environment' } }, audio: false },
-                    { video: { facingMode: { ideal: 'user' } }, audio: false },
+                    { video: { facingMode: { exact: preferredFacingMode } }, audio: false },
+                    { video: { facingMode: { ideal: preferredFacingMode } }, audio: false },
                     { video: true, audio: false }
                 ];
 
                 let mediaStream = null;
+                stopCurrentStream();
 
                 for (const constraints of preferredConstraints) {
                     try {
@@ -188,22 +215,30 @@ const CameraApp = ({ onCapture }) => {
                     throw new Error('Unable to open camera');
                 }
 
+                const activeTrack = mediaStream.getVideoTracks()[0];
+                const activeFacingMode = activeTrack?.getSettings?.().facingMode;
+
                 streamRef.current = mediaStream;
-                setStreamState('live');
+                if (isMounted) {
+                    setCameraFacingMode(activeFacingMode === 'user' ? 'user' : preferredFacingMode);
+                    setError(null);
+                    setStreamState('live');
+                }
+                await detectSwitchSupport(mediaStream);
             } catch (err) {
                 console.error("Camera error:", err);
-                setError(err.name === 'NotAllowedError' ? 'Permission Denied' : 'Camera Unavailable');
-                setStreamState('error');
+                if (isMounted) {
+                    setError(err.name === 'NotAllowedError' ? 'Permission Denied' : 'Camera Unavailable');
+                    setStreamState('error');
+                }
             }
         };
 
-        startCamera();
+        void startCamera(cameraFacingMode);
 
         return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach((track) => track.stop());
-                streamRef.current = null;
-            }
+            isMounted = false;
+            stopCurrentStream();
         };
     }, []);
 
@@ -264,6 +299,43 @@ const CameraApp = ({ onCapture }) => {
         }
     };
 
+    const toggleCameraFacingMode = async () => {
+        if (!navigator.mediaDevices?.getUserMedia || isSwitchingCamera) {
+            return;
+        }
+
+        const nextFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+
+        setIsSwitchingCamera(true);
+        setStreamState('requesting');
+        setError(null);
+
+        try {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((track) => track.stop());
+                streamRef.current = null;
+            }
+
+            const nextStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { exact: nextFacingMode } },
+                audio: false,
+            }).catch(async () => navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: nextFacingMode } },
+                audio: false,
+            }));
+
+            streamRef.current = nextStream;
+            setCameraFacingMode(nextFacingMode);
+            setStreamState('live');
+        } catch (switchError) {
+            console.error('Camera switch error:', switchError);
+            setError('Switch Camera Failed');
+            setStreamState('error');
+        } finally {
+            setIsSwitchingCamera(false);
+        }
+    };
+
     const showVideo = streamState === 'live' || streamState === 'ready';
 
     return (
@@ -274,7 +346,7 @@ const CameraApp = ({ onCapture }) => {
                     autoPlay
                     playsInline
                     muted
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className={`absolute inset-0 h-full w-full object-cover ${cameraFacingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                 />
             ) : null}
 
@@ -301,6 +373,18 @@ const CameraApp = ({ onCapture }) => {
                     <div className="w-4 h-4 border-b-2 border-r-2 border-white/60" />
                 </div>
             </div>
+
+            {canSwitchCamera ? (
+                <button
+                    type="button"
+                    onClick={toggleCameraFacingMode}
+                    disabled={isSwitchingCamera}
+                    className="absolute right-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/18 bg-black/35 text-white shadow-[0_10px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition active:scale-95 disabled:opacity-60"
+                    aria-label="Switch camera"
+                >
+                    <RefreshCcw size={15} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                </button>
+            ) : null}
 
             {/* Shutter Overlay */}
             <AnimatePresence>

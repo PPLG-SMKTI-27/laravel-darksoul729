@@ -1430,12 +1430,12 @@ const LandingPage = ({ page, props }) => {
                     </div>
 
                     {/* Main Panel Box - Increased Shadow for Ambient Occlusion */}
-                    <div className="relative w-full max-w-[650px] bg-[#f8fafc] rounded-[2rem] md:rounded-[2.5rem] border-[3px] md:border-[4px] border-white z-10 pointer-events-auto mx-6 md:mx-auto"
+                    <div className="relative w-full max-w-[650px] bg-[#f8fafc] rounded-[2rem] md:rounded-[2.5rem] border-[3px] md:border-[4px] border-white z-10 pointer-events-auto mx-3 md:mx-auto"
                         style={{
                             // Deep ambient occlusion and soft inset rim light
                             boxShadow: 'inset 0 4px 6px rgba(255,255,255,0.9), inset 0 -5px 10px rgba(0,0,0,0.05), 0 40px 80px -20px rgba(0,0,0,0.35), 0 20px 40px -10px rgba(0,0,0,0.2)'
                         }}>
-                        <div className="absolute left-1/2 top-[-10px] h-[14px] w-26 -translate-x-1/2 rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#cdd6e1_100%)] shadow-[0_2px_0_rgba(255,255,255,0.7)]" />
+                        <div className="absolute left-1/2 top-[-10px] h-[14px] w-18 md:w-26 -translate-x-1/2 rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#cdd6e1_100%)] shadow-[0_2px_0_rgba(255,255,255,0.7)]" />
 
                         {[
                             'left-4 top-4 rotate-45',
@@ -1486,7 +1486,7 @@ const LandingPage = ({ page, props }) => {
                         </div>
 
                         {/* Top Indicator Bulbs */}
-                        <div className="flex gap-3 justify-start ml-10 pt-4 pb-1">
+                        <div className="flex gap-2 md:gap-3 justify-start ml-5 md:ml-10 pt-4 pb-1">
                             {/* Pink/Red Bulb */}
                             <div className="w-3.5 h-3.5 rounded-full bg-rose-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]"></div>
                             {/* Yellow Bulb */}
@@ -1496,20 +1496,20 @@ const LandingPage = ({ page, props }) => {
                         </div>
 
                         {/* Inner Recessed Screen - Deeper Inset Shadow */}
-                        <div className="m-3 mt-1 md:m-4 md:mt-1 bg-[#f1f5f9] rounded-[1.5rem] border-[1px] border-slate-200 relative overflow-hidden"
+                        <div className="m-2 mt-1 md:m-4 md:mt-1 bg-[#f1f5f9] rounded-[1.35rem] md:rounded-[1.5rem] border-[1px] border-slate-200 relative overflow-hidden"
                             style={{
                                 boxShadow: 'inset 0 8px 20px rgba(0,0,0,0.08), inset 0 2px 6px rgba(0,0,0,0.04), 0 2px 0 rgba(255,255,255,0.9)'
                             }}>
-                            <div className="absolute left-5 top-5 z-20 flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/75 px-3 py-1 text-[9px] font-black uppercase tracking-[0.28em] text-slate-500 shadow-[0_4px_10px_rgba(15,23,42,0.06)]">
+                            <div className="absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/78 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.24em] text-slate-500 shadow-[0_4px_10px_rgba(15,23,42,0.06)] md:left-5 md:top-5 md:px-3 md:text-[9px] md:tracking-[0.28em]">
                                 Creator Dock
                             </div>
-                            <div className="absolute right-5 top-5 z-20 hidden sm:flex items-center gap-2">
+                            <div className="absolute right-3 top-3 z-20 hidden sm:flex items-center gap-2 md:right-5 md:top-5">
                                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#4ade80]" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">ONLINE</span>
                             </div>
 
                             {/* Red Liquid Fill Background - Refined for premium look */}
-                            <div className="absolute inset-x-0 bottom-0 h-full z-0 pointer-events-none flex flex-col justify-end">
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 hidden h-full flex-col justify-end md:flex">
                                 <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-red-600 to-red-500 shadow-[inset_0_2px_10px_rgba(255,255,255,0.2)]" />
                                 {/* Wave Background Layer - Darker for depth */}
                                 <motion.div
@@ -1543,27 +1543,42 @@ const LandingPage = ({ page, props }) => {
                                 <motion.div animate={allowCtaMotion ? { y: ['0%', '-600%'], x: [0, 4, -8, 0], opacity: [0, 0.5, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4, delay: 2.5 } : undefined} className="absolute w-1.5 h-1.5 left-[75%] bottom-[5%] bg-white/50 blur-[0.5px] rounded-full" />
                             </div>
 
-                            <div className="p-8 pb-12 md:p-12 md:pb-16 flex flex-col items-center justify-center text-center relative z-10">
-                                {/* Title - Adjusted Typography to match reference */}
-                                <h3 className="text-4xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-md flex flex-col items-center gap-1" style={{ lineHeight: 1.1 }}>
-                                    <span>Ready to</span>
-                                    <span className="text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">Collaborate?</span>
-                                </h3>
-                                {/* Subtitle - Fixed typo and improved readability */}
-                                <p className="text-slate-100 font-bold text-sm md:text-base leading-relaxed max-w-sm drop-shadow-md px-2 mt-2">
-                                    Available for freelance projects and full-<br />time opportunities. Let's create something<br />extraordinary!
-                                </p>
+                            <div className="relative z-10 flex min-h-[27rem] flex-col px-4 pb-14 pt-16 text-center md:min-h-0 md:items-center md:justify-center md:p-12 md:pb-16">
+                                <div className="flex flex-col items-center">
+                                    <h3 className="mb-2 flex max-w-[12rem] flex-col items-center gap-0.5 text-[2.2rem] font-black tracking-[-0.05em] text-slate-800 drop-shadow-[0_4px_0_rgba(255,255,255,0.85)] md:mb-3 md:max-w-none md:text-5xl md:tracking-tight md:drop-shadow-md" style={{ lineHeight: 1.02 }}>
+                                        <span>Ready to</span>
+                                        <span className="text-slate-700 md:text-white md:drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">Collaborate?</span>
+                                    </h3>
+                                    <p className="max-w-[13rem] text-[11px] font-black uppercase tracking-[0.24em] text-slate-400 md:hidden">
+                                        Open for freelance builds and premium visuals.
+                                    </p>
+                                </div>
 
-                                <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                                    <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
-                                        UI Systems
-                                    </span>
-                                    <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
-                                        Frontend
-                                    </span>
-                                    <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
-                                        Illustration
-                                    </span>
+                                <div className="mt-auto w-full rounded-[1.45rem] border border-white/35 bg-[linear-gradient(180deg,#fb4b52_0%,#dc2626_100%)] px-4 pb-5 pt-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_16px_28px_rgba(239,68,68,0.18)] md:mt-0 md:w-auto md:max-w-none md:border-0 md:bg-transparent md:px-0 md:pb-0 md:pt-0 md:shadow-none">
+                                    <p className="mx-auto max-w-[14rem] px-1 text-sm font-bold leading-relaxed text-white drop-shadow-md md:mt-2 md:max-w-sm md:px-2 md:text-base">
+                                        Available for freelance projects and full-time opportunities. Let's create something extraordinary!
+                                    </p>
+
+                                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:mt-5 md:max-w-none">
+                                        <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                            UI Systems
+                                        </span>
+                                        <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                            Frontend
+                                        </span>
+                                        <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                            Illustration
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-center gap-2 md:hidden">
+                                        <span className="rounded-full border border-white/45 bg-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
+                                            Fast Reply
+                                        </span>
+                                        <span className="rounded-full border border-white/45 bg-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
+                                            Clear Scope
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1571,7 +1586,7 @@ const LandingPage = ({ page, props }) => {
                             <div className="absolute top-4 right-4 w-3 h-2 bg-slate-300 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)] opacity-80 z-10"></div>
 
                             {/* Inner Screen Dots (Bottom Right) */}
-                            <div className="absolute bottom-5 right-5 flex gap-[3px] opacity-70 z-10">
+                            <div className="absolute bottom-5 right-5 hidden md:flex gap-[3px] opacity-70 z-10">
                                 <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
                                 <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
                                 <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
@@ -1580,11 +1595,11 @@ const LandingPage = ({ page, props }) => {
                         </div>
 
                         {/* Floating Button Overlapping Inner and Outer Box - Centered Position */}
-                        <div className="absolute bottom-[-18px] md:bottom-[-22px] left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+                        <div className="absolute bottom-[-14px] md:bottom-[-22px] left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                             <div className="relative flex items-center justify-center">
-                                <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-[190px] h-[20px] bg-[#e2e8f0] rounded-full border border-white shadow-[inset_0_3px_6px_rgba(255,255,255,0.9),0_8px_20px_rgba(0,0,0,0.2)]" />
-                                <div className="absolute left-1/2 -translate-x-1/2 top-2 w-[140px] h-[6px] bg-[#cbd5e1] rounded-full shadow-[inset_0_2px_3px_rgba(0,0,0,0.15)]" />
-                                <PlasticButton color="yellow" className="relative z-10 text-xs md:text-[13px] px-6 py-2 md:px-8 md:py-2.5 shadow-xl hover:translate-y-[2px] w-max" onClick={() => navigateWithCleanup('/contact')}
+                                <div className="absolute left-1/2 -translate-x-1/2 -top-2 h-[16px] w-[146px] md:h-[20px] md:w-[190px] rounded-full border border-white bg-[#e2e8f0] shadow-[inset_0_3px_6px_rgba(255,255,255,0.9),0_8px_20px_rgba(0,0,0,0.2)]" />
+                                <div className="absolute left-1/2 top-2 h-[5px] w-[102px] -translate-x-1/2 rounded-full bg-[#cbd5e1] shadow-[inset_0_2px_3px_rgba(0,0,0,0.15)] md:h-[6px] md:w-[140px]" />
+                                <PlasticButton color="yellow" className="relative z-10 w-max px-5 py-1.5 text-[11px] md:px-8 md:py-2.5 md:text-[13px] shadow-xl hover:translate-y-[2px]" onClick={() => navigateWithCleanup('/contact')}
                                     style={{
                                         border: '2px solid #eab308',
                                         borderRadius: '10px',
