@@ -14,6 +14,8 @@ const WAVE_PARAMS = [
     { dir: [0.9, -0.4], steep: 0.025, len: 16 },
 ];
 const WAVE_TIME_SCALE = 0.42;
+const ROOM_SYNC_INTERVAL_SECONDS = 0.22;
+const HUD_RAYCAST_INTERVAL_SECONDS = 0.08;
 
 function waveHeight(x, z, t) {
     let h = 0;
@@ -584,6 +586,8 @@ const SkillsGame = () => {
     const [menuBusy, setMenuBusy] = useState(false);
     const pausedRef = useRef(false);
     const renderCrashHandledRef = useRef(false);
+    const hudRef = useRef(null);
+    const hudSampleRef = useRef(0);
 
     const syncStage = (stage) => {
         stageRef.current = stage;
@@ -962,7 +966,7 @@ const SkillsGame = () => {
         };
         canvas.addEventListener('pointerdown', onMouseDown);
         document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('keydown', e => {
+        const onKeyDown = (e) => {
             if (e.code === 'Escape') {
                 if (stageRef.current !== 'playing') {
                     return;
@@ -974,8 +978,10 @@ const SkillsGame = () => {
                 return;
             }
             keysRef.current[e.code] = true;
-        });
-        document.addEventListener('keyup', e => { keysRef.current[e.code] = false; });
+        };
+        const onKeyUp = (e) => { keysRef.current[e.code] = false; };
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
 
         /* ── RAYCASTER HUD ── */
         const raycaster = new THREE.Raycaster();
@@ -1104,7 +1110,7 @@ const SkillsGame = () => {
                     networkRef.current.playerId &&
                     stageRef.current === 'playing' &&
                     sessionInfoRef.current?.mode === 'multiplayer' &&
-                    time - networkRef.current.lastSyncAt > 0.12 &&
+                    time - networkRef.current.lastSyncAt > ROOM_SYNC_INTERVAL_SECONDS &&
                     !networkRef.current.syncInFlight;
 
                 if (shouldSyncRoom) {
@@ -1151,12 +1157,21 @@ const SkillsGame = () => {
                 }
 
                 /* ── HUD raycasting ── */
-                raycaster.setFromCamera(screenCenter, camera);
-                const hits = raycaster.intersectObjects(allSprites);
-                const hoveredSkill = controlsEnabled && hits.length > 0 && hits[0].distance < 28
-                    ? normalizeSkill(hits[0].object.userData.skill)
-                    : null;
-                setHud(hoveredSkill);
+                if (time - hudSampleRef.current >= HUD_RAYCAST_INTERVAL_SECONDS) {
+                    hudSampleRef.current = time;
+                    raycaster.setFromCamera(screenCenter, camera);
+                    const hits = raycaster.intersectObjects(allSprites);
+                    const hoveredSkill = controlsEnabled && hits.length > 0 && hits[0].distance < 28
+                        ? normalizeSkill(hits[0].object.userData.skill)
+                        : null;
+                    const currentHudKey = hudRef.current?.name ?? null;
+                    const nextHudKey = hoveredSkill?.name ?? null;
+
+                    if (currentHudKey !== nextHudKey) {
+                        hudRef.current = hoveredSkill;
+                        setHud(hoveredSkill);
+                    }
+                }
 
                 renderer.render(scene, camera);
             } catch (error) {
@@ -1192,7 +1207,7 @@ const SkillsGame = () => {
         };
         window.addEventListener('resize', onResize);
 
-        gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onResize, player, scene, remotePlayersGroup };
+        gameRef.current = { ...gameRef.current, renderer, animId, onMouseMove, onMouseDown, onKeyDown, onKeyUp, onResize, player, scene, remotePlayersGroup };
         updateLoading(100, 'World siap dimainkan');
         setLoaded(true);
         syncStage('menu');
@@ -1215,6 +1230,8 @@ const SkillsGame = () => {
         if (!g.renderer) return;
         cancelAnimationFrame(g.animId);
         document.removeEventListener('mousemove', g.onMouseMove);
+        document.removeEventListener('keydown', g.onKeyDown);
+        document.removeEventListener('keyup', g.onKeyUp);
         try { g.renderer.domElement.removeEventListener('pointerdown', g.onMouseDown); } catch { }
         window.removeEventListener('resize', g.onResize);
         g.renderer.dispose();

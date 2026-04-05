@@ -54,7 +54,7 @@ const NAV_ITEM_ACCENTS = {
     },
 };
 
-const LENIS_DISABLED_PAGES = new Set(['LandingPage', 'Projects', 'Contact', 'Feature', 'Skills', 'About']);
+const LENIS_DISABLED_PAGES = new Set(['LandingPage', 'Projects', 'Contact', 'Skills', 'About']);
 
 const MainLayout = ({ children, page, standalone = false, hideNavigation = false, hideFooter = false, fullBleed = false }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);

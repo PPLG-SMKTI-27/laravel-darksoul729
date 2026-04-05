@@ -1,13 +1,3 @@
-const loseCanvasContexts = () => {
-    document.querySelectorAll('canvas').forEach((canvas) => {
-        const context = canvas.getContext('webgl2')
-            || canvas.getContext('webgl')
-            || canvas.getContext('experimental-webgl');
-
-        context?.getExtension('WEBGL_lose_context')?.loseContext();
-    });
-};
-
 export const cleanupPageRuntime = ({ lenis } = {}) => {
     if (typeof window === 'undefined') {
         return;
@@ -17,12 +7,6 @@ export const cleanupPageRuntime = ({ lenis } = {}) => {
     window.dispatchEvent(new Event('unlock-scroll'));
 
     lenis?.stop?.();
-
-    document.getAnimations?.().forEach((animation) => {
-        animation.cancel();
-    });
-
-    loseCanvasContexts();
     window.performance?.clearResourceTimings?.();
 };
 

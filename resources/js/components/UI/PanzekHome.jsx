@@ -471,22 +471,47 @@ const MessagesApp = ({ onHome }) => {
     const [messageInput, setMessageInput] = useState('');
     const [searchFeedback, setSearchFeedback] = useState('');
     const [syncError, setSyncError] = useState('');
+    const threadsRef = useRef({});
 
-    const applyServerState = (payload) => {
+    const applyContactsState = (payload) => {
         setProfile(payload.profile ?? null);
         setContacts((payload.contacts ?? []).map((contact) => ({
             ...contact,
             accent: getChatAccent(contact.code),
         })));
-        setThreads(payload.threads ?? {});
     };
+
+    const mergeThreadMessages = (contactId, messages, replace = false) => {
+        setThreads((currentThreads) => {
+            const currentMessages = replace ? [] : (currentThreads[contactId] ?? []);
+            const seenIds = new Set(currentMessages.map((message) => message.id));
+            const nextMessages = replace ? [...messages] : [...currentMessages];
+
+            messages.forEach((message) => {
+                if (seenIds.has(message.id)) {
+                    return;
+                }
+
+                nextMessages.push(message);
+            });
+
+            return {
+                ...currentThreads,
+                [contactId]: nextMessages,
+            };
+        });
+    };
+
+    useEffect(() => {
+        threadsRef.current = threads;
+    }, [threads]);
 
     const fetchState = async (nextDeviceId, options = {}) => {
         const silent = options.silent ?? false;
 
         try {
             const payload = await chatRequest(`/chat/state/${encodeURIComponent(nextDeviceId)}`);
-            applyServerState(payload);
+            applyContactsState(payload);
             setSyncError('');
         } catch (error) {
             if (error.message !== 'Chat user not found.') {
@@ -499,10 +524,32 @@ const MessagesApp = ({ onHome }) => {
         }
     };
 
+    const fetchThread = async (nextDeviceId, contactId, options = {}) => {
+        if (!nextDeviceId || !contactId) {
+            return;
+        }
+
+        const replace = options.replace ?? false;
+        const currentThread = threadsRef.current[contactId] ?? [];
+        const afterId = replace ? 0 : (currentThread[currentThread.length - 1]?.id ?? 0);
+        const params = new URLSearchParams();
+
+        if (afterId > 0) {
+            params.set('after_id', String(afterId));
+        }
+
+        const queryString = params.toString();
+        const payload = await chatRequest(
+            `/chat/threads/${encodeURIComponent(nextDeviceId)}/${encodeURIComponent(contactId)}${queryString ? `?${queryString}` : ''}`
+        );
+
+        mergeThreadMessages(contactId, payload.messages ?? [], replace);
+    };
+
     useEffect(() => {
         const nextDeviceId = getChatDeviceId();
         setDeviceId(nextDeviceId);
-        fetchState(nextDeviceId);
+        void fetchState(nextDeviceId);
     }, []);
 
     useEffect(() => {
@@ -515,11 +562,23 @@ const MessagesApp = ({ onHome }) => {
                 return;
             }
 
-            fetchState(deviceId, { silent: true });
-        }, 3000);
+            void fetchState(deviceId, { silent: true });
+
+            if (selectedContactId) {
+                void fetchThread(deviceId, selectedContactId);
+            }
+        }, selectedContactId ? 8000 : 15000);
 
         return () => window.clearInterval(interval);
-    }, [deviceId, profile]);
+    }, [deviceId, profile, selectedContactId]);
+
+    useEffect(() => {
+        if (!deviceId || !selectedContactId) {
+            return;
+        }
+
+        void fetchThread(deviceId, selectedContactId, { replace: true });
+    }, [deviceId, selectedContactId]);
 
     useEffect(() => {
         if (!selectedContactId) {
@@ -551,7 +610,7 @@ const MessagesApp = ({ onHome }) => {
                 },
             });
 
-            applyServerState(payload);
+            applyContactsState(payload);
             setProfileNameInput('');
             setSyncError('');
             setSearchFeedback('');
@@ -598,13 +657,14 @@ const MessagesApp = ({ onHome }) => {
                 },
             });
 
-            applyServerState(payload);
+            applyContactsState(payload);
             setFriendCodeInput('');
             setSearchFeedback(`Tersambung dengan ${foundPayload.contact.name}.`);
 
             const nextContact = (payload.contacts ?? []).find((contact) => contact.code === normalizedCode);
             if (nextContact) {
                 setSelectedContactId(nextContact.id);
+                void fetchThread(deviceId, nextContact.id, { replace: true });
             }
         } catch (error) {
             setSearchFeedback(error.message);
@@ -626,7 +686,13 @@ const MessagesApp = ({ onHome }) => {
                 },
             });
 
-            applyServerState(payload);
+            setContacts((payload.contacts ?? []).map((contact) => ({
+                ...contact,
+                accent: getChatAccent(contact.code),
+            })));
+            if (payload.message) {
+                mergeThreadMessages(selectedContact.id, [payload.message]);
+            }
             setMessageInput('');
             setSearchFeedback('');
         } catch (error) {
@@ -805,8 +871,7 @@ const MessagesApp = ({ onHome }) => {
                     {contacts.length > 0 ? (
                         <div className="space-y-2">
                             {contacts.map((contact) => {
-                                const contactMessages = threads[contact.id] ?? [];
-                                const lastMessage = contactMessages[contactMessages.length - 1];
+                                const lastMessage = contact.last_message;
 
                                 return (
                                     <button
@@ -844,13 +909,13 @@ const MessagesApp = ({ onHome }) => {
     );
 };
 
-const MusicApp = () => {
+const MusicApp = ({ isCompact = false }) => {
     const [playing, setPlaying] = useState(false);
     return (
         <div className="flex flex-col h-full bg-[#1e293b] p-4 items-center justify-center text-white">
             <motion.div
                 animate={{ rotate: playing ? 360 : 0 }}
-                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                transition={{ duration: isCompact ? 16 : 10, repeat: Infinity, ease: "linear" }}
                 className="w-32 h-32 rounded-full border-4 border-slate-700 bg-slate-900 flex items-center justify-center shadow-2xl relative"
             >
                 <div className="w-3/4 h-3/4 rounded-full bg-gradient-to-br from-rose-500 to-purple-600 opacity-80" />
@@ -894,6 +959,7 @@ const PanzekHome = ({ onNavigate }) => {
     const [isLocked, setIsLocked] = useState(true);
     const screenRef = useRef(null);
     const [isCompactScreen, setIsCompactScreen] = useState(false);
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
 
     useEffect(() => {
         const updateTime = () => {
@@ -910,8 +976,26 @@ const PanzekHome = ({ onNavigate }) => {
             }));
         };
         updateTime();
-        const interval = setInterval(updateTime, 1000);
+        const interval = setInterval(updateTime, 60 * 1000);
         return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const mediaQuery = window.matchMedia('(max-width: 767px)');
+        const updateViewport = () => {
+            setIsMobileViewport(mediaQuery.matches);
+        };
+
+        updateViewport();
+        mediaQuery.addEventListener('change', updateViewport);
+
+        return () => {
+            mediaQuery.removeEventListener('change', updateViewport);
+        };
     }, []);
 
     useEffect(() => {
@@ -930,9 +1014,11 @@ const PanzekHome = ({ onNavigate }) => {
 
     const transitionProps = {
         type: 'spring',
-        stiffness: performanceMode === 120 ? 400 : 260,
-        damping: performanceMode === 120 ? 30 : 20
+        stiffness: isCompactScreen ? 240 : performanceMode === 120 ? 400 : 260,
+        damping: isCompactScreen ? 24 : performanceMode === 120 ? 30 : 20
     };
+    const floatingBlurClass = isCompactScreen ? 'backdrop-blur-sm' : 'backdrop-blur-xl';
+    const navBlurClass = isCompactScreen ? 'backdrop-blur-sm' : 'backdrop-blur-md';
     const closeActiveApp = () => setActiveApp(null);
     const unlockScreen = () => setIsLocked(false);
     const goHome = () => {
@@ -969,11 +1055,13 @@ const PanzekHome = ({ onNavigate }) => {
             className="absolute inset-0 z-10 overflow-hidden flex flex-col font-sans"
             style={{
                 background:
-                    'radial-gradient(circle at 18% 16%, rgba(255,255,255,0.2), transparent 26%), radial-gradient(circle at 72% 22%, rgba(244,114,182,0.2), transparent 24%), radial-gradient(circle at 62% 70%, rgba(96,165,250,0.18), transparent 28%), linear-gradient(165deg, #0f172a 0%, #1e1b4b 42%, #2d1b69 68%, #4c1d95 100%)',
+                    isCompactScreen
+                        ? 'radial-gradient(circle at 18% 16%, rgba(255,255,255,0.14), transparent 22%), radial-gradient(circle at 72% 22%, rgba(244,114,182,0.14), transparent 20%), radial-gradient(circle at 62% 70%, rgba(96,165,250,0.12), transparent 22%), linear-gradient(165deg, #0f172a 0%, #1f1b48 46%, #35205f 100%)'
+                        : 'radial-gradient(circle at 18% 16%, rgba(255,255,255,0.2), transparent 26%), radial-gradient(circle at 72% 22%, rgba(244,114,182,0.2), transparent 24%), radial-gradient(circle at 62% 70%, rgba(96,165,250,0.18), transparent 28%), linear-gradient(165deg, #0f172a 0%, #1e1b4b 42%, #2d1b69 68%, #4c1d95 100%)',
             }}
         >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.16))] pointer-events-none" />
-            <div className="absolute inset-0 pointer-events-none opacity-40" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '100% 28px', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent 90%)' }} />
+            <div className={`absolute inset-0 pointer-events-none ${isCompactScreen ? 'opacity-25' : 'opacity-40'}`} style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: isCompactScreen ? '100% 32px' : '100% 28px', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent 90%)' }} />
 
             {/* STATUS BAR */}
             <div className={`relative z-20 flex items-center justify-between text-white drop-shadow-md ${isCompactScreen ? 'px-2.5 py-1 text-[7px]' : 'px-3 py-1.5 text-[8px]'} font-medium`}>
@@ -994,7 +1082,7 @@ const PanzekHome = ({ onNavigate }) => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0, scale: 1.02 }}
-                            transition={{ duration: 0.26 }}
+                            transition={{ duration: isCompactScreen ? 0.18 : 0.26 }}
                             className="relative flex flex-1 flex-col justify-between px-4 pb-3 pt-5"
                         >
                             <div className="flex items-start justify-between">
@@ -1002,7 +1090,7 @@ const PanzekHome = ({ onNavigate }) => {
                                 <button
                                     type="button"
                                     onClick={() => onNavigate?.('/')}
-                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white/80 backdrop-blur-xl transition active:scale-95"
+                                    className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white/80 ${floatingBlurClass} transition active:scale-95`}
                                 >
                                     <AppWindow size={14} />
                                 </button>
@@ -1021,7 +1109,7 @@ const PanzekHome = ({ onNavigate }) => {
                                 <button
                                     type="button"
                                     onClick={() => openApp('Camera')}
-                                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_28px_rgba(15,23,42,0.28)] transition active:scale-95"
+                                    className={`flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white ${floatingBlurClass} shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_28px_rgba(15,23,42,0.28)] transition active:scale-95`}
                                 >
                                     <CameraIcon size={16} />
                                 </button>
@@ -1029,14 +1117,14 @@ const PanzekHome = ({ onNavigate }) => {
                                 <button
                                     type="button"
                                     onClick={unlockScreen}
-                                    className="flex-1 rounded-full border border-white/18 bg-white/12 px-4 py-3 text-center text-[8px] font-black uppercase tracking-[0.32em] text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_36px_rgba(15,23,42,0.3)] transition active:scale-[0.98]"
+                                    className={`flex-1 rounded-full border border-white/18 bg-white/12 px-4 py-3 text-center text-[8px] font-black uppercase tracking-[0.32em] text-white ${floatingBlurClass} shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_36px_rgba(15,23,42,0.3)] transition active:scale-[0.98]`}
                                 >
                                     Unlock
                                 </button>
 
                                 <button
                                     type="button"
-                                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_28px_rgba(15,23,42,0.28)] transition active:scale-95"
+                                    className={`flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white ${floatingBlurClass} shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_28px_rgba(15,23,42,0.28)] transition active:scale-95`}
                                 >
                                     <Flashlight size={16} />
                                 </button>
@@ -1059,7 +1147,7 @@ const PanzekHome = ({ onNavigate }) => {
                                 <button
                                     type="button"
                                     onClick={() => setIsLocked(true)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white/88 backdrop-blur-xl transition active:scale-95"
+                                    className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/14 bg-black/15 text-white/88 ${floatingBlurClass} transition active:scale-95`}
                                 >
                                     <LockKeyhole size={15} />
                                 </button>
@@ -1071,7 +1159,7 @@ const PanzekHome = ({ onNavigate }) => {
                                         key={app.id}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05, ...transitionProps }}
+                                        transition={{ delay: isCompactScreen ? index * 0.03 : index * 0.05, ...transitionProps }}
                                         className="flex flex-col items-center gap-1 cursor-pointer group"
                                         onClick={app.action}
                                     >
@@ -1100,7 +1188,7 @@ const PanzekHome = ({ onNavigate }) => {
                             {/* APP HEADER (Subtle floating) */}
                             {activeApp !== 'Messages' && (
                                 <div className={`absolute left-0 right-0 top-0 z-30 flex items-center pointer-events-none ${isCompactScreen ? 'h-5 px-2' : 'h-6 px-3'}`}>
-                                    <span className="text-[8px] font-black text-white/50 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm mt-1">{activeApp}</span>
+                                    <span className={`mt-1 rounded-full bg-black/20 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white/50 ${isCompactScreen ? '' : 'backdrop-blur-sm'}`}>{activeApp}</span>
                                 </div>
                             )}
 
@@ -1127,7 +1215,7 @@ const PanzekHome = ({ onNavigate }) => {
                                 )}
                                 {activeApp === 'Gallery' && <GalleryApp />}
                                 {activeApp === 'Messages' && <MessagesApp onHome={goHome} />}
-                                {activeApp === 'Music' && <MusicApp />}
+                                {activeApp === 'Music' && <MusicApp isCompact={isCompactScreen} />}
                             </div>
                         </motion.div>
                     )}
@@ -1142,7 +1230,7 @@ const PanzekHome = ({ onNavigate }) => {
                 {/* Center Navigation Content */}
                 <div className={`pointer-events-auto flex flex-col items-center ${isCompactScreen ? 'gap-1 pb-0.5' : 'gap-1.5 pb-1'}`}>
                     {activeApp && activeApp !== 'Messages' && (
-                        <div className={`flex items-center rounded-full border border-white/15 bg-black/45 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition-opacity ${isCompactScreen ? 'gap-1 px-1.5 py-1' : 'gap-1.5 px-2 py-1.5'}`}>
+                        <div className={`flex items-center rounded-full border border-white/15 bg-black/45 ${navBlurClass} shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition-opacity ${isCompactScreen ? 'gap-1 px-1.5 py-1' : 'gap-1.5 px-2 py-1.5'}`}>
                             <button
                                 type="button"
                                 aria-label="Back"
@@ -1178,7 +1266,7 @@ const PanzekHome = ({ onNavigate }) => {
             </div>
 
             {/* Screen edge glare effect */}
-            <div className="absolute inset-0 rounded-lg pointer-events-none border border-white/10 shadow-[inset_0_0_15px_rgba(255,255,255,0.03)] z-50" />
+            <div className={`absolute inset-0 rounded-lg pointer-events-none border border-white/10 z-50 ${isMobileViewport ? 'shadow-[inset_0_0_8px_rgba(255,255,255,0.02)]' : 'shadow-[inset_0_0_15px_rgba(255,255,255,0.03)]'}`} />
         </motion.div>
     );
 };

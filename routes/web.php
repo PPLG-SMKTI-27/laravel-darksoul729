@@ -5,18 +5,20 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SkillsRoomController;
+use App\Support\PageResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // ==================== PUBLIC ROUTES ====================
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/about', function () {
-    return view('index', ['page' => 'About', 'props' => []]);
+Route::get('/about', function (Request $request) {
+    return PageResponse::render($request, 'About');
 })->name('about');
-Route::get('/contact', function () {
-    return view('index', ['page' => 'Contact', 'props' => []]);
+Route::get('/contact', function (Request $request) {
+    return PageResponse::render($request, 'Contact');
 })->name('contact');
-Route::get('/skills', function () {
-    return view('index', ['page' => 'Skills', 'props' => []]);
+Route::get('/skills', function (Request $request) {
+    return PageResponse::render($request, 'Skills');
 })->name('skills');
 Route::get('/test-image', function () {
     return view('test.test-image');
@@ -31,6 +33,7 @@ Route::post('/skills/rooms/join', [SkillsRoomController::class, 'join'])->name('
 Route::post('/skills/rooms/sync', [SkillsRoomController::class, 'sync'])->name('skills.rooms.sync');
 Route::post('/chat/register', [ChatController::class, 'register'])->name('chat.register');
 Route::get('/chat/state/{deviceId}', [ChatController::class, 'state'])->name('chat.state');
+Route::get('/chat/threads/{deviceId}/{contactId}', [ChatController::class, 'thread'])->name('chat.thread');
 Route::get('/chat/users/search', [ChatController::class, 'search'])->name('chat.users.search');
 Route::post('/chat/contacts', [ChatController::class, 'storeContact'])->name('chat.contacts.store');
 Route::post('/chat/messages', [ChatController::class, 'storeMessage'])->name('chat.messages.store');
