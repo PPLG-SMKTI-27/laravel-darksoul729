@@ -57,18 +57,11 @@
         }
 
         .boot-overlay::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at top, rgba(255, 255, 255, 0.03), transparent 32%);
+            content: none;
         }
 
         .boot-overlay::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            opacity: 0.06;
-            background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12) 1px, transparent 1px, transparent 3px);
+            content: none;
         }
 
         .boot-overlay-inner {
@@ -769,37 +762,28 @@
             };
 
             const authenticateCredentials = async (email, password) => {
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                hiddenEmailEl.value = email;
+                hiddenPasswordEl.value = password;
+
+                const payload = new URLSearchParams(new FormData(formEl));
                 const response = await fetch(formEl.action, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({
-                        email,
-                        password,
-                    }),
+                    body: payload.toString(),
                 });
 
-                if (response.redirected) {
-                    const redirectUrl = new URL(response.url, window.location.origin);
-
-                    if (redirectUrl.pathname === '/login') {
-                        throw new Error('Email atau password salah.');
-                    }
-
-                    return `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
-                }
+                const responsePayload = await response.json().catch(() => ({}));
 
                 if (response.ok) {
-                    return '/dashboard';
+                    return responsePayload?.redirect || '/dashboard';
                 }
 
-                const payload = await response.json().catch(() => ({}));
-                throw new Error(payload?.errors?.email?.[0] || payload?.message || 'Email atau password salah.');
+                throw new Error(responsePayload?.errors?.email?.[0] || responsePayload?.message || 'Email atau password salah.');
             };
 
             const startLogin = () => {
