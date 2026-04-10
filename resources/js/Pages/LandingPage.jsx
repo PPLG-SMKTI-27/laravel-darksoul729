@@ -4,7 +4,7 @@ import MainLayout from '../Layout/MainLayout';
 import PlasticCard from '../UI/PlasticCard';
 import PlasticButton from '../UI/PlasticButton';
 import { navigateWithCleanup } from '../lib/pageTransitionCleanup';
-import { Github, Instagram, Mail, BriefcaseBusiness } from 'lucide-react';
+import { BriefcaseBusiness, Github, Instagram, Mail } from 'lucide-react';
 const FeaturedProjects = React.lazy(() => import('../components/FeaturedProjects'));
 const PanzekHome = React.lazy(() => import('../components/UI/PanzekHome'));
 const HeroRobotCanvas = React.lazy(() => import('../components/3D/HeroRobotCanvas'));
@@ -1388,10 +1388,10 @@ const LandingPage = ({ page, props }) => {
                         <svg className="absolute top-0 left-1/2 -translate-x-[100%] w-[50vw] h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
                             {CTA_LEFT_CABLES.map((cable) => (
                                 <g key={cable.id}>
-                                    <path d={cable.path} fill="none" stroke="rgba(0,0,0,0.22)" strokeWidth="3.2" strokeLinecap="round" transform="translate(0,3)" filter="blur(2.5px)" />
-                                    <path d={cable.path} fill="none" stroke={cable.shadow} strokeWidth="2.85" strokeLinecap="round" transform="translate(0,1)" />
-                                    <path d={cable.path} fill="none" stroke={cable.color} strokeWidth="2.45" strokeLinecap="round" />
-                                    <path d={cable.path} fill="none" stroke={cable.highlight} strokeWidth="0.75" strokeLinecap="round" transform="translate(0,-0.55)" opacity="0.72" />
+                                    <path d={cable.path} fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="3" strokeLinecap="round" transform="translate(0,2.2)" filter="blur(2px)" />
+                                    <path d={cable.path} fill="none" stroke={cable.shadow} strokeWidth="2.6" strokeLinecap="round" transform="translate(0,0.7)" />
+                                    <path d={cable.path} fill="none" stroke={cable.color} strokeWidth="2.2" strokeLinecap="round" />
+                                    <path d={cable.path} fill="none" stroke={cable.highlight} strokeWidth="0.62" strokeLinecap="round" transform="translate(0,-0.4)" opacity="0.68" />
                                 </g>
                             ))}
                         </svg>
@@ -1399,10 +1399,10 @@ const LandingPage = ({ page, props }) => {
                         <svg className="absolute top-0 left-1/2 w-[50vw] h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
                             {CTA_RIGHT_CABLES.map((cable) => (
                                 <g key={cable.id}>
-                                    <path d={cable.path} fill="none" stroke="rgba(0,0,0,0.22)" strokeWidth="3.2" strokeLinecap="round" transform="translate(0,3)" filter="blur(2.5px)" />
-                                    <path d={cable.path} fill="none" stroke={cable.shadow} strokeWidth="2.85" strokeLinecap="round" transform="translate(0,1)" />
-                                    <path d={cable.path} fill="none" stroke={cable.color} strokeWidth="2.45" strokeLinecap="round" />
-                                    <path d={cable.path} fill="none" stroke={cable.highlight} strokeWidth="0.75" strokeLinecap="round" transform="translate(0,-0.55)" opacity="0.72" />
+                                    <path d={cable.path} fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="3" strokeLinecap="round" transform="translate(0,2.2)" filter="blur(2px)" />
+                                    <path d={cable.path} fill="none" stroke={cable.shadow} strokeWidth="2.6" strokeLinecap="round" transform="translate(0,0.7)" />
+                                    <path d={cable.path} fill="none" stroke={cable.color} strokeWidth="2.2" strokeLinecap="round" />
+                                    <path d={cable.path} fill="none" stroke={cable.highlight} strokeWidth="0.62" strokeLinecap="round" transform="translate(0,-0.4)" opacity="0.68" />
                                 </g>
                             ))}
                         </svg>
@@ -1429,188 +1429,159 @@ const LandingPage = ({ page, props }) => {
                         </div>
                     </div>
 
-                    {/* Main Panel Box - Increased Shadow for Ambient Occlusion */}
-                    <div className="relative w-full max-w-[650px] bg-[#f8fafc] rounded-[2rem] md:rounded-[2.5rem] border-[3px] md:border-[4px] border-white z-10 pointer-events-auto mx-3 md:mx-auto"
-                        style={{
-                            // Deep ambient occlusion and soft inset rim light
-                            boxShadow: 'inset 0 4px 6px rgba(255,255,255,0.9), inset 0 -5px 10px rgba(0,0,0,0.05), 0 40px 80px -20px rgba(0,0,0,0.35), 0 20px 40px -10px rgba(0,0,0,0.2)'
-                        }}>
-                        <div className="absolute left-1/2 top-[-10px] h-[14px] w-18 md:w-26 -translate-x-1/2 rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#cdd6e1_100%)] shadow-[0_2px_0_rgba(255,255,255,0.7)]" />
-
-                        {[
-                            'left-4 top-4 rotate-45',
-                            'right-4 top-4 rotate-[110deg]',
-                            'left-4 bottom-4 rotate-12',
-                            'right-4 bottom-4 -rotate-[30deg]',
-                        ].map((positionClass) => (
-                            <div
-                                key={positionClass}
-                                className={`absolute h-3 w-3 rounded-full bg-[linear-gradient(180deg,#dbe3ee_0%,#94a3b8_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.7),inset_0_-2px_3px_rgba(0,0,0,0.3)] ${positionClass}`}
-                            >
-                                <div className="flex h-full w-full items-center justify-center rounded-full border border-slate-600/70">
-                                    <div className="h-[1.5px] w-[60%] bg-slate-700/85 shadow-[0_1px_0_rgba(255,255,255,0.25)]" />
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* Left Cylinder Connectors */}
-                        <div className="absolute left-[-16px] md:left-[-18px] top-1/2 -translate-y-1/2 flex flex-col gap-8 md:gap-11">
-                            {/* Connector 1 */}
-                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-l-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),-2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
-                                <div className="absolute right-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
-                            </div>
-                            {/* Connector 2 */}
-                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-l-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),-2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
-                                <div className="absolute right-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
-                            </div>
-                            {/* Connector 3 */}
-                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-l-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),-2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
-                                <div className="absolute right-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
-                            </div>
-                        </div>
-
-                        {/* Right Cylinder Connectors */}
-                        <div className="absolute right-[-16px] md:right-[-18px] top-1/2 -translate-y-1/2 flex flex-col gap-8 md:gap-11">
-                            {/* Connector 1 */}
-                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-r-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
-                                <div className="absolute left-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
-                            </div>
-                            {/* Connector 2 */}
-                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-r-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
-                                <div className="absolute left-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
-                            </div>
-                            {/* Connector 3 */}
-                            <div className="w-[16px] md:w-[18px] h-[14px] bg-slate-200 rounded-r-[4px] border-[1px] border-slate-300 shadow-[inset_0_2px_3px_rgba(255,255,255,0.9),2px_2px_4px_rgba(0,0,0,0.2)] z-0 relative">
-                                <div className="absolute left-[-2px] inset-y-0 w-[4px] bg-slate-300 blur-[1px]"></div>
-                            </div>
-                        </div>
-
-                        {/* Top Indicator Bulbs */}
-                        <div className="flex gap-2 md:gap-3 justify-start ml-5 md:ml-10 pt-4 pb-1">
-                            {/* Pink/Red Bulb */}
-                            <div className="w-3.5 h-3.5 rounded-full bg-rose-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]"></div>
-                            {/* Yellow Bulb */}
-                            <div className="w-3.5 h-3.5 rounded-full bg-yellow-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]"></div>
-                            {/* Cyan Bulb */}
-                            <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]"></div>
-                        </div>
-
-                        {/* Inner Recessed Screen - Deeper Inset Shadow */}
-                        <div className="m-2 mt-1 md:m-4 md:mt-1 bg-[#f1f5f9] rounded-[1.35rem] md:rounded-[1.5rem] border-[1px] border-slate-200 relative overflow-hidden"
+                    {/* Main Panel Box - Same content, refreshed shell only */}
+                    <div className="relative z-10 mx-3 w-full max-w-[650px] pointer-events-auto md:mx-auto">
+                        <div
+                            className="relative overflow-visible rounded-[1.65rem] border-[3px] border-white bg-[linear-gradient(180deg,#edf2f7_0%,#d8e1ec_100%)] md:rounded-[1.8rem] md:border-[4px]"
                             style={{
-                                boxShadow: 'inset 0 8px 20px rgba(0,0,0,0.08), inset 0 2px 6px rgba(0,0,0,0.04), 0 2px 0 rgba(255,255,255,0.9)'
-                            }}>
-                            <div className="absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/78 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.24em] text-slate-500 shadow-[0_4px_10px_rgba(15,23,42,0.06)] md:left-5 md:top-5 md:px-3 md:text-[9px] md:tracking-[0.28em]">
-                                Creator Dock
-                            </div>
-                            <div className="absolute right-3 top-3 z-20 hidden sm:flex items-center gap-2 md:right-5 md:top-5">
-                                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#4ade80]" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">ONLINE</span>
-                            </div>
+                                boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.96), inset 0 -6px 0 rgba(148,163,184,0.34), 10px 10px 0 rgba(148,163,184,0.24), 0 18px 30px rgba(71,85,105,0.18)',
+                            }}
+                        >
+                            <div className="pointer-events-none absolute left-[12%] top-[-10px] h-3.5 w-[78px] rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#cbd5e1_100%)] shadow-[0_2px_0_rgba(255,255,255,0.8)] md:w-[110px]" />
+                            <div className="pointer-events-none absolute bottom-[-8px] left-1/2 hidden h-2.5 w-[94px] -translate-x-1/2 rounded-full border border-slate-300 bg-[linear-gradient(180deg,#eef2f7_0%,#cbd5e1_100%)] shadow-[0_2px_0_rgba(255,255,255,0.8)] md:block" />
+                            <div className="pointer-events-none absolute inset-y-[8%] left-[10px] w-6 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.78)_0%,rgba(255,255,255,0)_100%)] blur-[2px] md:left-[13px] md:w-7" />
+                            <div className="pointer-events-none absolute inset-y-[10%] right-[10px] w-7 rounded-full bg-[linear-gradient(270deg,rgba(148,163,184,0.26)_0%,rgba(148,163,184,0)_100%)] blur-[3px] md:right-[13px] md:w-8" />
 
-                            {/* Red Liquid Fill Background - Refined for premium look */}
-                            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 hidden h-full flex-col justify-end md:flex">
-                                <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-red-600 to-red-500 shadow-[inset_0_2px_10px_rgba(255,255,255,0.2)]" />
-                                {/* Wave Background Layer - Darker for depth */}
-                                <motion.div
-                                    animate={allowCtaMotion ? { x: ['-50%', '0%'] } : undefined}
-                                    transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4.5 } : undefined}
-                                    className="absolute bottom-[60%] left-0 w-[200%] h-[35px] pointer-events-none text-red-700/40"
+                            {[
+                                'left-4 top-4 rotate-45',
+                                'right-4 top-4 rotate-[110deg]',
+                                'left-4 bottom-4 rotate-12',
+                                'right-4 bottom-4 -rotate-[30deg]',
+                            ].map((positionClass) => (
+                                <div
+                                    key={positionClass}
+                                    className={`absolute h-2.5 w-2.5 rounded-full bg-[linear-gradient(180deg,#dbe3ee_0%,#94a3b8_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.7),inset_0_-2px_3px_rgba(0,0,0,0.3)] ${positionClass}`}
                                 >
-                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[35px] left-0 fill-current block">
-                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
-                                    </svg>
-                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[35px] left-[50%] fill-current block">
-                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
-                                    </svg>
-                                </motion.div>
-                                {/* Wave Foreground Layer - Lighter/Vibrant */}
-                                <motion.div
-                                    animate={allowCtaMotion ? { x: ['0%', '-50%'] } : undefined}
-                                    transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 3.2 } : undefined}
-                                    className="absolute bottom-[60%] left-0 w-[200%] h-[24px] pointer-events-none text-red-500"
-                                >
-                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[24px] left-0 fill-current block">
-                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
-                                    </svg>
-                                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute bottom-[-1px] w-[50%] h-[24px] left-[50%] fill-current block">
-                                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118,130.42,126.8,193.28,116.4Z" />
-                                    </svg>
-                                </motion.div>
-                                {/* Bubbles - Organic movement */}
-                                <motion.div animate={allowCtaMotion ? { y: ['0%', '-500%'], x: [0, 8, -4, 0], opacity: [0, 0.6, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 3 } : undefined} className="absolute left-[25%] bottom-[10%] w-2.5 h-2.5 bg-white/40 blur-[1px] rounded-full" />
-                                <motion.div animate={allowCtaMotion ? { y: ['0%', '-400%'], x: [0, -12, 8, 0], opacity: [0, 0.7, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4.5, delay: 1 } : undefined} className="absolute left-[55%] bottom-[15%] w-3.5 h-3.5 bg-white/30 blur-[1px] rounded-full" />
-                                <motion.div animate={allowCtaMotion ? { y: ['0%', '-600%'], x: [0, 4, -8, 0], opacity: [0, 0.5, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4, delay: 2.5 } : undefined} className="absolute w-1.5 h-1.5 left-[75%] bottom-[5%] bg-white/50 blur-[0.5px] rounded-full" />
-                            </div>
-
-                            <div className="relative z-10 flex min-h-[27rem] flex-col px-4 pb-14 pt-16 text-center md:min-h-0 md:items-center md:justify-center md:p-12 md:pb-16">
-                                <div className="flex flex-col items-center">
-                                    <h3 className="mb-2 flex max-w-[12rem] flex-col items-center gap-0.5 text-[2.2rem] font-black tracking-[-0.05em] text-slate-800 drop-shadow-[0_4px_0_rgba(255,255,255,0.85)] md:mb-3 md:max-w-none md:text-5xl md:tracking-tight md:drop-shadow-md" style={{ lineHeight: 1.02 }}>
-                                        <span>Ready to</span>
-                                        <span className="text-slate-700 md:text-white md:drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">Collaborate?</span>
-                                    </h3>
-                                    <p className="max-w-[13rem] text-[11px] font-black uppercase tracking-[0.24em] text-slate-400 md:hidden">
-                                        Open for freelance builds and premium visuals.
-                                    </p>
-                                </div>
-
-                                <div className="mt-auto w-full rounded-[1.45rem] border border-white/35 bg-[linear-gradient(180deg,#fb4b52_0%,#dc2626_100%)] px-4 pb-5 pt-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_16px_28px_rgba(239,68,68,0.18)] md:mt-0 md:w-auto md:max-w-none md:border-0 md:bg-transparent md:px-0 md:pb-0 md:pt-0 md:shadow-none">
-                                    <p className="mx-auto max-w-[14rem] px-1 text-sm font-bold leading-relaxed text-white drop-shadow-md md:mt-2 md:max-w-sm md:px-2 md:text-base">
-                                        Available for freelance projects and full-time opportunities. Let's create something extraordinary!
-                                    </p>
-
-                                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:mt-5 md:max-w-none">
-                                        <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
-                                            UI Systems
-                                        </span>
-                                        <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
-                                            Frontend
-                                        </span>
-                                        <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
-                                            Illustration
-                                        </span>
-                                    </div>
-
-                                    <div className="mt-4 flex items-center justify-center gap-2 md:hidden">
-                                        <span className="rounded-full border border-white/45 bg-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
-                                            Fast Reply
-                                        </span>
-                                        <span className="rounded-full border border-white/45 bg-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
-                                            Clear Scope
-                                        </span>
+                                    <div className="flex h-full w-full items-center justify-center rounded-full border border-slate-600/70">
+                                        <div className="h-[1.5px] w-[60%] bg-slate-700/85 shadow-[0_1px_0_rgba(255,255,255,0.25)]" />
                                     </div>
                                 </div>
+                            ))}
+
+                            <div className="absolute left-[-15px] top-1/2 flex -translate-y-1/2 flex-col gap-10 md:left-[-16px] md:gap-[3.15rem]">
+                                {[0, 1, 2].map((connector) => (
+                                    <div
+                                        key={`left-${connector}`}
+                                        className="relative z-0 h-[12px] w-[12px] rounded-[4px] border border-slate-300 bg-[linear-gradient(180deg,#f8fafc_0%,#cbd5e1_100%)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),-2px_2px_3px_rgba(0,0,0,0.14)]"
+                                    >
+                                        <div className="absolute inset-y-[2px] right-[-3px] w-[5px] rounded-full bg-[linear-gradient(90deg,#cbd5e1_0%,#eef2f7_100%)]" />
+                                    </div>
+                                ))}
                             </div>
 
-                            {/* Inner Screen Corner Accent (Top Right) */}
-                            <div className="absolute top-4 right-4 w-3 h-2 bg-slate-300 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)] opacity-80 z-10"></div>
-
-                            {/* Inner Screen Dots (Bottom Right) */}
-                            <div className="absolute bottom-5 right-5 hidden md:flex gap-[3px] opacity-70 z-10">
-                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
-                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
-                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
-                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-[1px] shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]"></div>
+                            <div className="absolute right-[-15px] top-1/2 flex -translate-y-1/2 flex-col gap-10 md:right-[-16px] md:gap-[3.15rem]">
+                                {[0, 1, 2].map((connector) => (
+                                    <div
+                                        key={`right-${connector}`}
+                                        className="relative z-0 h-[12px] w-[12px] rounded-[4px] border border-slate-300 bg-[linear-gradient(180deg,#f8fafc_0%,#cbd5e1_100%)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),2px_2px_3px_rgba(0,0,0,0.14)]"
+                                    >
+                                        <div className="absolute inset-y-[2px] left-[-3px] w-[5px] rounded-full bg-[linear-gradient(270deg,#cbd5e1_0%,#eef2f7_100%)]" />
+                                    </div>
+                                ))}
                             </div>
-                        </div>
 
-                        {/* Floating Button Overlapping Inner and Outer Box - Centered Position */}
-                        <div className="absolute bottom-[-14px] md:bottom-[-22px] left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-                            <div className="relative flex items-center justify-center">
-                                <div className="absolute left-1/2 -translate-x-1/2 -top-2 h-[16px] w-[146px] md:h-[20px] md:w-[190px] rounded-full border border-white bg-[#e2e8f0] shadow-[inset_0_3px_6px_rgba(255,255,255,0.9),0_8px_20px_rgba(0,0,0,0.2)]" />
-                                <div className="absolute left-1/2 top-2 h-[5px] w-[102px] -translate-x-1/2 rounded-full bg-[#cbd5e1] shadow-[inset_0_2px_3px_rgba(0,0,0,0.15)] md:h-[6px] md:w-[140px]" />
-                                <PlasticButton color="yellow" className="relative z-10 w-max px-5 py-1.5 text-[11px] md:px-8 md:py-2.5 md:text-[13px] shadow-xl hover:translate-y-[2px]" onClick={() => navigateWithCleanup('/contact')}
-                                    style={{
-                                        border: '2px solid #eab308',
-                                        borderRadius: '10px',
-                                        fontWeight: 900,
-                                        color: '#78350f',
-                                        background: 'linear-gradient(to bottom, #fde047, #facc15)',
-                                        boxShadow: 'inset 0 2px 2px rgba(255,255,255,0.8), 0 8px 15px rgba(0,0,0,0.25), 0 5px 0 #ca8a04',
-                                        letterSpacing: '0.05em'
-                                    }}>
-                                    GET IN TOUCH
-                                </PlasticButton>
+                            <div className="ml-5 flex justify-start gap-2 pb-1 pt-4 md:ml-10 md:gap-3">
+                                <div className="h-3.5 w-3.5 rounded-full bg-rose-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]" />
+                                <div className="h-3.5 w-3.5 rounded-full bg-yellow-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]" />
+                                <div className="h-3.5 w-3.5 rounded-full bg-cyan-400 shadow-[inset_-1px_-2px_4px_rgba(0,0,0,0.3),inset_1px_2px_4px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.2)]" />
+                            </div>
+
+                            <div
+                                className="relative m-2 mt-1 overflow-hidden rounded-[1rem] border border-slate-200/90 bg-[linear-gradient(180deg,#f8fbff_0%,#edf3f9_100%)] md:m-4 md:mt-1 md:rounded-[1.05rem]"
+                                style={{
+                                    boxShadow: 'inset 0 10px 24px rgba(15,23,42,0.08), inset 0 2px 5px rgba(255,255,255,0.8), inset 0 -10px 18px rgba(148,163,184,0.12), 0 2px 0 rgba(255,255,255,0.9)',
+                                }}
+                            >
+                                <div className="pointer-events-none absolute inset-x-8 top-0 h-14 rounded-b-[999px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0)_72%)]" />
+                                <div className="pointer-events-none absolute inset-y-10 left-0 w-6 bg-[linear-gradient(90deg,rgba(255,255,255,0.5)_0%,rgba(255,255,255,0)_100%)]" />
+                                <div className="pointer-events-none absolute inset-y-10 right-0 w-8 bg-[linear-gradient(270deg,rgba(148,163,184,0.18)_0%,rgba(148,163,184,0)_100%)]" />
+                                <div className="absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/78 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.24em] text-slate-500 shadow-[0_4px_10px_rgba(15,23,42,0.06)] md:left-5 md:top-5 md:px-3 md:text-[9px] md:tracking-[0.28em]">
+                                    Creator Dock
+                                </div>
+                                <div className="absolute right-4 top-3 z-20 hidden items-center gap-2 sm:flex md:right-6 md:top-5">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#4ade80]" />
+                                    <span className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">ONLINE</span>
+                                </div>
+
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 hidden h-full flex-col justify-end md:flex">
+                                    <div className="absolute inset-x-5 bottom-4 h-[43%] rounded-[1.15rem] bg-[linear-gradient(180deg,#ff565c_0%,#ef3940_48%,#d91f26_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-10px_18px_rgba(127,29,29,0.18),0_14px_20px_rgba(239,68,68,0.14)]" />
+                                    <div className="absolute inset-x-[18%] bottom-[40.5%] h-9 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0)_72%)] blur-md" />
+                                    <motion.div animate={allowCtaMotion ? { y: ['0%', '-500%'], x: [0, 8, -4, 0], opacity: [0, 0.6, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 3 } : undefined} className="absolute bottom-[10%] left-[25%] h-2.5 w-2.5 rounded-full bg-white/40 blur-[1px]" />
+                                    <motion.div animate={allowCtaMotion ? { y: ['0%', '-400%'], x: [0, -12, 8, 0], opacity: [0, 0.7, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4.5, delay: 1 } : undefined} className="absolute bottom-[15%] left-[55%] h-3.5 w-3.5 rounded-full bg-white/30 blur-[1px]" />
+                                    <motion.div animate={allowCtaMotion ? { y: ['0%', '-600%'], x: [0, 4, -8, 0], opacity: [0, 0.5, 0] } : undefined} transition={allowCtaMotion ? { repeat: Infinity, ease: 'linear', duration: 4, delay: 2.5 } : undefined} className="absolute bottom-[5%] left-[75%] h-1.5 w-1.5 rounded-full bg-white/50 blur-[0.5px]" />
+                                </div>
+
+                                <div className="relative z-10 flex min-h-[27rem] flex-col px-4 pb-14 pt-14 text-center md:min-h-0 md:items-center md:justify-center md:px-12 md:pb-14 md:pt-10">
+                                    <div className="flex flex-col items-center">
+                                        <h3 className="mb-2 flex max-w-[12rem] flex-col items-center gap-0.5 text-[1.95rem] font-black tracking-[-0.05em] text-slate-800 drop-shadow-[0_4px_0_rgba(255,255,255,0.85)] md:mb-2 md:max-w-none md:text-[3.55rem] md:tracking-tight md:drop-shadow-md" style={{ lineHeight: 0.98 }}>
+                                            <span>Ready to</span>
+                                            <span className="text-slate-700 md:text-white md:drop-shadow-[0_6px_20px_rgba(15,23,42,0.26)]">Collaborate?</span>
+                                        </h3>
+                                        <p className="max-w-[13rem] text-[11px] font-black uppercase tracking-[0.24em] text-slate-400 md:hidden">
+                                            Open for freelance builds and premium visuals.
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-auto w-full rounded-[1.05rem] border border-white/35 bg-[linear-gradient(180deg,#ff555d_0%,#ef3139_100%)] px-4 pb-4 pt-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-8px_20px_rgba(127,29,29,0.16),0_12px_18px_rgba(239,68,68,0.16)] md:mt-11 md:w-auto md:min-w-[23rem] md:max-w-none md:px-6 md:pb-4 md:pt-4" style={{ backdropFilter: 'blur(5px)' }}>
+                                        <div className="pointer-events-none absolute inset-x-10 top-[45%] hidden h-12 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0)_72%)] blur-xl md:block" />
+                                        <p className="relative mx-auto max-w-[14rem] px-1 text-sm font-bold leading-relaxed text-white drop-shadow-md md:mt-1 md:max-w-sm md:px-2 md:text-base">
+                                            Available for freelance projects and full-time opportunities. Let's create something extraordinary!
+                                        </p>
+
+                                        <div className="relative mt-4 flex flex-wrap items-center justify-center gap-2 md:mt-5 md:max-w-none">
+                                            <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                                UI Systems
+                                            </span>
+                                            <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                                Frontend
+                                            </span>
+                                            <span className="rounded-full border border-white/60 bg-white/16 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                                                Illustration
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-center gap-2 md:hidden">
+                                            <span className="rounded-full border border-white/45 bg-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
+                                                Fast Reply
+                                            </span>
+                                            <span className="rounded-full border border-white/45 bg-black/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
+                                                Clear Scope
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="absolute right-4 top-4 z-10 h-2 w-3 rounded-[1px] bg-slate-300 opacity-80 shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)]" />
+
+                                <div className="absolute bottom-5 right-5 z-10 hidden gap-[3px] opacity-70 md:flex">
+                                    <div className="h-1.5 w-1.5 rounded-[1px] bg-slate-400 shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]" />
+                                    <div className="h-1.5 w-1.5 rounded-[1px] bg-slate-400 shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]" />
+                                    <div className="h-1.5 w-1.5 rounded-[1px] bg-slate-400 shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]" />
+                                    <div className="h-1.5 w-1.5 rounded-[1px] bg-slate-400 shadow-[inset_0_1px_1px_rgba(0,0,0,0.4)]" />
+                                </div>
+                            </div>
+
+                            <div className="absolute bottom-[-11px] left-1/2 z-20 -translate-x-1/2 pointer-events-auto md:bottom-[-13px]">
+                                <div className="relative flex items-center justify-center">
+                                    <div className="absolute -top-1 left-1/2 h-[9px] w-[120px] -translate-x-1/2 rounded-full border border-white bg-[#e2e8f0] shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_4px_12px_rgba(0,0,0,0.12)] md:h-[11px] md:w-[142px]" />
+                                    <div className="absolute left-1/2 top-1 h-[3px] w-[78px] -translate-x-1/2 rounded-full bg-[#cbd5e1] shadow-[inset_0_2px_3px_rgba(0,0,0,0.12)] md:w-[98px]" />
+                                    <PlasticButton
+                                        color="yellow"
+                                        className="relative z-10 w-max px-4 py-1.5 text-[10px] shadow-lg hover:translate-y-[1px] md:px-5 md:py-1.5 md:text-[10px]"
+                                        onClick={() => navigateWithCleanup('/contact')}
+                                        style={{
+                                            border: '2px solid #eab308',
+                                            borderRadius: '10px',
+                                            fontWeight: 900,
+                                            color: '#78350f',
+                                            background: 'linear-gradient(to bottom, #fde047, #facc15)',
+                                            boxShadow: 'inset 0 2px 2px rgba(255,255,255,0.8), 0 5px 9px rgba(0,0,0,0.14), 0 3px 0 #ca8a04',
+                                            letterSpacing: '0.05em',
+                                        }}
+                                    >
+                                        GET IN TOUCH
+                                    </PlasticButton>
+                                </div>
                             </div>
                         </div>
                     </div>

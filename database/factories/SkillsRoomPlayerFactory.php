@@ -24,10 +24,23 @@ class SkillsRoomPlayerFactory extends Factory
             'display_name' => 'Crew '.$this->faker->lexify('???'),
             'role' => 'guest',
             'state' => [
+                'mode' => 'boat',
                 'x' => 0,
                 'y' => 0.15,
                 'z' => 0,
                 'heading' => 0,
+                'boat' => [
+                    'x' => 0,
+                    'y' => 0.15,
+                    'z' => 0,
+                    'heading' => 0,
+                ],
+                'land' => [
+                    'x' => 0,
+                    'y' => 0.15,
+                    'z' => 0,
+                    'heading' => 0,
+                ],
             ],
             'last_seen_at' => now(),
         ];
