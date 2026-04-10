@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Footprints, LogIn, LogOut, Move, Orbit, PanelRightOpen, Scan, Sprout } from 'lucide-react';
 import * as THREE from 'three';
 import { navigateWithCleanup } from '../../lib/pageTransitionCleanup';
@@ -30,8 +30,24 @@ const DOCK_ACCESS_CENTER_X = DOCK_CENTER.x;
 const DOCK_ACCESS_CENTER_Z = 57.7;
 const DOCK_ACCESS_HALF_WIDTH = 2.45;
 const DOCK_ACCESS_HALF_DEPTH = 3.2;
+const REMOTE_LAND_COLLISION_RADIUS = 0.86;
+const REMOTE_BOAT_COLLISION_RADIUS = 4.8;
 const DOCK_STAIR_TOP_Y = 1.84;
 const DOCK_STEP_COUNT = 10;
+
+// Second dock (Git Trail Dock)
+const DOCK2_CENTER = new THREE.Vector3(0, 0, 28);
+const DOCK2_BERTH_POINT = new THREE.Vector3(0, 0, 24);
+const DOCK2_LAND_POINT = new THREE.Vector3(0, 0, 32);
+const DOCK2_PIER_START_Z = 26;
+const DOCK2_PIER_END_Z = 34;
+const DOCK2_PIER_HALF_WIDTH = 2.8;
+const DOCK2_SURFACE_Y = 0.56;
+const DOCK2_ACCESS_CENTER_X = 0;
+const DOCK2_ACCESS_CENTER_Z = 35.5;
+const DOCK2_ACCESS_HALF_WIDTH = 2.2;
+const DOCK2_ACCESS_HALF_DEPTH = 2.8;
+const DOCK2_STAIR_TOP_Y = 1.84;
 const HOUSE_CENTER = new THREE.Vector3(40, 0, -38);
 const HOUSE_HALF_WIDTH = 4.6;
 const HOUSE_HALF_DEPTH = 4.9;
@@ -196,6 +212,7 @@ function isSolidIslandAt(x, z, padding = 0) {
 }
 
 function isInsideDockSurface(x, z, padding = 0) {
+    // First dock checks
     const onShorePlatform =
         Math.abs(x - DOCK_CENTER.x) <= 2.9 + padding &&
         z >= 59.8 - padding &&
@@ -212,7 +229,16 @@ function isInsideDockSurface(x, z, padding = 0) {
         Math.abs(x - DOCK_ACCESS_CENTER_X) <= DOCK_ACCESS_HALF_WIDTH + padding &&
         Math.abs(z - DOCK_ACCESS_CENTER_Z) <= DOCK_ACCESS_HALF_DEPTH + padding;
 
-    return onShorePlatform || onMainPier || onBoardingPad || onAccess;
+    // Second dock (Git Trail Dock) checks
+    const onDock2Pier =
+        Math.abs(x - DOCK2_CENTER.x) <= DOCK2_PIER_HALF_WIDTH + padding &&
+        z >= DOCK2_PIER_START_Z - padding &&
+        z <= DOCK2_PIER_END_Z + padding;
+    const onDock2Access =
+        Math.abs(x - DOCK2_ACCESS_CENTER_X) <= DOCK2_ACCESS_HALF_WIDTH + padding &&
+        Math.abs(z - DOCK2_ACCESS_CENTER_Z) <= DOCK2_ACCESS_HALF_DEPTH + padding;
+
+    return onShorePlatform || onMainPier || onBoardingPad || onAccess || onDock2Pier || onDock2Access;
 }
 
 function isDockSolidAt(x, z, padding = 0) {
@@ -240,6 +266,7 @@ function getDockSurfaceHeightAt(x, z) {
     const stairEndZ = DOCK_ACCESS_CENTER_Z + DOCK_ACCESS_HALF_DEPTH;
     const stairBaseY = DOCK_SURFACE_Y + 0.14;
 
+    // First dock checks
     if (
         Math.abs(x - DOCK_CENTER.x) <= 2.9 &&
         z >= 69.4 &&
@@ -273,6 +300,30 @@ function getDockSurfaceHeightAt(x, z) {
         const risePerStep = (DOCK_STAIR_TOP_Y - stairBaseY) / DOCK_STEP_COUNT;
 
         return stairBaseY + risePerStep * (stepIndex + 1);
+    }
+
+    // Second dock (Git Trail Dock) checks
+    const dock2StairBaseY = DOCK2_SURFACE_Y + 0.14;
+    
+    if (
+        Math.abs(x - DOCK2_CENTER.x) <= DOCK2_PIER_HALF_WIDTH &&
+        z >= DOCK2_PIER_START_Z &&
+        z <= DOCK2_PIER_END_Z
+    ) {
+        return DOCK2_SURFACE_Y + 0.14;
+    }
+
+    if (
+        Math.abs(x - DOCK2_ACCESS_CENTER_X) <= DOCK2_ACCESS_HALF_WIDTH &&
+        Math.abs(z - DOCK2_ACCESS_CENTER_Z) <= DOCK2_ACCESS_HALF_DEPTH
+    ) {
+        const dock2StairStartZ = DOCK2_ACCESS_CENTER_Z - DOCK2_ACCESS_HALF_DEPTH;
+        const dock2StairEndZ = DOCK2_ACCESS_CENTER_Z + DOCK2_ACCESS_HALF_DEPTH;
+        const progress = THREE.MathUtils.clamp((z - dock2StairStartZ) / (dock2StairEndZ - dock2StairStartZ), 0, 0.9999);
+        const stepIndex = Math.floor(progress * DOCK_STEP_COUNT);
+        const risePerStep = (DOCK2_STAIR_TOP_Y - dock2StairBaseY) / DOCK_STEP_COUNT;
+
+        return dock2StairBaseY + risePerStep * (stepIndex + 1);
     }
 
     return null;
@@ -394,7 +445,7 @@ function buildSharedAssets() {
             hull: new THREE.BoxGeometry(6.4, 1.2, 3.2),
             deck: new THREE.BoxGeometry(5.2, 0.18, 2.5),
             mast: new THREE.CylinderGeometry(0.12, 0.16, 5.6, 6),
-            sail: new THREE.PlaneGeometry(2.6, 3.6),
+            sail: new THREE.BoxGeometry(0.08, 3.6, 2.6),
             head: new THREE.BoxGeometry(0.56, 0.56, 0.56),
             torso: new THREE.BoxGeometry(0.72, 0.95, 0.42),
             arm: new THREE.BoxGeometry(0.18, 0.72, 0.18),
@@ -724,6 +775,7 @@ function createBoatRig(sharedAssets, { accentColor = 0x61dafb, label = 'YOU' } =
     visuals.rotation.y = -Math.PI / 2;
     boat.add(visuals);
 
+    // Main hull - streamlined shape
     const hull = new THREE.Mesh(sharedAssets.geometries.hull, sharedAssets.materials.woodDark);
     hull.scale.z = 0.88;
     hull.position.y = 0.82;
@@ -731,51 +783,89 @@ function createBoatRig(sharedAssets, { accentColor = 0x61dafb, label = 'YOU' } =
     hull.receiveShadow = true;
     visuals.add(hull);
 
+    // Pointed bow (front)
     const bow = new THREE.Mesh(sharedAssets.geometries.bow, sharedAssets.materials.woodDark);
     bow.position.set(0, 1.1, -1.9);
     bow.rotation.x = Math.PI / 2;
+    bow.castShadow = true;
     visuals.add(bow);
 
+    // Stern (back)
     const stern = bow.clone();
     stern.position.z = 1.9;
     visuals.add(stern);
 
+    // Clean deck
     const deck = new THREE.Mesh(sharedAssets.geometries.deck, sharedAssets.materials.wood);
     deck.position.y = 1.42;
     deck.castShadow = true;
     deck.receiveShadow = true;
     visuals.add(deck);
 
+    // Small cabin
     const cabin = new THREE.Mesh(sharedAssets.geometries.cabin, sharedAssets.materials.wood);
     cabin.position.set(0.45, 2.08, 0.35);
     cabin.castShadow = true;
     cabin.receiveShadow = true;
     visuals.add(cabin);
 
+    // Main mast - clean and simple
     const mast = new THREE.Mesh(sharedAssets.geometries.mast, sharedAssets.materials.woodDark);
     mast.position.set(-0.2, 4.2, -0.1);
     mast.castShadow = true;
-    mast.receiveShadow = true;
     visuals.add(mast);
 
+    // Single sail
     const sail = new THREE.Mesh(sharedAssets.geometries.sail, sharedAssets.materials.sail);
     sail.position.set(1.1, 4.25, -0.1);
     sail.rotation.y = -Math.PI / 2;
     visuals.add(sail);
 
+    // Simple flag at top
+    const flagCanvas = document.createElement('canvas');
+    flagCanvas.width = 64;
+    flagCanvas.height = 48;
+    const flagContext = flagCanvas.getContext('2d');
+    flagContext.fillStyle = '#1a1a1a';
+    flagContext.fillRect(0, 0, 64, 48);
+    flagContext.fillStyle = '#ffffff';
+    flagContext.font = 'bold 32px Arial';
+    flagContext.textAlign = 'center';
+    flagContext.textBaseline = 'middle';
+    flagContext.fillText('☠', 32, 24);
+    
+    const flagTexture = new THREE.CanvasTexture(flagCanvas);
+    const flag = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.2, 0.8),
+        new THREE.MeshBasicMaterial({ 
+            map: flagTexture, 
+            transparent: true, 
+            side: THREE.DoubleSide 
+        })
+    );
+    flag.position.set(-0.2, 6.8, -0.1);
+    flag.rotation.y = Math.PI / 4;
+    visuals.add(flag);
+
+    // Simple railings
     for (const side of [-1, 1]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.12, 0.12), sharedAssets.materials.rope);
-        rail.position.set(0, 1.95, side * 1.28);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.08, 0.08), sharedAssets.materials.rope);
+        rail.position.set(0, 1.85, side * 1.28);
         visuals.add(rail);
     }
 
-    const lampMaterial = sharedAssets.materials.crystal.clone();
-    lampMaterial.color = new THREE.Color(accentColor);
-    lampMaterial.emissive = new THREE.Color(accentColor);
-    lampMaterial.emissiveIntensity = 0.55;
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), lampMaterial);
-    lamp.position.set(2.25, 2.0, 0);
-    visuals.add(lamp);
+    // Simple lantern
+    const lanternMaterial = sharedAssets.materials.crystal.clone();
+    lanternMaterial.color = new THREE.Color(accentColor);
+    lanternMaterial.emissive = new THREE.Color(accentColor);
+    lanternMaterial.emissiveIntensity = 0.6;
+    
+    const lantern = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 10, 10),
+        lanternMaterial
+    );
+    lantern.position.set(2.2, 2.0, 0);
+    visuals.add(lantern);
 
     const deckCharacter = createCharacter(sharedAssets, accentColor);
     deckCharacter.position.set(-1.2, 1.44, 0);
@@ -807,7 +897,7 @@ function createBoatRig(sharedAssets, { accentColor = 0x61dafb, label = 'YOU' } =
     keepObjectAlwaysRenderable(boat, 3);
 
     boat.userData = {
-        lamp,
+        lantern,
         deckCharacter,
         visuals,
         cameraBackAnchor,
@@ -815,6 +905,7 @@ function createBoatRig(sharedAssets, { accentColor = 0x61dafb, label = 'YOU' } =
         cameraLookAnchor,
         nameBadge,
         accentColor,
+        flag,
     };
 
     return boat;
@@ -1156,6 +1247,103 @@ function createPortfolioIsland(sharedAssets) {
     }
 
     island.add(dock);
+
+    // === SECOND DOCK (Git Trail Dock) ===
+    const dock2 = new THREE.Group();
+
+    // Dock 2 platform
+    const dock2Platform = new THREE.Mesh(
+        new THREE.BoxGeometry(DOCK2_PIER_HALF_WIDTH * 2, 0.24, DOCK2_PIER_END_Z - DOCK2_PIER_START_Z),
+        sharedAssets.materials.wood,
+    );
+    dock2Platform.position.set(DOCK2_CENTER.x, DOCK2_SURFACE_Y + 0.02, (DOCK2_PIER_START_Z + DOCK2_PIER_END_Z) / 2);
+    dock2Platform.castShadow = true;
+    dock2Platform.receiveShadow = true;
+    dock2.add(dock2Platform);
+
+    // Dock 2 posts
+    for (let z = DOCK2_PIER_START_Z - 0.5; z <= DOCK2_PIER_END_Z + 0.5; z += 3.8) {
+        for (const xOffset of [-2.2, 2.2]) {
+            const post = new THREE.Mesh(sharedAssets.geometries.dockPost, sharedAssets.materials.woodDark);
+            post.position.set(DOCK2_CENTER.x + xOffset, DOCK2_SURFACE_Y - 1.16, z);
+            post.castShadow = true;
+            post.receiveShadow = true;
+            dock2.add(post);
+        }
+    }
+
+    // Dock 2 railings
+    for (const side of [-1, 1]) {
+        for (let z = DOCK2_PIER_START_Z + 0.8; z <= DOCK2_PIER_END_Z - 0.8; z += 4.8) {
+            const railPost = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 0.18), sharedAssets.materials.woodDark);
+            railPost.position.set(DOCK2_CENTER.x + side * 2.6, DOCK2_SURFACE_Y + 0.32, z);
+            railPost.castShadow = true;
+            railPost.receiveShadow = true;
+            dock2.add(railPost);
+        }
+
+        const topRail = new THREE.Mesh(
+            new THREE.BoxGeometry(0.16, 0.1, DOCK2_PIER_END_Z - DOCK2_PIER_START_Z - 0.8),
+            sharedAssets.materials.woodDark,
+        );
+        topRail.position.set(DOCK2_CENTER.x + side * 2.6, DOCK2_SURFACE_Y + 0.82, (DOCK2_PIER_START_Z + DOCK2_PIER_END_Z) / 2);
+        topRail.castShadow = true;
+        topRail.receiveShadow = true;
+        dock2.add(topRail);
+    }
+
+    // Dock 2 stairs
+    const dock2StairMaterial = sharedAssets.materials.wood.clone();
+    dock2StairMaterial.color = new THREE.Color(0xb67a42);
+    const dock2StepDepth = 0.58;
+    const dock2StepHeight = 0.16;
+    const dock2StairBaseY = DOCK2_SURFACE_Y + 0.14;
+    const dock2RisePerStep = (DOCK2_STAIR_TOP_Y - dock2StairBaseY) / DOCK_STEP_COUNT;
+
+    for (let index = 0; index < DOCK_STEP_COUNT; index += 1) {
+        const stepWidth = 3.9 - index * 0.05;
+        const stepTopY = dock2StairBaseY + dock2RisePerStep * (index + 1);
+        const supportHeight = Math.max(0.28, stepTopY - 0.02);
+        const support = new THREE.Mesh(
+            new THREE.BoxGeometry(stepWidth - 0.16, supportHeight, dock2StepDepth - 0.04),
+            sharedAssets.materials.woodDark,
+        );
+        support.position.set(
+            DOCK2_ACCESS_CENTER_X,
+            supportHeight * 0.5 - 0.02,
+            DOCK2_ACCESS_CENTER_Z + index * dock2StepDepth,
+        );
+        support.castShadow = true;
+        support.receiveShadow = true;
+        dock2.add(support);
+
+        const step = new THREE.Mesh(
+            new THREE.BoxGeometry(stepWidth, dock2StepHeight, dock2StepDepth),
+            dock2StairMaterial,
+        );
+        step.position.set(
+            DOCK2_ACCESS_CENTER_X,
+            stepTopY - dock2StepHeight * 0.5,
+            DOCK2_ACCESS_CENTER_Z + index * dock2StepDepth,
+        );
+        step.castShadow = true;
+        step.receiveShadow = true;
+        dock2.add(step);
+    }
+
+    // Dock 2 stair sides
+    for (const side of [-1, 1]) {
+        const sideSkirt = new THREE.Mesh(
+            new THREE.BoxGeometry(0.14, 1.4, 5.5),
+            sharedAssets.materials.woodDark,
+        );
+        sideSkirt.position.set(DOCK2_ACCESS_CENTER_X + side * 1.9, 0.68, DOCK2_ACCESS_CENTER_Z + 2.5);
+        sideSkirt.castShadow = true;
+        sideSkirt.receiveShadow = true;
+        dock2.add(sideSkirt);
+    }
+
+    island.add(dock2);
 
     const palmOffsets = [
         [-18, 0, 48],
@@ -2019,7 +2207,7 @@ function getControlledLookOrigin(player, boat, landCharacter, time) {
 
 function getControlledTarget(player, boat, landCharacter, time) {
     const origin = getControlledLookOrigin(player, boat, landCharacter, time);
-    const lookYaw = player.mode === 'boat' ? player.heading : player.yaw;
+    const lookYaw = player.yaw;
     const forward = new THREE.Vector3(Math.sin(lookYaw), Math.sin(player.pitch), Math.cos(lookYaw));
 
     if (player.mode === 'boat') {
@@ -2059,51 +2247,97 @@ function getInteractionPrompt(playerMode, canDisembark, canBoard) {
     return null;
 }
 
+function getViewportState() {
+    if (typeof window === 'undefined') {
+        return {
+            isMobileViewport: false,
+            isPortraitViewport: false,
+        };
+    }
+
+    const isMobileViewport = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 900;
+
+    return {
+        isMobileViewport,
+        isPortraitViewport: isMobileViewport ? window.innerHeight > window.innerWidth : false,
+    };
+}
+
 function createLandscapePrompt() {
     return (
         <div style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(6, 12, 23, 0.96)',
+            position: 'relative',
+            width: '100%',
+            height: '100dvh',
+            minHeight: '100vh',
+            overflow: 'hidden',
+            background: 'linear-gradient(180deg, #6f8797 0%, #253646 38%, #08101d 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#fff',
-            padding: 24,
+            color: '#fff7ed',
+            padding: '24px 20px',
             textAlign: 'center',
         }}>
             <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'radial-gradient(circle at 50% 0%, rgba(219,234,254,0.62) 0%, rgba(191,219,254,0.14) 18%, rgba(8,16,29,0) 42%)',
+                pointerEvents: 'none',
+            }} />
+            <div style={{
+                position: 'relative',
                 width: '100%',
-                maxWidth: 340,
-                borderRadius: 24,
-                border: '1px solid rgba(148,163,184,0.18)',
-                background: 'linear-gradient(180deg, rgba(8,15,31,0.94) 0%, rgba(5,10,24,0.96) 100%)',
-                padding: '28px 24px',
-                boxShadow: '0 28px 60px rgba(0,0,0,0.42)',
+                maxWidth: 320,
+                padding: '42px 28px 36px',
+                borderRadius: 28,
+                border: '1px solid rgba(61, 35, 18, 0.78)',
+                background: `
+                    linear-gradient(180deg, rgba(168,116,67,0.3) 0%, rgba(86,52,29,0.16) 100%),
+                    repeating-linear-gradient(
+                        172deg,
+                        #6c4327 0px,
+                        #6c4327 7px,
+                        #7a4b2c 7px,
+                        #7a4b2c 16px,
+                        #5c3922 16px,
+                        #5c3922 24px
+                    )
+                `,
+                boxShadow: '0 32px 60px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,226,186,0.18), inset 0 -20px 40px rgba(38,19,8,0.26)',
             }}>
-                <div style={{ fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: '#7dd3fc', fontWeight: 900 }}>
-                    Deck Notice
+                <div style={{
+                    position: 'absolute',
+                    inset: 10,
+                    borderRadius: 20,
+                    border: '1px solid rgba(255,225,188,0.12)',
+                    background: 'linear-gradient(180deg, rgba(255,247,237,0.04) 0%, rgba(255,247,237,0) 34%, rgba(33,18,8,0.16) 100%)',
+                    pointerEvents: 'none',
+                }} />
+                <div style={{ position: 'relative', fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: '#f6c88f', fontWeight: 900 }}>
+                    Cabin Notice
                 </div>
-                <div style={{ marginTop: 14, fontSize: 28, fontWeight: 900, color: '#f8fafc' }}>
+                <div style={{ position: 'relative', marginTop: 14, fontSize: 30, fontWeight: 900, lineHeight: 1.15, color: '#fff3e0', textShadow: '0 2px 12px rgba(40, 19, 8, 0.22)' }}>
                     Putar ke Landscape
                 </div>
-                <p style={{ margin: '12px 0 0', color: 'rgba(226,232,240,0.75)', lineHeight: 1.6, fontSize: 14 }}>
-                    World pulau, kapal, dan kontrol kamera dirancang untuk mode horizontal.
+                <p style={{ position: 'relative', margin: '14px 0 0', color: 'rgba(255,236,214,0.82)', lineHeight: 1.65, fontSize: 14 }}>
+                    Kemudi, kamera, dan jalur eksplorasi lebih pas dipakai saat layar horizontal.
                 </p>
                 <button
                     type="button"
                     onClick={() => navigateWithCleanup('/')}
                     style={{
-                        marginTop: 18,
-                        border: '1px solid rgba(125,211,252,0.24)',
+                        position: 'relative',
+                        marginTop: 22,
+                        border: '1px solid rgba(255,221,179,0.2)',
                         borderRadius: 999,
-                        background: 'rgba(8,15,31,0.9)',
-                        color: '#e0f2fe',
-                        padding: '12px 18px',
+                        background: 'linear-gradient(180deg, rgba(108,67,39,0.94) 0%, rgba(76,45,25,0.98) 100%)',
+                        color: '#fff3e0',
+                        padding: '12px 20px',
                         fontWeight: 800,
                         textTransform: 'uppercase',
                         letterSpacing: '0.12em',
+                        boxShadow: 'inset 0 1px 0 rgba(255,230,196,0.14), 0 10px 22px rgba(28, 15, 7, 0.24)',
                     }}
                 >
                     Home
@@ -2128,8 +2362,8 @@ const SkillsGame = () => {
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [loadingLabel, setLoadingLabel] = useState('Menyiapkan world...');
     const [hud, setHud] = useState(null);
-    const [isMobile, setIsMobile] = useState(false);
-    const [isPortrait, setIsPortrait] = useState(false);
+    const [isMobile, setIsMobile] = useState(() => getViewportState().isMobileViewport);
+    const [isPortrait, setIsPortrait] = useState(() => getViewportState().isPortraitViewport);
     const [isFullscreen, setIsFullscreen] = useState(() => typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false);
     const [showHelp, setShowHelp] = useState(true);
     const [paused, setPaused] = useState(false);
@@ -2140,6 +2374,7 @@ const SkillsGame = () => {
     const [playerName, setPlayerName] = useState('');
     const [sessionInfo, setSessionInfo] = useState(null);
     const [roomPopulation, setRoomPopulation] = useState(1);
+    const [networkPingMs, setNetworkPingMs] = useState(null);
     const [cameraMode, setCameraMode] = useState('third-back');
     const [interactionPrompt, setInteractionPrompt] = useState(null);
     const [mobilePlayerMode, setMobilePlayerMode] = useState('boat');
@@ -2211,11 +2446,10 @@ const SkillsGame = () => {
 
     useEffect(() => {
         const syncMedia = () => {
-            const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 900;
-            setIsMobile(mobile);
-            if (mobile) {
-                setIsPortrait(window.innerHeight > window.innerWidth);
-            }
+            const viewportState = getViewportState();
+
+            setIsMobile(viewportState.isMobileViewport);
+            setIsPortrait(viewportState.isPortraitViewport);
         };
 
         syncMedia();
@@ -2255,7 +2489,7 @@ const SkillsGame = () => {
             destroyGame();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isPortrait]);
+    }, [isMobile, isPortrait]);
 
     async function initGame() {
         const mount = mountRef.current;
@@ -2427,7 +2661,7 @@ const SkillsGame = () => {
         const localLabel = getDefaultLocalLabel(sessionInfoRef.current);
         const boat = createBoatRig(sharedAssets, { accentColor: 0x38bdf8, label: localLabel });
         boat.position.copy(START_BOAT_POSITION);
-        boat.position.y = waveHeight(boat.position.x, boat.position.z, 0) + 1.45;
+        boat.position.y = waveHeight(START_BOAT_POSITION.x, START_BOAT_POSITION.z, 0) + 0.65;
         scene.add(boat);
 
         const landCharacter = createCharacter(sharedAssets, 0x38bdf8);
@@ -2479,6 +2713,11 @@ const SkillsGame = () => {
             lastSafeBoatPosition: START_BOAT_POSITION.clone(),
             lastSafeHeading: Math.PI,
             wasOrbitEnabled: false,
+            boatVisualPitch: 0,
+            boatVisualRoll: 0,
+            collisionShake: 0,
+            collisionCooldown: 0,
+            landCollisionCooldown: 0,
         };
 
         const raycaster = new THREE.Raycaster();
@@ -2497,6 +2736,7 @@ const SkillsGame = () => {
         const sampleVector = new THREE.Vector3();
         const bendDirection = new THREE.Vector3();
         const obstacleSample = new THREE.Vector3();
+        const remoteCollisionSample = new THREE.Vector3();
         const swellState = {
             startAt: 4,
             endAt: 4,
@@ -2538,6 +2778,33 @@ const SkillsGame = () => {
         const syncLocalBadgeVisibility = (mode) => {
             boat.userData.nameBadge.visible = mode === 'boat';
             landCharacter.userData.nameBadge.visible = mode === 'land';
+        };
+
+        const isRemotePlayerBlocking = (position, radius, mode) => {
+            let blocked = false;
+
+            networkRef.current.remotePlayers.forEach((entry) => {
+                if (blocked || !entry.targetState) {
+                    return;
+                }
+
+                const remoteMode = entry.targetState.mode ?? 'boat';
+
+                if (remoteMode !== mode) {
+                    return;
+                }
+
+                const remoteObject = remoteMode === 'boat' ? entry.boat : entry.landCharacter;
+                const remoteRadius = remoteMode === 'boat' ? REMOTE_BOAT_COLLISION_RADIUS : REMOTE_LAND_COLLISION_RADIUS;
+
+                remoteCollisionSample.set(remoteObject.position.x, 0, remoteObject.position.z);
+
+                if (remoteCollisionSample.distanceToSquared(position) < (radius + remoteRadius) ** 2) {
+                    blocked = true;
+                }
+            });
+
+            return blocked;
         };
 
         const applyLocalDisplayName = (displayName) => {
@@ -2627,11 +2894,9 @@ const SkillsGame = () => {
                 return;
             }
 
-            if (player.mode === 'land') {
-                player.yaw -= event.movementX * 0.0024;
-                player.pitch -= event.movementY * 0.002;
-                player.pitch = THREE.MathUtils.clamp(player.pitch, -0.82, 0.42);
-            }
+            player.yaw -= event.movementX * 0.0024;
+            player.pitch -= event.movementY * 0.002;
+            player.pitch = THREE.MathUtils.clamp(player.pitch, -0.82, 0.42);
         };
 
         const onMouseDown = () => {
@@ -2729,7 +2994,6 @@ const SkillsGame = () => {
                         const turnStrength = THREE.MathUtils.lerp(0.42, 1.45, Math.min(Math.abs(player.boatSpeed) / 9.5, 1));
                         player.heading += steer * turnStrength * delta;
                     }
-                    player.yaw = THREE.MathUtils.lerp(player.yaw, player.heading + Math.PI, 0.14);
 
                     const boatForward = getForwardVector(player.heading);
                     const boatRight = getRightVector(player.heading);
@@ -2752,12 +3016,42 @@ const SkillsGame = () => {
                     const blockedByOuterIslet = collisionSamples.some((sample) => outerIslets.obstacleColliders.some(
                         (collider) => collider.position.distanceToSquared(sample) < (collider.radius + 1.2) ** 2,
                     ));
+                    const blockedByRemoteBoat = collisionSamples.some((sample) => isRemotePlayerBlocking(sample, 1.9, 'boat'));
 
-                    if (!blockedByIsland && !blockedByDock && !blockedByOuterIslet) {
+                    if (!blockedByIsland && !blockedByDock && !blockedByOuterIslet && !blockedByRemoteBoat) {
                         boat.position.x = nextBoatX;
                         boat.position.z = nextBoatZ;
+                        player.collisionCooldown = 0;
                     } else {
+                        // Collision detected - apply bounce effect
                         player.boatSpeed = THREE.MathUtils.damp(player.boatSpeed, 0, 8.5, delta);
+                        
+                        // Bounce back slightly on collision
+                        const bounceStrength = Math.min(Math.abs(player.boatSpeed) * 0.3, 1.5);
+                        const bounceBack = boatForward.clone().multiplyScalar(-bounceStrength * delta);
+                        boat.position.add(bounceBack);
+                        
+                        // Add collision shake effect
+                        if (player.collisionCooldown <= 0) {
+                            player.collisionShake = Math.min(Math.abs(player.boatSpeed) * 0.08, 0.25);
+                            player.collisionCooldown = 0.3;
+                            
+                            // Visual feedback - flash the ship briefly
+                            if (blockedByRemoteBoat) {
+                                // Flash effect when hitting another player's boat
+                                visuals.traverse((object) => {
+                                    if (object.isMesh && object.material && !object.material._originalEmissive) {
+                                        object.material._originalEmissive = object.material.emissiveIntensity || 0;
+                                        object.material.emissiveIntensity = 1.5;
+                                        setTimeout(() => {
+                                            if (object.material && object.material._originalEmissive !== undefined) {
+                                                object.material.emissiveIntensity = object.material._originalEmissive;
+                                            }
+                                        }, 150);
+                                    }
+                                });
+                            }
+                        }
                     }
 
                     const centerSurface = waveHeight(boat.position.x, boat.position.z, elapsedTime);
@@ -2765,16 +3059,45 @@ const SkillsGame = () => {
                     const sternSurface = waveHeight(boat.position.x - boatForward.x * 2.4, boat.position.z - boatForward.z * 2.4, elapsedTime);
                     const rightSurface = waveHeight(boat.position.x + boatRight.x * 1.8, boat.position.z + boatRight.z * 1.8, elapsedTime);
                     const leftSurface = waveHeight(boat.position.x - boatRight.x * 1.8, boat.position.z - boatRight.z * 1.8, elapsedTime);
-                    boat.position.y = centerSurface + 1.45;
+                    
+                    // Realistic floating - hull sits lower in water
+                    // Bobbing effect for natural up/down movement
+                    const bobbing = Math.sin(elapsedTime * 0.8) * 0.08 + Math.sin(elapsedTime * 1.3) * 0.05;
+                    const targetY = centerSurface + 0.65 + bobbing;
+                    boat.position.y = THREE.MathUtils.lerp(boat.position.y, targetY, 0.15);
+                    
                     boat.rotation.y = player.heading;
-                    boat.rotation.x = 0;
-                    boat.rotation.z = 0;
-                    boat.userData.visuals.rotation.x =
-                        THREE.MathUtils.clamp((sternSurface - bowSurface) * 0.045, -0.032, 0.032)
-                        + THREE.MathUtils.clamp(player.boatSpeed / 120, -0.018, 0.018);
-                    boat.userData.visuals.rotation.z =
-                        THREE.MathUtils.clamp((leftSurface - rightSurface) * 0.065, -0.045, 0.045)
-                        + steer * 0.012;
+
+                    // Apply collision shake decay
+                    if (player.collisionShake > 0) {
+                        player.collisionShake = THREE.MathUtils.damp(player.collisionShake, 0, 12, delta);
+                        if (player.collisionShake < 0.001) {
+                            player.collisionShake = 0;
+                        }
+                    }
+                    if (player.collisionCooldown > 0) {
+                        player.collisionCooldown = Math.max(0, player.collisionCooldown - delta);
+                    }
+
+                    const shakeX = player.collisionShake ? (Math.random() - 0.5) * player.collisionShake : 0;
+                    const shakeZ = player.collisionShake ? (Math.random() - 0.5) * player.collisionShake : 0;
+
+                    boat.rotation.x = shakeX;
+                    boat.rotation.z = shakeZ;
+
+                    const targetBoatPitch =
+                        THREE.MathUtils.clamp((sternSurface - bowSurface) * 0.065, -0.045, 0.045)
+                        + THREE.MathUtils.clamp(player.boatSpeed / 100, -0.025, 0.025)
+                        + Math.sin(elapsedTime * 0.9) * 0.008;
+                    const targetBoatRoll =
+                        THREE.MathUtils.clamp((leftSurface - rightSurface) * 0.085, -0.055, 0.055)
+                        + steer * 0.015
+                        + Math.sin(elapsedTime * 0.7) * 0.006;
+
+                    player.boatVisualPitch = THREE.MathUtils.damp(player.boatVisualPitch, targetBoatPitch, 4.2, delta);
+                    player.boatVisualRoll = THREE.MathUtils.damp(player.boatVisualRoll, targetBoatRoll, 3.8, delta);
+                    boat.userData.visuals.rotation.x = player.boatVisualPitch + shakeX;
+                    boat.userData.visuals.rotation.z = player.boatVisualRoll + shakeZ;
 
                     animateCharacter(boat.userData.deckCharacter, elapsedTime, 0);
                     boat.userData.deckCharacter.userData.heading = Math.PI / 2;
@@ -2802,14 +3125,25 @@ const SkillsGame = () => {
                         const walkableSurface = groundHeight !== null && groundHeight > 0.05;
                         const onIslandSurface = isSolidIslandAt(sampleVector.x, sampleVector.z, 0.6);
                         const onDockSurface = isInsideDockSurface(sampleVector.x, sampleVector.z, 0.22);
+                        const blockedByRemoteLand = isRemotePlayerBlocking(obstacleSample, 0.72, 'land');
 
-                        if (walkableSurface && (onIslandSurface || onDockSurface) && !blockedByObstacle) {
+                        if (walkableSurface && (onIslandSurface || onDockSurface) && !blockedByObstacle && !blockedByRemoteLand) {
                             landCharacter.position.x = sampleVector.x;
                             landCharacter.position.z = sampleVector.z;
                             landCharacter.userData.baseY = groundHeight;
                             landCharacter.userData.heading = Math.atan2(moveVector.x, moveVector.z);
                             player.walkTime += delta * (isRunning ? 2.2 : 1.55);
+                            player.landCollisionCooldown = 0;
+                        } else if (blockedByRemoteLand && player.landCollisionCooldown <= 0) {
+                            // Collision with another player on land - brief stop
+                            player.landCollisionCooldown = 0.4;
+                            player.landSpeed = THREE.MathUtils.damp(player.landSpeed, 0, 12, delta);
                         }
+                    }
+                    
+                    // Decay land collision cooldown
+                    if (player.landCollisionCooldown > 0) {
+                        player.landCollisionCooldown = Math.max(0, player.landCollisionCooldown - delta);
                     }
 
                     if (player.onGround && keys.Space) {
@@ -2842,8 +3176,10 @@ const SkillsGame = () => {
                 if (player.mode === 'boat') {
                     boat.rotation.x = 0;
                     boat.rotation.z = 0;
-                    boat.userData.visuals.rotation.x = Math.sin(elapsedTime * 0.7) * 0.012;
-                    boat.userData.visuals.rotation.z = Math.cos(elapsedTime * 0.62) * 0.014;
+                    player.boatVisualPitch = THREE.MathUtils.damp(player.boatVisualPitch, Math.sin(elapsedTime * 0.7) * 0.012, 3.8, delta);
+                    player.boatVisualRoll = THREE.MathUtils.damp(player.boatVisualRoll, Math.cos(elapsedTime * 0.62) * 0.014, 3.4, delta);
+                    boat.userData.visuals.rotation.x = player.boatVisualPitch;
+                    boat.userData.visuals.rotation.z = player.boatVisualRoll;
                     animateCharacter(boat.userData.deckCharacter, elapsedTime, 0);
                 } else {
                     animateCharacter(landCharacter, elapsedTime, 0.05, !player.onGround);
@@ -2853,14 +3189,24 @@ const SkillsGame = () => {
             player.landingImpact = THREE.MathUtils.damp(player.landingImpact, 0, LANDING_IMPACT_DECAY, delta);
 
             const dockDistance = boat.position.distanceTo(DOCK_BERTH_POINT);
+            const dock2Distance = boat.position.distanceTo(DOCK2_BERTH_POINT);
             const playerOnDock = isInsideDockSurface(landCharacter.position.x, landCharacter.position.z, 0.35);
             const transitionUnlocked = elapsedTime >= player.transitionLockUntil;
-            const canDisembark = player.mode === 'boat' && transitionUnlocked && dockDistance < 14.2 && Math.abs(player.boatSpeed) < 2.2;
+            
+            // Check which dock is closer/active
+            const atDock1 = dockDistance < 14.2;
+            const atDock2 = dock2Distance < 12;
+            const activeDockPoint = atDock2 ? DOCK2_LAND_POINT : DOCK_LAND_POINT;
+            const activeBerthPoint = atDock2 ? DOCK2_BERTH_POINT : DOCK_BERTH_POINT;
+            const activeDockCenter = atDock2 ? DOCK2_CENTER : DOCK_CENTER;
+            const activeDockDistance = atDock2 ? dock2Distance : dockDistance;
+            
+            const canDisembark = player.mode === 'boat' && transitionUnlocked && (atDock1 || atDock2) && Math.abs(player.boatSpeed) < 2.2;
             const canBoard =
                 player.mode === 'land' &&
                 transitionUnlocked &&
                 playerOnDock &&
-                dockDistance < 17 &&
+                (atDock1 || atDock2) &&
                 landCharacter.position.distanceTo(boat.position) < 18;
             updateInteractionState(canDisembark, canBoard);
 
@@ -2874,9 +3220,9 @@ const SkillsGame = () => {
                     syncLocalBadgeVisibility('land');
                     player.boatSpeed = 0;
                     landCharacter.position.set(
-                        DOCK_LAND_POINT.x,
-                        (getGroundHeightAt(DOCK_LAND_POINT.x, DOCK_LAND_POINT.z) ?? 0) + 0.02,
-                        DOCK_LAND_POINT.z,
+                        activeDockPoint.x,
+                        (getGroundHeightAt(activeDockPoint.x, activeDockPoint.z) ?? 0) + 0.02,
+                        activeDockPoint.z,
                     );
                     landCharacter.userData.baseY = landCharacter.position.y;
                     player.transitionLockUntil = elapsedTime + 0.45;
@@ -2901,17 +3247,19 @@ const SkillsGame = () => {
                     landCharacter.visible = false;
                     boat.userData.deckCharacter.visible = true;
                     syncLocalBadgeVisibility('boat');
-                    boat.position.x = DOCK_BERTH_POINT.x;
-                    boat.position.z = DOCK_BERTH_POINT.z;
-                    boat.position.y = waveHeight(boat.position.x, boat.position.z, elapsedTime) + 1.45;
+                    boat.position.x = activeBerthPoint.x;
+                    boat.position.z = activeBerthPoint.z;
+                    boat.position.y = waveHeight(boat.position.x, boat.position.z, elapsedTime) + 0.65;
                     player.transitionLockUntil = elapsedTime + 0.45;
                     player.cameraLockUntil = elapsedTime + 0.65;
-                    player.heading = Math.atan2(boat.position.x - DOCK_CENTER.x, boat.position.z - DOCK_CENTER.z);
-                    player.pitch = 0;
-                    player.yaw = player.heading;
+                    player.heading = Math.atan2(boat.position.x - activeDockCenter.x, boat.position.z - activeDockCenter.z);
+                    player.pitch = -0.12;
+                    player.yaw = player.heading + Math.PI;
                     boat.rotation.y = player.heading;
                     boat.rotation.x = 0;
                     boat.rotation.z = 0;
+                    player.boatVisualPitch = 0;
+                    player.boatVisualRoll = 0;
                     boat.userData.visuals.rotation.x = 0;
                     boat.userData.visuals.rotation.z = 0;
                     player.lastSafeBoatPosition.copy(boat.position);
@@ -2923,7 +3271,7 @@ const SkillsGame = () => {
                         boat.position.y + 5.6,
                         boat.position.z - forwardVector.z * 11.4 + rightVector.z * 0.45,
                     );
-                    setMenuMessage('Kembali ke kapal.');
+                    setMenuMessage(atDock2 ? 'Dock Git Trail - Kembali ke kapal.' : 'Kembali ke kapal.');
                 }
             } else if (!keys.KeyE) {
                 player.interactionLatch = false;
@@ -2934,7 +3282,7 @@ const SkillsGame = () => {
             }
 
             if (!Number.isFinite(player.yaw)) {
-                player.yaw = player.lastSafeHeading;
+                player.yaw = player.lastSafeHeading + Math.PI;
             }
 
             if (!Number.isFinite(player.boatSpeed)) {
@@ -2943,14 +3291,14 @@ const SkillsGame = () => {
 
             if (!isFiniteVector3(boat.position)) {
                 boat.position.copy(player.lastSafeBoatPosition);
-                boat.position.y = waveHeight(boat.position.x, boat.position.z, elapsedTime) + 1.45;
+                boat.position.y = waveHeight(boat.position.x, boat.position.z, elapsedTime) + 0.65;
                 player.heading = player.lastSafeHeading;
-                player.yaw = player.lastSafeHeading;
+                player.yaw = player.lastSafeHeading + Math.PI;
             }
 
             if (!isFiniteVector3(player.cameraPosition)) {
-                forwardVector.copy(getForwardVector(player.heading)).normalize();
-                rightVector.copy(getRightVector(player.heading)).normalize();
+                forwardVector.copy(getForwardVector(player.yaw)).normalize();
+                rightVector.copy(getRightVector(player.yaw)).normalize();
                 player.cameraPosition.set(
                     boat.position.x - forwardVector.x * 11.4 + rightVector.x * 0.45,
                     boat.position.y + 5.6,
@@ -2987,6 +3335,13 @@ const SkillsGame = () => {
                     tuft.rotation.z = THREE.MathUtils.damp(tuft.rotation.z, tuft.userData.baseRotationZ, 8, delta);
                     tuft.rotation.x = THREE.MathUtils.damp(tuft.rotation.x, 0, 8, delta);
                 });
+            }
+
+            // Animate ship flag (waving effect)
+            if (boat.userData.flag) {
+                const waveAngle = Math.sin(elapsedTime * 3.5) * 0.12;
+                boat.userData.flag.rotation.y = Math.PI / 4 + waveAngle;
+                boat.userData.flag.rotation.z = Math.sin(elapsedTime * 2.8) * 0.06;
             }
 
             flowerClusters.forEach((cluster, index) => {
@@ -3048,34 +3403,40 @@ const SkillsGame = () => {
             cameraTarget.copy(getControlledTarget(player, boat, landCharacter, elapsedTime));
 
             if (player.mode === 'boat') {
-                forwardVector.copy(getForwardVector(player.heading)).normalize();
-                rightVector.copy(getRightVector(player.heading)).normalize();
+                const orbitYaw = player.yaw;
+                const orbitPitch = THREE.MathUtils.clamp(player.pitch, -0.55, 0.32);
+                forwardVector.copy(getForwardVector(orbitYaw)).normalize();
+                rightVector.copy(getRightVector(orbitYaw)).normalize();
 
-                boat.userData.cameraBackAnchor.getWorldPosition(boatCameraWorldPosition);
-                boat.userData.cameraLookAnchor.getWorldPosition(boatCameraWorldLook);
+                boatCameraWorldLook.copy(lookOrigin);
                 const boatPitch = boat.userData.visuals.rotation.x ?? 0;
                 const boatRoll = boat.userData.visuals.rotation.z ?? 0;
                 const waveCameraBob = Math.sin(elapsedTime * 2.4 + boat.position.x * 0.03 + boat.position.z * 0.024) * 0.08;
+                const orbitRadius = 10.6;
 
-                boatCameraSway.copy(rightVector).multiplyScalar(boatRoll * 2.6);
-                boatCameraSway.addScaledVector(forwardVector, -boatPitch * 1.85);
-                boatCameraSway.y += waveCameraBob + Math.abs(boatPitch) * 0.42;
+                boatCameraWorldPosition.copy(boatCameraWorldLook)
+                    .addScaledVector(forwardVector, -orbitRadius * Math.cos(orbitPitch))
+                    .add(new THREE.Vector3(0, 2.2 + Math.sin(orbitPitch) * 5.4, 0));
+
+                boatCameraSway.copy(rightVector).multiplyScalar(boatRoll * 0.82);
+                boatCameraSway.addScaledVector(forwardVector, -boatPitch * 0.44);
+                boatCameraSway.y += waveCameraBob + Math.abs(boatPitch) * 0.16;
                 boatCameraWorldPosition.add(boatCameraSway);
-                boatCameraWorldLook.addScaledVector(rightVector, boatRoll * 1.1);
-                boatCameraWorldLook.addScaledVector(forwardVector, boatPitch * 1.2);
-                boatCameraWorldLook.y += waveCameraBob * 0.6;
+                boatCameraWorldLook.addScaledVector(rightVector, boatRoll * 0.28);
+                boatCameraWorldLook.addScaledVector(forwardVector, boatPitch * 0.34);
+                boatCameraWorldLook.y += waveCameraBob * 0.34;
 
                 if (elapsedTime < player.cameraLockUntil) {
                     player.cameraPosition.copy(boatCameraWorldPosition);
                 } else {
-                    player.cameraPosition.lerp(boatCameraWorldPosition, 0.16);
+                    player.cameraPosition.lerp(boatCameraWorldPosition, 0.1);
                 }
 
                 camera.position.copy(player.cameraPosition);
                 boatCameraUp
                     .copy(worldUp)
-                    .addScaledVector(rightVector, -boatRoll * 1.6)
-                    .addScaledVector(forwardVector, boatPitch * 0.38)
+                    .addScaledVector(rightVector, -boatRoll * 0.68)
+                    .addScaledVector(forwardVector, boatPitch * 0.2)
                     .normalize();
                 camera.up.copy(boatCameraUp);
                 camera.lookAt(boatCameraWorldLook);
@@ -3153,6 +3514,7 @@ const SkillsGame = () => {
             if (shouldSyncRoom) {
                 networkRef.current.lastSyncAt = elapsedTime;
                 networkRef.current.syncInFlight = true;
+                const syncStartedAt = performance.now();
 
                 void postJson('/skills/rooms/sync', {
                     code: sessionInfoRef.current.code,
@@ -3178,6 +3540,7 @@ const SkillsGame = () => {
                     },
                 })
                     .then((data) => {
+                        setNetworkPingMs(Math.max(1, Math.round(performance.now() - syncStartedAt)));
                         const seenPlayers = new Set();
 
                         (data.players ?? []).forEach((remotePlayer) => {
@@ -3195,6 +3558,7 @@ const SkillsGame = () => {
                         setRoomPopulation(data.player_count ?? seenPlayers.size + 1);
                     })
                     .catch(() => {
+                        setNetworkPingMs(null);
                         setMenuMessage('Koneksi room terputus. Coba masuk lagi.');
                     })
                     .finally(() => {
@@ -3370,7 +3734,7 @@ const SkillsGame = () => {
     const onTouchLookStart = (event) => {
         void requestMobileFullscreen();
 
-        if (paused) {
+        if (paused || touchLookRef.current.active) {
             return;
         }
 
@@ -3380,20 +3744,20 @@ const SkillsGame = () => {
             return;
         }
 
-        const touch = event.touches[0];
+        const shellBounds = shellRef.current?.getBoundingClientRect();
 
-        if (!touch) {
+        if (!shellBounds) {
             return;
         }
 
-        const shellBounds = shellRef.current?.getBoundingClientRect();
+        const touch = Array.from(event.changedTouches).find((currentTouch) => {
+            const relativeTouchX = currentTouch.clientX - shellBounds.left;
 
-        if (shellBounds) {
-            const relativeTouchX = touch.clientX - shellBounds.left;
+            return relativeTouchX >= shellBounds.width * 0.42;
+        });
 
-            if (relativeTouchX < shellBounds.width * 0.42) {
-                return;
-            }
+        if (!touch) {
+            return;
         }
 
         touchLookRef.current = {
@@ -3417,6 +3781,9 @@ const SkillsGame = () => {
 
         const deltaX = touch.clientX - touchLookRef.current.lastX;
         const deltaY = touch.clientY - touchLookRef.current.lastY;
+
+        event.preventDefault();
+
         gameRef.current.player.yaw -= deltaX * 0.006;
         gameRef.current.player.pitch -= deltaY * 0.005;
         gameRef.current.player.pitch = THREE.MathUtils.clamp(gameRef.current.player.pitch, -0.82, 0.42);
@@ -3446,9 +3813,9 @@ const SkillsGame = () => {
         }, 120);
     };
 
-    const setMobileRunState = (nextState) => {
+    const setMobileRunState = useEffectEvent((nextState) => {
         keysRef.current.ShiftLeft = nextState;
-    };
+    });
 
     const mobileInteract = () => {
         keysRef.current.KeyE = true;
@@ -3558,6 +3925,7 @@ const SkillsGame = () => {
             syncInFlight: false,
         };
         setRoomPopulation(1);
+        setNetworkPingMs(null);
     };
 
     const openRoomSession = async (nextSessionInfo) => {
@@ -3883,6 +4251,9 @@ const SkillsGame = () => {
                             <div style={{ marginTop: 2, fontSize: isMobile ? 9 : 12, color: 'rgba(226,232,240,0.74)' }}>
                                 {roomPopulation} pemain
                             </div>
+                            <div style={{ marginTop: 2, fontSize: isMobile ? 8 : 11, color: 'rgba(148,163,184,0.82)' }}>
+                                Ping {networkPingMs !== null ? `${networkPingMs} ms` : '--'}
+                            </div>
                         </div>
                     )}
 
@@ -3908,8 +4279,8 @@ const SkillsGame = () => {
                         >
                             <div style={{ fontSize: isMobile ? 12 : 15, fontWeight: 700, lineHeight: 1.6 }}>
                                 {isMobile
-                                    ? 'Swipe kanan untuk arah · Analog kiri untuk jalan · Run dan Jump di kanan'
-                                    : 'WASD bergerak · Space jump · E naik/turun kapal · C ganti kamera · Esc menu'}
+                                    ? 'Swipe kanan untuk kamera 360 · Analog kiri untuk jalan atau kemudi · Run dan Jump di kanan'
+                                    : 'Mouse drag untuk kamera 360 · WASD bergerak atau kemudi · Space jump · E naik/turun kapal · C ganti kamera · Esc menu'}
                             </div>
                             <div style={{ marginTop: 6, fontSize: isMobile ? 11 : 12, color: 'rgba(226,232,240,0.56)' }}>
                                 Klik panel ini untuk dismiss
@@ -4335,6 +4706,8 @@ function floatingButtonStyle(compact = false) {
 }
 
 function MobileControls({ keys, playerMode, showBoardButton, showLeaveButton, onBoardBoat, onLeaveBoat, onJump, onRunChange }) {
+    const [runPressed, setRunPressed] = useState(false);
+
     useEffect(() => {
         return () => {
             onRunChange(false);
@@ -4342,10 +4715,14 @@ function MobileControls({ keys, playerMode, showBoardButton, showLeaveButton, on
     }, [onRunChange]);
 
     useEffect(() => {
+        onRunChange(runPressed && playerMode !== 'boat');
+    }, [onRunChange, playerMode, runPressed]);
+
+    useEffect(() => {
         if (playerMode === 'boat') {
-            onRunChange(false);
+            setRunPressed(false);
         }
-    }, [onRunChange, playerMode]);
+    }, [playerMode]);
 
     return (
         <>
@@ -4367,7 +4744,8 @@ function MobileControls({ keys, playerMode, showBoardButton, showLeaveButton, on
                     }}>
                         <HoldButton
                             label="Run"
-                            onChange={onRunChange}
+                            pressed={runPressed}
+                            onChange={setRunPressed}
                         />
                     </div>
                     <div style={{
@@ -4404,11 +4782,12 @@ function MobileControls({ keys, playerMode, showBoardButton, showLeaveButton, on
 
 function MobileJoystick({ keys }) {
     const stickPointerRef = useRef(null);
+    const stickTouchRef = useRef(null);
     const [stickOffset, setStickOffset] = useState({ x: 0, y: 0 });
     const [active, setActive] = useState({});
-    const baseSize = 78;
-    const knobSize = 34;
-    const maxDistance = 22;
+    const baseSize = 92;
+    const knobSize = 40;
+    const maxDistance = 30;
 
     useEffect(() => {
         return () => {
@@ -4430,10 +4809,10 @@ function MobileJoystick({ keys }) {
     };
 
     const syncStickKeys = (nextX, nextY) => {
-        setKeyState('KeyA', nextX < -0.34);
-        setKeyState('KeyD', nextX > 0.34);
-        setKeyState('KeyW', nextY < -0.34);
-        setKeyState('KeyS', nextY > 0.34);
+        setKeyState('KeyA', nextX < -0.28);
+        setKeyState('KeyD', nextX > 0.28);
+        setKeyState('KeyW', nextY < -0.28);
+        setKeyState('KeyS', nextY > 0.28);
     };
 
     const resetStick = () => {
@@ -4441,12 +4820,11 @@ function MobileJoystick({ keys }) {
         syncStickKeys(0, 0);
     };
 
-    const updateStick = (event) => {
-        const rect = event.currentTarget.getBoundingClientRect();
+    const updateStick = (touch, rect) => {
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
-        const deltaX = event.clientX - centerX;
-        const deltaY = event.clientY - centerY;
+        const deltaX = touch.clientX - centerX;
+        const deltaY = touch.clientY - centerY;
         const distance = Math.min(Math.hypot(deltaX, deltaY), maxDistance);
         const angle = Math.atan2(deltaY, deltaX);
         const offsetX = Math.cos(angle) * distance;
@@ -4500,20 +4878,32 @@ function MobileJoystick({ keys }) {
             <div
                 role="presentation"
                 onPointerDown={(event) => {
+                    if (event.pointerType === 'touch') {
+                        return;
+                    }
+
                     stopTouchLook(event);
                     stickPointerRef.current = event.pointerId;
                     event.currentTarget.setPointerCapture?.(event.pointerId);
-                    updateStick(event);
+                    updateStick(event, event.currentTarget.getBoundingClientRect());
                 }}
                 onPointerMove={(event) => {
+                    if (event.pointerType === 'touch') {
+                        return;
+                    }
+
                     if (stickPointerRef.current !== event.pointerId) {
                         return;
                     }
 
                     stopTouchLook(event);
-                    updateStick(event);
+                    updateStick(event, event.currentTarget.getBoundingClientRect());
                 }}
                 onPointerUp={(event) => {
+                    if (event.pointerType === 'touch') {
+                        return;
+                    }
+
                     if (stickPointerRef.current !== event.pointerId) {
                         return;
                     }
@@ -4524,12 +4914,64 @@ function MobileJoystick({ keys }) {
                     resetStick();
                 }}
                 onPointerCancel={(event) => {
+                    if (event.pointerType === 'touch') {
+                        return;
+                    }
+
                     if (stickPointerRef.current !== event.pointerId) {
                         return;
                     }
 
                     stopTouchLook(event);
                     stickPointerRef.current = null;
+                    resetStick();
+                }}
+                onTouchStart={(event) => {
+                    stopTouchLook(event);
+
+                    const touch = event.changedTouches[0];
+
+                    if (!touch) {
+                        return;
+                    }
+
+                    stickTouchRef.current = touch.identifier;
+                    updateStick(touch, event.currentTarget.getBoundingClientRect());
+                }}
+                onTouchMove={(event) => {
+                    if (stickTouchRef.current === null) {
+                        return;
+                    }
+
+                    const touch = Array.from(event.touches).find((currentTouch) => currentTouch.identifier === stickTouchRef.current);
+
+                    if (!touch) {
+                        return;
+                    }
+
+                    stopTouchLook(event);
+                    updateStick(touch, event.currentTarget.getBoundingClientRect());
+                }}
+                onTouchEnd={(event) => {
+                    const touchEnded = Array.from(event.changedTouches).some((currentTouch) => currentTouch.identifier === stickTouchRef.current);
+
+                    if (!touchEnded) {
+                        return;
+                    }
+
+                    stopTouchLook(event);
+                    stickTouchRef.current = null;
+                    resetStick();
+                }}
+                onTouchCancel={(event) => {
+                    const touchEnded = Array.from(event.changedTouches).some((currentTouch) => currentTouch.identifier === stickTouchRef.current);
+
+                    if (!touchEnded) {
+                        return;
+                    }
+
+                    stopTouchLook(event);
+                    stickTouchRef.current = null;
                     resetStick();
                 }}
                 style={{
@@ -4573,8 +5015,9 @@ function MobileJoystick({ keys }) {
     );
 }
 
-function HoldButton({ label, onChange }) {
-    const [pressed, setPressed] = useState(false);
+function HoldButton({ label, onChange, pressed }) {
+    const activePointerRef = useRef(null);
+    const activeTouchRef = useRef(null);
 
     const updatePressed = (event, nextState) => {
         event.preventDefault();
@@ -4586,7 +5029,32 @@ function HoldButton({ label, onChange }) {
             event.currentTarget.releasePointerCapture?.(event.pointerId);
         }
 
-        setPressed(nextState);
+        activePointerRef.current = nextState ? event.pointerId : null;
+        onChange(nextState);
+    };
+
+    const handleTouchChange = (event, nextState) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (nextState) {
+            const touch = event.changedTouches[0];
+
+            if (!touch) {
+                return;
+            }
+
+            activeTouchRef.current = touch.identifier;
+        } else if (activeTouchRef.current !== null) {
+            const releasedActiveTouch = Array.from(event.changedTouches).some((touch) => touch.identifier === activeTouchRef.current);
+
+            if (!releasedActiveTouch) {
+                return;
+            }
+
+            activeTouchRef.current = null;
+        }
+
         onChange(nextState);
     };
 
@@ -4594,16 +5062,49 @@ function HoldButton({ label, onChange }) {
         <button
             data-mobile-control="true"
             type="button"
-            onPointerDown={(event) => updatePressed(event, true)}
-            onPointerUp={(event) => updatePressed(event, false)}
-            onPointerCancel={(event) => updatePressed(event, false)}
-            onPointerLeave={(event) => {
-                if (!pressed) {
+            onPointerDown={(event) => {
+                if (event.pointerType === 'touch') {
+                    return;
+                }
+
+                updatePressed(event, true);
+            }}
+            onPointerUp={(event) => {
+                if (event.pointerType === 'touch') {
+                    return;
+                }
+
+                if (activePointerRef.current !== event.pointerId) {
                     return;
                 }
 
                 updatePressed(event, false);
             }}
+            onPointerCancel={(event) => {
+                if (event.pointerType === 'touch') {
+                    return;
+                }
+
+                if (activePointerRef.current !== event.pointerId) {
+                    return;
+                }
+
+                updatePressed(event, false);
+            }}
+            onPointerLeave={(event) => {
+                if (event.pointerType === 'touch') {
+                    return;
+                }
+
+                if (!pressed || activePointerRef.current !== event.pointerId) {
+                    return;
+                }
+
+                updatePressed(event, false);
+            }}
+            onTouchStart={(event) => handleTouchChange(event, true)}
+            onTouchEnd={(event) => handleTouchChange(event, false)}
+            onTouchCancel={(event) => handleTouchChange(event, false)}
             style={{
                 width: 76,
                 height: 76,
@@ -4635,14 +5136,40 @@ function HoldButton({ label, onChange }) {
 }
 
 function TapButton({ label, onPress }) {
+    const touchLatchRef = useRef(null);
+
     return (
         <button
             data-mobile-control="true"
             type="button"
             onPointerDown={(event) => {
+                if (event.pointerType === 'touch') {
+                    return;
+                }
+
                 event.preventDefault();
                 event.stopPropagation();
                 onPress();
+            }}
+            onTouchStart={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                touchLatchRef.current = event.changedTouches[0]?.identifier ?? null;
+                onPress();
+            }}
+            onTouchEnd={(event) => {
+                const releasedTouch = Array.from(event.changedTouches).some((touch) => touch.identifier === touchLatchRef.current);
+
+                if (releasedTouch) {
+                    touchLatchRef.current = null;
+                }
+            }}
+            onTouchCancel={(event) => {
+                const releasedTouch = Array.from(event.changedTouches).some((touch) => touch.identifier === touchLatchRef.current);
+
+                if (releasedTouch) {
+                    touchLatchRef.current = null;
+                }
             }}
             style={{
                 width: 82,
@@ -4679,6 +5206,15 @@ function SmallActionButton({ icon: Icon, ariaLabel, onPress }) {
             type="button"
             aria-label={ariaLabel}
             onPointerDown={(event) => {
+                if (event.pointerType === 'touch') {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                onPress();
+            }}
+            onTouchStart={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 onPress();
