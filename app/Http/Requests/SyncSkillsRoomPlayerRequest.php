@@ -17,10 +17,21 @@ class SyncSkillsRoomPlayerRequest extends FormRequest
             'code' => ['required', 'string', 'size:6'],
             'player_uuid' => ['required', 'uuid'],
             'state' => ['required', 'array'],
+            'state.mode' => ['required', 'string', 'in:boat,land'],
             'state.x' => ['required', 'numeric'],
             'state.y' => ['required', 'numeric'],
             'state.z' => ['required', 'numeric'],
             'state.heading' => ['required', 'numeric'],
+            'state.boat' => ['required', 'array'],
+            'state.boat.x' => ['required', 'numeric'],
+            'state.boat.y' => ['required', 'numeric'],
+            'state.boat.z' => ['required', 'numeric'],
+            'state.boat.heading' => ['required', 'numeric'],
+            'state.land' => ['required', 'array'],
+            'state.land.x' => ['required', 'numeric'],
+            'state.land.y' => ['required', 'numeric'],
+            'state.land.z' => ['required', 'numeric'],
+            'state.land.heading' => ['required', 'numeric'],
         ];
     }
 

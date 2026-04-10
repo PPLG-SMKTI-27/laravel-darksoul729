@@ -44,15 +44,26 @@ class SkillsRoomController extends Controller
 
         $player = $room->players()->create([
             'player_uuid' => (string) Str::uuid(),
-            'display_name' => $request->string('role')->lower()->value() === 'host'
-                ? 'Host'
-                : 'Crew '.Str::upper(Str::random(3)),
+            'display_name' => $request->string('display_name')->value(),
             'role' => $request->string('role')->lower()->value(),
             'state' => [
+                'mode' => 'boat',
                 'x' => 0,
                 'y' => 0.15,
                 'z' => 0,
                 'heading' => 0,
+                'boat' => [
+                    'x' => 0,
+                    'y' => 0.15,
+                    'z' => 0,
+                    'heading' => 0,
+                ],
+                'land' => [
+                    'x' => 0,
+                    'y' => 0.15,
+                    'z' => 0,
+                    'heading' => 0,
+                ],
             ],
             'last_seen_at' => now(),
         ]);
@@ -148,6 +159,19 @@ class SkillsRoomController extends Controller
                         'y' => 0.15,
                         'z' => 0,
                         'heading' => 0,
+                        'mode' => 'boat',
+                        'boat' => [
+                            'x' => 0,
+                            'y' => 0.15,
+                            'z' => 0,
+                            'heading' => 0,
+                        ],
+                        'land' => [
+                            'x' => 0,
+                            'y' => 0.15,
+                            'z' => 0,
+                            'heading' => 0,
+                        ],
                     ],
                 ];
             })
